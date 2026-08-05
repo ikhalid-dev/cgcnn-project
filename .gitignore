@@ -24,5 +24,9 @@ checkpoints/
 runs/
 wandb/
 
+# ...but DO keep our trained checkpoints: they are ~120 KB each and having them
+# in the repo means a fresh clone can reproduce every figure without retraining.
+!results/model_*.pth
+
 # Cloned upstream repos (see README)
 external/

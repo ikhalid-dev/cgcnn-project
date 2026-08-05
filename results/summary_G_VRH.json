@@ -1,0 +1,12 @@
+{
+  "target": "G_VRH",
+  "n_total": 278,
+  "n_train": 195,
+  "n_val": 42,
+  "n_test": 41,
+  "best_val_mae": 0.15637460492906116,
+  "test_mae": 0.16264233883561158,
+  "epochs": 200,
+  "n_params": 26081,
+  "seconds": 136.35280179977417
+}
