@@ -101,6 +101,54 @@ cannot install AI4Kappa's pinned `torch==2.2.0` / `pymatgen==2023.11.12`.
 
 Only `streamlit` is missing from `ml_env`, and it is needed solely to run the original web app.
 
+## Resuming work after a break
+
+Everything except `external/` is committed, so a fresh clone is almost ready to go.
+
+```bash
+cd "/Users/mac/Desktop/Cgcnn project"
+git pull
+git log --oneline | head -5     # where did we stop?
+cat results/metrics_*.csv       # current scores
+```
+
+**What you do NOT need to re-run:**
+
+| | Why |
+|---|---|
+| `01_prepare_dataset.py` | `data/labels.csv` and the 278 matched CIFs are committed. The match takes ~5 min and is deterministic. |
+| `02_train.py` | `results/model_*.pth` are committed (~120 KB each). |
+
+So to regenerate every figure from scratch takes seconds, not minutes:
+
+```bash
+python scripts/03_evaluate.py --target K_VRH
+python scripts/03_evaluate.py --target G_VRH
+```
+
+**What a fresh clone does need restoring:**
+
+```bash
+# 1. the upstream repos (gitignored)
+mkdir -p external && cd external
+git clone https://github.com/ikhalid-dev/AI4Kappa.git
+cd ..
+
+# 2. the notebook-output filter (git filters are per-clone, not stored in the repo)
+python -m nbstripout --install --attributes .gitattributes
+```
+
+Only `AI4Kappa` is genuinely required, and only by `pink_predict.py`, which uses the
+paper's pre-trained weights. The from-scratch pipeline in `cgcnn_scratch/` has no
+dependency on `external/` at all.
+
+### Where the work stands
+
+Stage 1 is done — both moduli train and evaluate end to end. The open thread is that
+**residuals fan out badly below ~30 GPa**: the model is least reliable on soft
+materials, which is precisely the ultralow-κ regime this project cares about. That is
+the natural next thing to attack, before moving to stage 2.
+
 ## Stage 2 (later): κ_L from the predicted moduli
 
 Once the modulus models are good enough, their outputs feed the Slack-model
