@@ -1,0 +1,47 @@
+# generated using pymatgen
+data_Ca(Ga3Te5)2
+_symmetry_space_group_name_H-M   C2
+_cell_length_a   18.05678738
+_cell_length_b   14.64247358
+_cell_length_c   10.35844535
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   124.75895849
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   5
+_chemical_formula_structural   Ca(Ga3Te5)2
+_chemical_formula_sum   'Ca4 Ga24 Te40'
+_cell_volume   2250.02653003
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, y, -z'
+  3  'x+1/2, y+1/2, z'
+  4  '-x+1/2, y+1/2, -z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Ca  Ca0  4  0.12980267  0.87129223  0.38130328  1.0
+  Ga  Ga1  4  0.04273547  0.53437950  0.88026134  1.0
+  Ga  Ga2  4  0.04775938  0.04567537  0.88044541  1.0
+  Ga  Ga3  4  0.14379659  0.72615075  0.21783164  1.0
+  Ga  Ga4  4  0.20525805  0.11005845  0.32738355  1.0
+  Ga  Ga5  4  0.21940574  0.39710976  0.88089867  1.0
+  Ga  Ga6  4  0.24616564  0.15795963  0.99352033  1.0
+  Te  Te7  4  0.06116319  0.36938893  0.81902684  1.0
+  Te  Te8  4  0.08939337  0.65857014  0.75623049  1.0
+  Te  Te9  4  0.09006088  0.08375726  0.40332689  1.0
+  Te  Te10  4  0.12234098  0.19529906  0.55261359  1.0
+  Te  Te11  4  0.12561800  0.54816967  0.19481860  1.0
+  Te  Te12  4  0.17642798  0.74573549  0.50318345  1.0
+  Te  Te13  4  0.18116489  0.99541040  0.85687431  1.0
+  Te  Te14  4  0.20869319  0.45576225  0.62858693  1.0
+  Te  Te15  4  0.21929029  0.27953007  0.28667541  1.0
+  Te  Te16  2  0.00000000  0.82387598  0.00000000  1.0
+  Te  Te17  2  0.00000000  0.91843507  0.50000000  1.0

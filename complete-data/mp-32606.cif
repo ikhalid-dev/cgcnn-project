@@ -1,0 +1,47 @@
+# generated using pymatgen
+data_Ba3P2
+_symmetry_space_group_name_H-M   I-42d
+_cell_length_a   9.89745914
+_cell_length_b   9.89745914
+_cell_length_c   29.64801734
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   122
+_chemical_formula_structural   Ba3P2
+_chemical_formula_sum   'Ba48 P32'
+_cell_volume   2904.31080470
+_cell_formula_units_Z   16
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  'y, -x, -z'
+  3  '-x, -y, z'
+  4  '-y, x, -z'
+  5  'x, -y+1/2, -z+1/4'
+  6  'y, x+1/2, z+1/4'
+  7  '-x, y+1/2, -z+1/4'
+  8  '-y, -x+1/2, z+1/4'
+  9  'x+1/2, y+1/2, z+1/2'
+  10  'y+1/2, -x+1/2, -z+1/2'
+  11  '-x+1/2, -y+1/2, z+1/2'
+  12  '-y+1/2, x+1/2, -z+1/2'
+  13  'x+1/2, -y, -z+3/4'
+  14  'y+1/2, x, z+3/4'
+  15  '-x+1/2, y, -z+3/4'
+  16  '-y+1/2, -x, z+3/4'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Ba  Ba0  16  0.06035688  0.68900676  0.18526472  1.0
+  Ba  Ba1  16  0.06737970  0.69001190  0.85986483  1.0
+  Ba  Ba2  16  0.08460359  0.66307408  0.51888190  1.0
+  P  P3  16  0.13909058  0.73891789  0.96178318  1.0
+  P  P4  8  0.00000000  0.00000000  0.16472099  1.0
+  P  P5  8  0.12180587  0.75000000  0.62500000  1.0

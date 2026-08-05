@@ -1,0 +1,48 @@
+# generated using pymatgen
+data_Sm2Au5F21
+_symmetry_space_group_name_H-M   P4_12_12
+_cell_length_a   8.38386900
+_cell_length_b   8.38386900
+_cell_length_c   26.22385100
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   92
+_chemical_formula_structural   Sm2Au5F21
+_chemical_formula_sum   'Sm8 Au20 F84'
+_cell_volume   1843.25506565
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-y+1/2, x+1/2, z+1/4'
+  3  '-x, -y, z+1/2'
+  4  'y+1/2, -x+1/2, z+3/4'
+  5  'x+1/2, -y+1/2, -z+3/4'
+  6  '-y, -x, -z+1/2'
+  7  '-x+1/2, y+1/2, -z+1/4'
+  8  'y, x, -z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Sm  Sm0  8  0.05580500  0.57048900  0.75160400  1.0
+  Au  Au1  8  0.09373300  0.85574800  0.40798700  1.0
+  Au  Au2  8  0.17764800  0.78859100  0.61051200  1.0
+  Au  Au3  4  0.06099500  0.93900500  0.25000000  1.0
+  F  F4  8  0.02463500  0.13704100  0.64094700  1.0
+  F  F5  8  0.04059400  0.68614300  0.45738800  1.0
+  F  F6  8  0.04838400  0.66973600  0.56021500  1.0
+  F  F7  8  0.06081400  0.70514700  0.25158700  1.0
+  F  F8  8  0.06440000  0.17415800  0.25056800  1.0
+  F  F9  8  0.06675700  0.67374300  0.66520400  1.0
+  F  F10  8  0.08708100  0.70030300  0.83924300  1.0
+  F  F11  8  0.08790200  0.71305500  0.05183500  1.0
+  F  F12  8  0.09375500  0.72090400  0.94616600  1.0
+  F  F13  8  0.09702700  0.19336500  0.86982400  1.0
+  F  F14  4  0.22160400  0.22160400  0.50000000  1.0

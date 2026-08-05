@@ -1,0 +1,38 @@
+# generated using pymatgen
+data_In3SnI5
+_symmetry_space_group_name_H-M   P2_1/c
+_cell_length_a   8.96407249
+_cell_length_b   9.00277060
+_cell_length_c   17.76076752
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   99.34175052
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   14
+_chemical_formula_structural   In3SnI5
+_chemical_formula_sum   'In12 Sn4 I20'
+_cell_volume   1414.31124121
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, y+1/2, -z+1/2'
+  4  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  In  In0  4  0.10899911  0.10448070  0.25127726  1.0
+  In  In1  4  0.22394847  0.04629458  0.52409930  1.0
+  In  In2  4  0.38124647  0.67745965  0.75229463  1.0
+  Sn  Sn3  4  0.29606259  0.03630693  0.91308296  1.0
+  I  I4  4  0.00950573  0.71148107  0.60650903  1.0
+  I  I5  4  0.13029931  0.72387963  0.88691810  1.0
+  I  I6  4  0.25216207  0.03848789  0.74011987  1.0
+  I  I7  4  0.38557305  0.12516160  0.10482692  1.0
+  I  I8  4  0.45570174  0.14747043  0.39758467  1.0

@@ -1,0 +1,47 @@
+# generated using pymatgen
+data_InPH5NO5
+_symmetry_space_group_name_H-M   P4_32_12
+_cell_length_a   9.48500800
+_cell_length_b   9.48500800
+_cell_length_c   11.42407100
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   96
+_chemical_formula_structural   InPH5NO5
+_chemical_formula_sum   'In8 P8 H40 N8 O40'
+_cell_volume   1027.77085165
+_cell_formula_units_Z   8
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-y+1/2, x+1/2, z+3/4'
+  3  '-x, -y, z+1/2'
+  4  'y+1/2, -x+1/2, z+1/4'
+  5  'x+1/2, -y+1/2, -z+1/4'
+  6  '-y, -x, -z+1/2'
+  7  '-x+1/2, y+1/2, -z+3/4'
+  8  'y, x, -z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  In  In0  4  0.09475100  0.09475100  0.00000000  1.0
+  In  In1  4  0.15200200  0.84799800  0.25000000  1.0
+  P  P2  8  0.16562300  0.30668800  0.75684500  1.0
+  H  H3  8  0.01017300  0.55822000  0.77749400  1.0
+  H  H4  8  0.01928100  0.71740600  0.71364700  1.0
+  H  H5  8  0.06227600  0.11337600  0.59990100  1.0
+  H  H6  8  0.07496700  0.29966700  0.33634300  1.0
+  H  H7  8  0.10919900  0.68517300  0.83869500  1.0
+  N  N8  8  0.01591700  0.66522100  0.79317900  1.0
+  O  O9  8  0.00300900  0.32506900  0.74998700  1.0
+  O  O10  8  0.01159100  0.95140700  0.12620600  1.0
+  O  O11  8  0.04711200  0.72933800  0.53167600  1.0
+  O  O12  8  0.20527400  0.20806800  0.14125900  1.0
+  O  O13  8  0.22444200  0.24054100  0.63975100  1.0

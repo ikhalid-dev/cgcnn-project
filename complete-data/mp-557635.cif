@@ -1,0 +1,52 @@
+# generated using pymatgen
+data_Sb2TeSeF10
+_symmetry_space_group_name_H-M   Pbcm
+_cell_length_a   8.66148200
+_cell_length_b   16.42173700
+_cell_length_c   16.00609600
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   57
+_chemical_formula_structural   Sb2TeSeF10
+_chemical_formula_sum   'Sb16 Te8 Se8 F80'
+_cell_volume   2276.65234514
+_cell_formula_units_Z   8
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, -y, z+1/2'
+  4  'x, y, -z+1/2'
+  5  'x, -y+1/2, -z'
+  6  '-x, y+1/2, z'
+  7  '-x, y+1/2, -z+1/2'
+  8  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Sb  Sb0  4  0.09610800  0.23258500  0.25000000  1.0
+  Sb  Sb1  4  0.35860700  0.68139000  0.75000000  1.0
+  Sb  Sb2  4  0.39602900  0.52902400  0.25000000  1.0
+  Sb  Sb3  4  0.48482100  0.25000000  0.00000000  1.0
+  Te  Te4  8  0.16630800  0.01540200  0.06567900  1.0
+  Se  Se5  8  0.00388000  0.10301000  0.52943000  1.0
+  F  F6  8  0.08034100  0.23206900  0.13058900  1.0
+  F  F7  8  0.24847300  0.50638300  0.16506800  1.0
+  F  F8  8  0.25706400  0.61293500  0.66442600  1.0
+  F  F9  8  0.32680100  0.17066700  0.02349400  1.0
+  F  F10  8  0.35999500  0.67145500  0.02630600  1.0
+  F  F11  8  0.44832800  0.04096200  0.16566200  1.0
+  F  F12  8  0.48381200  0.21370200  0.61501600  1.0
+  F  F13  4  0.05476600  0.11804600  0.25000000  1.0
+  F  F14  4  0.11896100  0.15221000  0.75000000  1.0
+  F  F15  4  0.13198300  0.74716700  0.75000000  1.0
+  F  F16  4  0.31267400  0.21404100  0.25000000  1.0
+  F  F17  4  0.35490200  0.64297000  0.25000000  1.0
+  F  F18  4  0.45271700  0.09004600  0.75000000  1.0

@@ -1,0 +1,38 @@
+# generated using pymatgen
+data_Ce(SeO3)2
+_symmetry_space_group_name_H-M   P2_1/c
+_cell_length_a   7.07194742
+_cell_length_b   10.74704921
+_cell_length_c   8.60823104
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   125.82568344
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   14
+_chemical_formula_structural   Ce(SeO3)2
+_chemical_formula_sum   'Ce4 Se8 O24'
+_cell_volume   530.46499695
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, y+1/2, -z+1/2'
+  4  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Ce  Ce0  4  0.24826942  0.59599570  0.48897793  1.0
+  Se  Se1  4  0.18937383  0.21597621  0.92976064  1.0
+  Se  Se2  4  0.27998719  0.57321216  0.06537696  1.0
+  O  O3  4  0.00331361  0.10089049  0.90918014  1.0
+  O  O4  4  0.05261619  0.24284299  0.19770393  1.0
+  O  O5  4  0.15174717  0.58735382  0.18304212  1.0
+  O  O6  4  0.38717072  0.10631720  0.95977723  1.0
+  O  O7  4  0.41322790  0.71558843  0.11905459  1.0
+  O  O8  4  0.48279521  0.52063523  0.79027958  1.0

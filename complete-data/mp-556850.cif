@@ -1,0 +1,39 @@
+# generated using pymatgen
+data_BaMnF4
+_symmetry_space_group_name_H-M   Imm2
+_cell_length_a   4.25782978
+_cell_length_b   14.98986469
+_cell_length_c   5.98010435
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   44
+_chemical_formula_structural   BaMnF4
+_chemical_formula_sum   'Ba4 Mn4 F16'
+_cell_volume   381.67592780
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, z'
+  3  '-x, y, z'
+  4  'x, -y, z'
+  5  'x+1/2, y+1/2, z+1/2'
+  6  '-x+1/2, -y+1/2, z+1/2'
+  7  '-x+1/2, y+1/2, z+1/2'
+  8  'x+1/2, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Ba  Ba0  4  0.00000000  0.15377806  0.54967249  1.0
+  Mn  Mn1  4  0.00000000  0.41465257  0.50360743  1.0
+  F  F2  4  0.00000000  0.07780086  0.98360661  1.0
+  F  F3  4  0.00000000  0.29869968  0.30417328  1.0
+  F  F4  4  0.00000000  0.33144376  0.77800787  1.0
+  F  F5  4  0.00000000  0.46311988  0.16133132  1.0

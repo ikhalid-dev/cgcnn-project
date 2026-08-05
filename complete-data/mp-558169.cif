@@ -1,0 +1,47 @@
+# generated using pymatgen
+data_NaCaAlF6
+_symmetry_space_group_name_H-M   P2_1/c
+_cell_length_a   8.59935544
+_cell_length_b   5.16649501
+_cell_length_c   20.26370726
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   91.92023986
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   14
+_chemical_formula_structural   NaCaAlF6
+_chemical_formula_sum   'Na8 Ca8 Al8 F48'
+_cell_volume   899.78110087
+_cell_formula_units_Z   8
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, y+1/2, -z+1/2'
+  4  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Na  Na0  4  0.02586862  0.24098662  0.31825809  1.0
+  Na  Na1  4  0.04420135  0.20506880  0.06296844  1.0
+  Ca  Ca2  4  0.35989667  0.24012222  0.68938093  1.0
+  Ca  Ca3  4  0.36344836  0.18483877  0.93632018  1.0
+  Al  Al4  4  0.25380066  0.68825335  0.07276952  1.0
+  Al  Al5  4  0.25384749  0.74785575  0.31992138  1.0
+  F  F6  4  0.07740206  0.72052136  0.53213318  1.0
+  F  F7  4  0.09188626  0.63592685  0.77353767  1.0
+  F  F8  4  0.14993776  0.55607575  0.38099351  1.0
+  F  F9  4  0.15546743  0.00801578  0.63279638  1.0
+  F  F10  4  0.23015830  0.53354605  0.62594036  1.0
+  F  F11  4  0.23837057  0.02237016  0.37291438  1.0
+  F  F12  4  0.25166172  0.04386622  0.77187281  1.0
+  F  F13  4  0.26544653  0.09884146  0.52183186  1.0
+  F  F14  4  0.37539410  0.63567953  0.51690297  1.0
+  F  F15  4  0.39205174  0.59283621  0.76548331  1.0
+  F  F16  4  0.42879172  0.62761440  0.36433691  1.0
+  F  F17  4  0.43343859  0.60169228  0.11646251  1.0

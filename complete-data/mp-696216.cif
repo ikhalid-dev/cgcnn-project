@@ -1,0 +1,40 @@
+# generated using pymatgen
+data_HS3N
+_symmetry_space_group_name_H-M   Pnma
+_cell_length_a   8.47377100
+_cell_length_b   13.35059700
+_cell_length_c   7.45466800
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   62
+_chemical_formula_structural   HS3N
+_chemical_formula_sum   'H8 S24 N8'
+_cell_volume   843.34585798
+_cell_formula_units_Z   8
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x+1/2, -y, z+1/2'
+  4  'x+1/2, y, -z+1/2'
+  5  'x+1/2, -y+1/2, -z+1/2'
+  6  '-x+1/2, y+1/2, z+1/2'
+  7  '-x, y+1/2, -z'
+  8  'x, -y+1/2, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  H  H0  4  0.14333300  0.25000000  0.86564800  1.0
+  H  H1  4  0.17700300  0.75000000  0.64879500  1.0
+  S  S2  8  0.02269100  0.13867800  0.66711800  1.0
+  S  S3  8  0.12593800  0.13754400  0.22783200  1.0
+  S  S4  8  0.19756600  0.09924300  0.48337400  1.0
+  N  N5  4  0.06515400  0.25000000  0.75996600  1.0
+  N  N6  4  0.20271100  0.25000000  0.16527900  1.0

@@ -1,0 +1,47 @@
+# generated using pymatgen
+data_Ce2Br3N
+_symmetry_space_group_name_H-M   I4_1/a
+_cell_length_a   14.77279400
+_cell_length_b   14.77279400
+_cell_length_c   12.03561000
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   88
+_chemical_formula_structural   Ce2Br3N
+_chemical_formula_sum   'Ce32 Br48 N16'
+_cell_volume   2626.59667491
+_cell_formula_units_Z   16
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-y, x+1/2, z+1/4'
+  3  '-x+1/2, -y+1/2, z+1/2'
+  4  'y+1/2, -x, z+3/4'
+  5  '-x, -y+1/2, -z+1/4'
+  6  'y, -x, -z'
+  7  'x+1/2, y, -z+3/4'
+  8  '-y+1/2, x+1/2, -z+1/2'
+  9  'x+1/2, y+1/2, z+1/2'
+  10  '-y+1/2, x, z+3/4'
+  11  '-x, -y, z'
+  12  'y, -x+1/2, z+1/4'
+  13  '-x+1/2, -y, -z+3/4'
+  14  'y+1/2, -x+1/2, -z+1/2'
+  15  'x, y+1/2, -z+1/4'
+  16  '-y, x, -z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Ce  Ce0  16  0.12905200  0.22409700  0.87795700  1.0
+  Ce  Ce1  16  0.16013850  0.33117650  0.57373950  1.0
+  Br  Br2  16  0.01622200  0.17472400  0.51943700  1.0
+  Br  Br3  16  0.04234350  0.37185450  0.01466950  1.0
+  Br  Br4  16  0.08041700  0.34563600  0.31865600  1.0
+  N  N5  16  0.22122750  0.25579650  0.72421850  1.0

@@ -1,0 +1,50 @@
+# generated using pymatgen
+data_VNi3Sn2(PO4)6
+_symmetry_space_group_name_H-M   R3
+_cell_length_a   8.67550425
+_cell_length_b   8.67550425
+_cell_length_c   20.49503863
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   120.00000000
+_symmetry_Int_Tables_number   146
+_chemical_formula_structural   VNi3Sn2(PO4)6
+_chemical_formula_sum   'V3 Ni9 Sn6 P18 O72'
+_cell_volume   1335.88424063
+_cell_formula_units_Z   3
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-y, x-y, z'
+  3  '-x+y, -x, z'
+  4  'x+2/3, y+1/3, z+1/3'
+  5  '-y+2/3, x-y+1/3, z+1/3'
+  6  '-x+y+2/3, -x+1/3, z+1/3'
+  7  'x+1/3, y+2/3, z+2/3'
+  8  '-y+1/3, x-y+2/3, z+2/3'
+  9  '-x+y+1/3, -x+2/3, z+2/3'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  V  V0  3  0.00000000  0.00000000  0.14743800  1.0
+  Ni  Ni1  3  0.00000000  0.00000000  0.35394800  1.0
+  Ni  Ni2  3  0.00000000  0.00000000  0.64781000  1.0
+  Ni  Ni3  3  0.00000000  0.00000000  0.85151000  1.0
+  Sn  Sn4  3  0.00000000  0.00000000  0.49852600  1.0
+  Sn  Sn5  3  0.00000000  0.00000000  0.99775700  1.0
+  P  P6  9  0.00085500  0.29506300  0.25103600  1.0
+  P  P7  9  0.03966600  0.66744400  0.41737700  1.0
+  O  O8  9  0.00383167  0.82858533  0.42641933  1.0
+  O  O9  9  0.00807067  0.17789333  0.92528733  1.0
+  O  O10  9  0.01095767  0.79960933  0.81320733  1.0
+  O  O11  9  0.01139867  0.20811333  0.31187733  1.0
+  O  O12  9  0.12648767  0.66832933  0.35412733  1.0
+  O  O13  9  0.14749067  0.46765933  0.85514433  1.0
+  O  O14  9  0.16655700  0.48355900  0.23675500  1.0
+  O  O15  9  0.16975667  0.67511733  0.74310233  1.0

@@ -1,0 +1,37 @@
+# generated using pymatgen
+data_H5BrO2
+_symmetry_space_group_name_H-M   P2_1/c
+_cell_length_a   4.14194333
+_cell_length_b   12.35970375
+_cell_length_c   6.95779971
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   100.81232901
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   14
+_chemical_formula_structural   H5BrO2
+_chemical_formula_sum   'H20 Br4 O8'
+_cell_volume   349.86847032
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, y+1/2, -z+1/2'
+  4  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  H  H0  4  0.23431959  0.01552274  0.30657109  1.0
+  H  H1  4  0.24429493  0.60246169  0.90135039  1.0
+  H  H2  4  0.29764089  0.18846790  0.92340361  1.0
+  H  H3  4  0.39175090  0.64417833  0.42187530  1.0
+  H  H4  4  0.44059091  0.59488538  0.66479686  1.0
+  Br  Br5  4  0.02860703  0.67106845  0.15652163  1.0
+  O  O6  4  0.33380896  0.55684019  0.80835863  1.0
+  O  O7  4  0.44013053  0.12431963  0.96134169  1.0

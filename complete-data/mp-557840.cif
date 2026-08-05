@@ -1,0 +1,39 @@
+# generated using pymatgen
+data_NaLa(SO4)2
+_symmetry_space_group_name_H-M   P-1
+_cell_length_a   6.49764300
+_cell_length_b   6.84179370
+_cell_length_c   7.16575500
+_cell_angle_alpha   86.52723010
+_cell_angle_beta   88.87800083
+_cell_angle_gamma   78.21156464
+_symmetry_Int_Tables_number   2
+_chemical_formula_structural   NaLa(SO4)2
+_chemical_formula_sum   'Na2 La2 S4 O16'
+_cell_volume   311.25755443
+_cell_formula_units_Z   2
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Na  Na0  2  0.42252000  0.78116200  0.34548700  1.0
+  La  La1  2  0.11923200  0.72983500  0.82310300  1.0
+  S  S2  2  0.09843900  0.20423800  0.67837600  1.0
+  S  S3  2  0.37996700  0.29617100  0.16248200  1.0
+  O  O4  2  0.00649100  0.85866700  0.14422600  1.0
+  O  O5  2  0.06394100  0.74539000  0.46969100  1.0
+  O  O6  2  0.19779800  0.37666300  0.70455500  1.0
+  O  O7  2  0.19894900  0.45561800  0.09070400  1.0
+  O  O8  2  0.26322700  0.02724700  0.63547000  1.0
+  O  O9  2  0.27962400  0.12851100  0.23043800  1.0
+  O  O10  2  0.46060600  0.76153400  0.98677300  1.0
+  O  O11  2  0.49136100  0.37232000  0.31411100  1.0

@@ -1,0 +1,36 @@
+# generated using pymatgen
+data_Ca2SiO4
+_symmetry_space_group_name_H-M   P2_1/c
+_cell_length_a   5.57569900
+_cell_length_b   6.81557400
+_cell_length_c   10.52285396
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   117.30887107
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   14
+_chemical_formula_structural   Ca2SiO4
+_chemical_formula_sum   'Ca8 Si4 O16'
+_cell_volume   355.31645449
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, y+1/2, -z+1/2'
+  4  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Ca  Ca0  4  0.20447500  0.15891600  0.93097400  1.0
+  Ca  Ca1  4  0.48116100  0.50331600  0.20251500  1.0
+  Si  Si2  4  0.15027800  0.71899200  0.91846300  1.0
+  O  O3  4  0.17172200  0.24872100  0.69559800  1.0
+  O  O4  4  0.22119500  0.66930300  0.57230900  1.0
+  O  O5  4  0.22514800  0.01263200  0.44405500  1.0
+  O  O6  4  0.35075900  0.66790700  0.36378200  1.0

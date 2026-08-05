@@ -1,0 +1,37 @@
+# generated using pymatgen
+data_CsTmSeCl2O3
+_symmetry_space_group_name_H-M   P2_1/c
+_cell_length_a   6.57443597
+_cell_length_b   6.86270476
+_cell_length_c   17.82411666
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   102.30857260
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   14
+_chemical_formula_structural   CsTmSeCl2O3
+_chemical_formula_sum   'Cs4 Tm4 Se4 Cl8 O12'
+_cell_volume   785.71036159
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, y+1/2, -z+1/2'
+  4  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Cs  Cs0  4  0.24849012  0.70985575  0.55513308  1.0
+  Tm  Tm1  4  0.13627045  0.17795580  0.75753268  1.0
+  Se  Se2  4  0.36211327  0.68329789  0.79324980  1.0
+  Cl  Cl3  4  0.12115279  0.19056216  0.61067203  1.0
+  Cl  Cl4  4  0.22685442  0.15693773  0.90695058  1.0
+  O  O5  4  0.17754500  0.64535773  0.25458243  1.0
+  O  O6  4  0.18275185  0.50065131  0.76456234  1.0
+  O  O7  4  0.48590535  0.17327835  0.77130018  1.0

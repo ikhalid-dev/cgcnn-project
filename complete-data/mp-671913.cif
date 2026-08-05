@@ -1,0 +1,45 @@
+# generated using pymatgen
+data_MoSe2Cl4O
+_symmetry_space_group_name_H-M   P2_1/c
+_cell_length_a   14.51094500
+_cell_length_b   7.93481800
+_cell_length_c   16.22736434
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   110.97080465
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   14
+_chemical_formula_structural   MoSe2Cl4O
+_chemical_formula_sum   'Mo8 Se16 Cl32 O8'
+_cell_volume   1744.68599071
+_cell_formula_units_Z   8
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, y+1/2, -z+1/2'
+  4  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Mo  Mo0  4  0.11661200  0.10531900  0.96356800  1.0
+  Mo  Mo1  4  0.45777200  0.21488800  0.40944200  1.0
+  Se  Se2  4  0.15836400  0.03770000  0.71443800  1.0
+  Se  Se3  4  0.19184900  0.72005200  0.28971900  1.0
+  Se  Se4  4  0.28221700  0.51791200  0.15782700  1.0
+  Se  Se5  4  0.31691000  0.72619200  0.73583500  1.0
+  Cl  Cl6  4  0.01039800  0.03366700  0.81338700  1.0
+  Cl  Cl7  4  0.07311000  0.66647700  0.50630900  1.0
+  Cl  Cl8  4  0.09075500  0.10551300  0.43599900  1.0
+  Cl  Cl9  4  0.18968400  0.16094200  0.12091900  1.0
+  Cl  Cl10  4  0.29954900  0.07290100  0.36002400  1.0
+  Cl  Cl11  4  0.36772600  0.74765000  0.53955000  1.0
+  Cl  Cl12  4  0.46630600  0.14752800  0.26895000  1.0
+  Cl  Cl13  4  0.47193300  0.15616200  0.55929900  1.0
+  O  O14  4  0.22396500  0.06950000  0.94708400  1.0
+  O  O15  4  0.41821300  0.08286600  0.89495200  1.0

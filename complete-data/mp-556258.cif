@@ -1,0 +1,38 @@
+# generated using pymatgen
+data_Na3BeAl(SiO4)2
+_symmetry_space_group_name_H-M   P2_12_12
+_cell_length_a   6.93183900
+_cell_length_b   7.26002000
+_cell_length_c   7.37408300
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   18
+_chemical_formula_structural   Na3BeAl(SiO4)2
+_chemical_formula_sum   'Na6 Be2 Al2 Si4 O16'
+_cell_volume   371.10286381
+_cell_formula_units_Z   2
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, z'
+  3  'x+1/2, -y+1/2, -z'
+  4  '-x+1/2, y+1/2, -z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Na  Na0  4  0.24703300  0.28664700  0.32396100  1.0
+  Na  Na1  2  0.00000000  0.50000000  0.96664300  1.0
+  Be  Be2  2  0.00000000  0.50000000  0.56662700  1.0
+  Al  Al3  2  0.00000000  0.00000000  0.03321600  1.0
+  Si  Si4  4  0.23545500  0.69940600  0.25963600  1.0
+  O  O5  4  0.04468800  0.80361000  0.16880600  1.0
+  O  O6  4  0.08409000  0.33830500  0.70572000  1.0
+  O  O7  4  0.17149400  0.58838100  0.44148500  1.0
+  O  O8  4  0.20280800  0.04120400  0.89420100  1.0

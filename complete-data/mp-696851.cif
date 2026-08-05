@@ -1,0 +1,51 @@
+# generated using pymatgen
+data_ZnH12C2S2(N3O4)2
+_symmetry_space_group_name_H-M   I-42d
+_cell_length_a   9.74205800
+_cell_length_b   9.74205800
+_cell_length_c   14.65751400
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   122
+_chemical_formula_structural   ZnH12C2S2(N3O4)2
+_chemical_formula_sum   'Zn4 H48 C8 S8 N24 O32'
+_cell_volume   1391.11085462
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  'y, -x, -z'
+  3  '-x, -y, z'
+  4  '-y, x, -z'
+  5  'x, -y+1/2, -z+1/4'
+  6  'y, x+1/2, z+1/4'
+  7  '-x, y+1/2, -z+1/4'
+  8  '-y, -x+1/2, z+1/4'
+  9  'x+1/2, y+1/2, z+1/2'
+  10  'y+1/2, -x+1/2, -z+1/2'
+  11  '-x+1/2, -y+1/2, z+1/2'
+  12  '-y+1/2, x+1/2, -z+1/2'
+  13  'x+1/2, -y, -z+3/4'
+  14  'y+1/2, x, z+3/4'
+  15  '-x+1/2, y, -z+3/4'
+  16  '-y+1/2, -x, z+3/4'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Zn  Zn0  4  0.00000000  0.00000000  0.00000000  1.0
+  H  H1  16  0.02161850  0.64923550  0.50328550  1.0
+  H  H2  16  0.17795150  0.68216050  0.56000250  1.0
+  H  H3  16  0.18408100  0.19793500  0.67389900  1.0
+  C  C4  8  0.00556300  0.75000000  0.62500000  1.0
+  S  S5  8  0.04153200  0.75000000  0.12500000  1.0
+  N  N6  16  0.07396100  0.68701600  0.55790100  1.0
+  N  N7  8  0.13170600  0.25000000  0.62500000  1.0
+  O  O8  16  0.05605000  0.16392400  0.06816000  1.0
+  O  O9  16  0.12734850  0.66204950  0.06628050  1.0

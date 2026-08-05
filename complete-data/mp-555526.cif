@@ -1,0 +1,39 @@
+# generated using pymatgen
+data_RbAg(NO3)2
+_symmetry_space_group_name_H-M   P2_1/c
+_cell_length_a   8.53448000
+_cell_length_b   5.13311100
+_cell_length_c   14.64608543
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   98.19635767
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   14
+_chemical_formula_structural   RbAg(NO3)2
+_chemical_formula_sum   'Rb4 Ag4 N8 O24'
+_cell_volume   635.06807524
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, y+1/2, -z+1/2'
+  4  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Rb  Rb0  4  0.26629500  0.04717500  0.06172200  1.0
+  Ag  Ag1  4  0.19253400  0.57078100  0.27953500  1.0
+  N  N2  4  0.05950800  0.03105700  0.39516200  1.0
+  N  N3  4  0.43134400  0.13314900  0.33338300  1.0
+  O  O4  4  0.00987300  0.13641200  0.66308400  1.0
+  O  O5  4  0.01622900  0.23348100  0.88875500  1.0
+  O  O6  4  0.16880400  0.54318700  0.95618500  1.0
+  O  O7  4  0.32349900  0.03261200  0.27585100  1.0
+  O  O8  4  0.40838100  0.13923500  0.86681800  1.0
+  O  O9  4  0.43933300  0.52016500  0.14130200  1.0

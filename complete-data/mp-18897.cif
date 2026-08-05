@@ -1,0 +1,37 @@
+# generated using pymatgen
+data_NaVTeO5
+_symmetry_space_group_name_H-M   P2_1/c
+_cell_length_a   5.93747100
+_cell_length_b   11.75827400
+_cell_length_c   6.91382200
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   103.21933782
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   14
+_chemical_formula_structural   NaVTeO5
+_chemical_formula_sum   'Na4 V4 Te4 O20'
+_cell_volume   469.89413056
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, y+1/2, -z+1/2'
+  4  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Na  Na0  4  0.16685400  0.21872600  0.68002000  1.0
+  V  V1  4  0.33648200  0.62534900  0.08734200  1.0
+  Te  Te2  4  0.24214300  0.55891000  0.59488100  1.0
+  O  O3  4  0.11842000  0.09129900  0.02085000  1.0
+  O  O4  4  0.14809900  0.71520900  0.15985700  1.0
+  O  O5  4  0.17331000  0.55623100  0.85778100  1.0
+  O  O6  4  0.43812100  0.52108600  0.27973700  1.0
+  O  O7  4  0.44166700  0.19988200  0.45907900  1.0

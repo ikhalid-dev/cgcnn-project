@@ -1,0 +1,38 @@
+# generated using pymatgen
+data_LiNdGeO4
+_symmetry_space_group_name_H-M   Pbcn
+_cell_length_a   5.15458200
+_cell_length_b   12.04876600
+_cell_length_c   5.45643500
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   60
+_chemical_formula_structural   LiNdGeO4
+_chemical_formula_sum   'Li4 Nd4 Ge4 O16'
+_cell_volume   338.87927466
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x+1/2, -y+1/2, z+1/2'
+  4  'x+1/2, y+1/2, -z+1/2'
+  5  'x+1/2, -y+1/2, -z'
+  6  '-x+1/2, y+1/2, z'
+  7  '-x, y, -z+1/2'
+  8  'x, -y, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Li  Li0  4  0.00000000  0.23301400  0.75000000  1.0
+  Nd  Nd1  4  0.00000000  0.11252900  0.25000000  1.0
+  Ge  Ge2  4  0.00000000  0.38952900  0.25000000  1.0
+  O  O3  8  0.17616400  0.29752500  0.45285200  1.0
+  O  O4  8  0.24914800  0.04291600  0.58515300  1.0

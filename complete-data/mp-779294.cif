@@ -1,0 +1,50 @@
+# generated using pymatgen
+data_Na3Sb5O14
+_symmetry_space_group_name_H-M   Pbam
+_cell_length_a   7.21709800
+_cell_length_b   24.41592800
+_cell_length_c   7.41116700
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   55
+_chemical_formula_structural   Na3Sb5O14
+_chemical_formula_sum   'Na12 Sb20 O56'
+_cell_volume   1305.93763504
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, -y, z'
+  4  'x, y, -z'
+  5  'x+1/2, -y+1/2, -z'
+  6  '-x+1/2, y+1/2, z'
+  7  '-x+1/2, y+1/2, -z'
+  8  'x+1/2, -y+1/2, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Na  Na0  4  0.07467200  0.37361800  0.50000000  1.0
+  Na  Na1  4  0.19231700  0.30677800  0.00000000  1.0
+  Na  Na2  4  0.19474300  0.02933600  0.50000000  1.0
+  Sb  Sb3  8  0.10688300  0.14602700  0.26401700  1.0
+  Sb  Sb4  4  0.07804700  0.55824000  0.00000000  1.0
+  Sb  Sb5  4  0.09138900  0.93853800  0.00000000  1.0
+  Sb  Sb6  4  0.19136100  0.75842400  0.50000000  1.0
+  O  O7  8  0.03846000  0.92794100  0.25861800  1.0
+  O  O8  8  0.13693700  0.81854900  0.31674800  1.0
+  O  O9  8  0.15646100  0.60635500  0.19716900  1.0
+  O  O10  8  0.24150200  0.21545600  0.27037400  1.0
+  O  O11  4  0.00000000  0.50000000  0.17951200  1.0
+  O  O12  4  0.01976900  0.14341000  0.00000000  1.0
+  O  O13  4  0.04498000  0.28323300  0.50000000  1.0
+  O  O14  4  0.16301100  0.01809200  0.00000000  1.0
+  O  O15  4  0.16620800  0.40395300  0.00000000  1.0
+  O  O16  4  0.19245100  0.12137700  0.50000000  1.0

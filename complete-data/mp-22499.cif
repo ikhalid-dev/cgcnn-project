@@ -1,0 +1,36 @@
+# generated using pymatgen
+data_EuSnF7
+_symmetry_space_group_name_H-M   P2_1
+_cell_length_a   6.10433092
+_cell_length_b   5.72217789
+_cell_length_c   8.23588728
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   102.68976332
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   4
+_chemical_formula_structural   EuSnF7
+_chemical_formula_sum   'Eu2 Sn2 F14'
+_cell_volume   280.65316865
+_cell_formula_units_Z   2
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, y+1/2, -z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Eu  Eu0  2  0.15606739  0.75202887  0.18906172  1.0
+  Sn  Sn1  2  0.31287540  0.76280164  0.72556318  1.0
+  F  F2  2  0.05481685  0.43343489  0.02810199  1.0
+  F  F3  2  0.06996175  0.53067619  0.71118482  1.0
+  F  F4  2  0.09885088  0.02792493  0.70379684  1.0
+  F  F5  2  0.26570032  0.75366722  0.48162652  1.0
+  F  F6  2  0.36500556  0.77011441  0.97051475  1.0
+  F  F7  2  0.44803982  0.02371046  0.25866646  1.0
+  F  F8  2  0.45132914  0.49984140  0.26988077  1.0

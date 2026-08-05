@@ -1,0 +1,39 @@
+# generated using pymatgen
+data_Na2ZnCl4
+_symmetry_space_group_name_H-M   Pnma
+_cell_length_a   13.64337458
+_cell_length_b   7.98240250
+_cell_length_c   6.37441719
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   62
+_chemical_formula_structural   Na2ZnCl4
+_chemical_formula_sum   'Na8 Zn4 Cl16'
+_cell_volume   694.21806236
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x+1/2, -y, z+1/2'
+  4  'x+1/2, y, -z+1/2'
+  5  'x+1/2, -y+1/2, -z+1/2'
+  6  '-x+1/2, y+1/2, z+1/2'
+  7  '-x, y+1/2, -z'
+  8  'x, -y+1/2, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Na  Na0  4  0.00000000  0.00000000  0.00000000  1.0
+  Na  Na1  4  0.23059229  0.75000000  0.49435806  1.0
+  Zn  Zn2  4  0.09132142  0.25000000  0.41154203  1.0
+  Cl  Cl3  8  0.16539739  0.02368608  0.26036542  1.0
+  Cl  Cl4  4  0.06278824  0.75000000  0.73262947  1.0
+  Cl  Cl5  4  0.09161135  0.25000000  0.76360361  1.0

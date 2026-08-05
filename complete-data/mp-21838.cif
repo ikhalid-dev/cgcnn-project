@@ -1,0 +1,44 @@
+# generated using pymatgen
+data_Ce(SeO4)2
+_symmetry_space_group_name_H-M   Pbca
+_cell_length_a   9.24195854
+_cell_length_b   13.84608289
+_cell_length_c   9.84289431
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   61
+_chemical_formula_structural   Ce(SeO4)2
+_chemical_formula_sum   'Ce8 Se16 O64'
+_cell_volume   1259.54522243
+_cell_formula_units_Z   8
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x+1/2, -y, z+1/2'
+  4  'x+1/2, y, -z+1/2'
+  5  'x+1/2, -y+1/2, -z'
+  6  '-x+1/2, y+1/2, z'
+  7  '-x, y+1/2, -z+1/2'
+  8  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Ce  Ce0  8  0.22148299  0.10404272  0.03579020  1.0
+  Se  Se1  8  0.00091322  0.06049770  0.72509225  1.0
+  Se  Se2  8  0.18506923  0.65380235  0.39325024  1.0
+  O  O3  8  0.00836747  0.65859120  0.41405382  1.0
+  O  O4  8  0.07805253  0.53031880  0.14526338  1.0
+  O  O5  8  0.08350463  0.62934122  0.88656419  1.0
+  O  O6  8  0.11491201  0.12708447  0.81242120  1.0
+  O  O7  8  0.11733765  0.51679981  0.66429302  1.0
+  O  O8  8  0.23097875  0.68561231  0.23784622  1.0
+  O  O9  8  0.23567760  0.22683284  0.50146376  1.0
+  O  O10  8  0.24224731  0.54228560  0.41852572  1.0

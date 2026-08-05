@@ -1,0 +1,38 @@
+# generated using pymatgen
+data_Na5GeP3
+_symmetry_space_group_name_H-M   P2_1/c
+_cell_length_a   8.02030305
+_cell_length_b   7.32421424
+_cell_length_c   15.33973517
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   121.46027545
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   14
+_chemical_formula_structural   Na5GeP3
+_chemical_formula_sum   'Na20 Ge4 P12'
+_cell_volume   768.63444262
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x, y+1/2, -z+1/2'
+  4  'x, -y+1/2, z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Na  Na0  4  0.08633735  0.51703468  0.91242296  1.0
+  Na  Na1  4  0.15915328  0.66304798  0.58113135  1.0
+  Na  Na2  4  0.16701038  0.14835313  0.24201827  1.0
+  Na  Na3  4  0.24813337  0.03270484  0.91573548  1.0
+  Na  Na4  4  0.43840931  0.50630306  0.25804894  1.0
+  Ge  Ge5  4  0.48530736  0.64297959  0.91335070  1.0
+  P  P6  4  0.18728272  0.73626409  0.77273918  1.0
+  P  P7  4  0.23723650  0.23737729  0.08110098  1.0
+  P  P8  4  0.47898774  0.68669022  0.06648658  1.0

@@ -1,0 +1,41 @@
+# generated using pymatgen
+data_ThU8O18
+_symmetry_space_group_name_H-M   P-1
+_cell_length_a   6.66987484
+_cell_length_b   6.73245263
+_cell_length_c   8.65421709
+_cell_angle_alpha   82.54160744
+_cell_angle_beta   75.18529999
+_cell_angle_gamma   80.68400314
+_symmetry_Int_Tables_number   2
+_chemical_formula_structural   ThU8O18
+_chemical_formula_sum   'Th1 U8 O18'
+_cell_volume   369.14510307
+_cell_formula_units_Z   1
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Th  Th0  1  0.00000000  0.00000000  0.50000000  1.0
+  U  U1  2  0.11185629  0.22559470  0.05243321  1.0
+  U  U2  2  0.22530396  0.44200082  0.61265145  1.0
+  U  U3  2  0.33312520  0.66827947  0.16530023  1.0
+  U  U4  2  0.44480598  0.88568065  0.72477978  1.0
+  O  O5  2  0.01902918  0.55731483  0.13624704  1.0
+  O  O6  2  0.08119264  0.66516819  0.40732892  1.0
+  O  O7  2  0.14880845  0.77264428  0.68765603  1.0
+  O  O8  2  0.19606929  0.88203863  0.96843975  1.0
+  O  O9  2  0.24750963  0.00868497  0.24283550  1.0
+  O  O10  2  0.31380971  0.12051756  0.51986987  1.0
+  O  O11  2  0.36232800  0.21128351  0.80212222  1.0
+  O  O12  2  0.41206808  0.33626491  0.07403575  1.0
+  O  O13  2  0.47612706  0.45658665  0.35264799  1.0

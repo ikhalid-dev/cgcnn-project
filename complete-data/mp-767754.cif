@@ -1,0 +1,59 @@
+# generated using pymatgen
+data_Na5Bi2P(CO4)4
+_symmetry_space_group_name_H-M   F222
+_cell_length_a   14.58002400
+_cell_length_b   14.67087600
+_cell_length_c   14.92797400
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   22
+_chemical_formula_structural   Na5Bi2P(CO4)4
+_chemical_formula_sum   'Na40 Bi16 P8 C32 O128'
+_cell_volume   3193.11937713
+_cell_formula_units_Z   8
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, z'
+  3  'x, -y, -z'
+  4  '-x, y, -z'
+  5  'x+1/2, y, z+1/2'
+  6  '-x+1/2, -y, z+1/2'
+  7  'x+1/2, -y, -z+1/2'
+  8  '-x+1/2, y, -z+1/2'
+  9  'x+1/2, y+1/2, z'
+  10  '-x+1/2, -y+1/2, z'
+  11  'x+1/2, -y+1/2, -z'
+  12  '-x+1/2, y+1/2, -z'
+  13  'x, y+1/2, z+1/2'
+  14  '-x, -y+1/2, z+1/2'
+  15  'x, -y+1/2, -z+1/2'
+  16  '-x, y+1/2, -z+1/2'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Na  Na0  8  0.00000000  0.19038300  0.50000000  1.0
+  Na  Na1  8  0.05550600  0.25000000  0.75000000  1.0
+  Na  Na2  8  0.19123200  0.00000000  0.50000000  1.0
+  Na  Na3  8  0.25000000  0.05614500  0.75000000  1.0
+  Na  Na4  8  0.25000000  0.25000000  0.55741700  1.0
+  Bi  Bi5  16  0.12302200  0.12393550  0.12919150  1.0
+  P  P6  4  0.00000000  0.00000000  0.50000000  1.0
+  P  P7  4  0.25000000  0.25000000  0.75000000  1.0
+  C  C8  16  0.10027800  0.09963200  0.90656400  1.0
+  C  C9  16  0.15399450  0.15550400  0.34651150  1.0
+  O  O10  16  0.03511150  0.16019000  0.90001850  1.0
+  O  O11  16  0.06322100  0.06299750  0.55809450  1.0
+  O  O12  16  0.09593450  0.34290100  0.21925350  1.0
+  O  O13  16  0.10714100  0.03542650  0.84729450  1.0
+  O  O14  16  0.14903500  0.21786900  0.40866500  1.0
+  O  O15  16  0.15918000  0.10495600  0.97204600  1.0
+  O  O16  16  0.18860350  0.18882400  0.68912150  1.0
+  O  O17  16  0.21762550  0.09322400  0.35027850  1.0

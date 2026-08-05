@@ -1,0 +1,43 @@
+# generated using pymatgen
+data_CoTe2O5
+_symmetry_space_group_name_H-M   Pnma
+_cell_length_a   9.09599000
+_cell_length_b   12.27202400
+_cell_length_c   8.65099500
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   62
+_chemical_formula_structural   CoTe2O5
+_chemical_formula_sum   'Co8 Te16 O40'
+_cell_volume   965.67776368
+_cell_formula_units_Z   8
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x+1/2, -y, z+1/2'
+  4  'x+1/2, y, -z+1/2'
+  5  'x+1/2, -y+1/2, -z+1/2'
+  6  '-x+1/2, y+1/2, z+1/2'
+  7  '-x, y+1/2, -z'
+  8  'x, -y+1/2, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Co  Co0  8  0.01396700  0.12099700  0.51564800  1.0
+  Te  Te1  8  0.15081900  0.51247300  0.84009300  1.0
+  Te  Te2  4  0.10473200  0.25000000  0.19929600  1.0
+  Te  Te3  4  0.16839400  0.75000000  0.18195200  1.0
+  O  O4  8  0.00906100  0.62766400  0.90545400  1.0
+  O  O5  8  0.11914700  0.51197700  0.62145500  1.0
+  O  O6  8  0.15609700  0.62940300  0.32329500  1.0
+  O  O7  8  0.19017600  0.11373600  0.35210100  1.0
+  O  O8  4  0.03001100  0.75000000  0.63033700  1.0
+  O  O9  4  0.12188700  0.25000000  0.65833500  1.0

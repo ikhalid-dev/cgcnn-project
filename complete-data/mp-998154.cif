@@ -1,0 +1,33 @@
+# generated using pymatgen
+data_TlAgBr3
+_symmetry_space_group_name_H-M   Cm
+_cell_length_a   9.35950064
+_cell_length_b   7.64241800
+_cell_length_c   5.40652560
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   125.12338720
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   8
+_chemical_formula_structural   TlAgBr3
+_chemical_formula_sum   'Tl2 Ag2 Br6'
+_cell_volume   316.30777803
+_cell_formula_units_Z   2
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  'x, -y, z'
+  3  'x+1/2, y+1/2, z'
+  4  'x+1/2, -y+1/2, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Tl  Tl0  2  0.49765700  0.50000000  0.99909000  1.0
+  Ag  Ag1  2  0.49856700  0.00000000  0.98366200  1.0
+  Br  Br2  4  0.24721650  0.24733050  0.22940250  1.0
+  Br  Br3  2  0.00628100  0.50000000  0.49123800  1.0

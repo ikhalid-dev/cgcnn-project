@@ -1,0 +1,38 @@
+# generated using pymatgen
+data_TaTlS3
+_symmetry_space_group_name_H-M   Pnma
+_cell_length_a   9.36354836
+_cell_length_b   3.52052828
+_cell_length_c   14.44186270
+_cell_angle_alpha   90.00000000
+_cell_angle_beta   90.00000000
+_cell_angle_gamma   90.00000000
+_symmetry_Int_Tables_number   62
+_chemical_formula_structural   TaTlS3
+_chemical_formula_sum   'Ta4 Tl4 S12'
+_cell_volume   476.07075866
+_cell_formula_units_Z   4
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+  2  '-x, -y, -z'
+  3  '-x+1/2, -y, z+1/2'
+  4  'x+1/2, y, -z+1/2'
+  5  'x+1/2, -y+1/2, -z+1/2'
+  6  '-x+1/2, y+1/2, z+1/2'
+  7  '-x, y+1/2, -z'
+  8  'x, -y+1/2, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Ta  Ta0  4  0.15998599  0.25000000  0.57009752  1.0
+  Tl  Tl1  4  0.02176918  0.75000000  0.82776203  1.0
+  S  S2  4  0.02165494  0.25000000  0.40161753  1.0
+  S  S3  4  0.19332026  0.25000000  0.00031436  1.0
+  S  S4  4  0.24748477  0.75000000  0.21323723  1.0
