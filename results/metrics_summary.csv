@@ -1,0 +1,13 @@
+tag,target,description,split,n,MAE_log10,R2,MAE_GPa,rel_error_pct,pct_of_range
+G_VRH_ens,G_VRH,"shear, 3-model ensemble",train,7691,0.031879,0.985536,3.417127,7.616559,0.654622
+G_VRH_ens,G_VRH,"shear, 3-model ensemble",val,1648,0.078445,0.903461,7.20156,19.796637,1.379609
+G_VRH_ens,G_VRH,"shear, 3-model ensemble",test,1648,0.078097,0.899168,7.265163,19.70077,1.391793
+G_VRH_full,G_VRH,"shear, single model (seed 42, n_conv 3)",train,7691,0.034174,0.984105,3.654967,8.186781,0.700185
+G_VRH_full,G_VRH,"shear, single model (seed 42, n_conv 3)",val,1648,0.085713,0.888904,8.00117,21.818292,1.532791
+G_VRH_full,G_VRH,"shear, single model (seed 42, n_conv 3)",test,1648,0.083554,0.888542,7.714114,21.214372,1.477799
+K_VRH_ens,K_VRH,"bulk, 3-model ensemble",train,7691,0.031777,0.981211,6.40777,7.591236,1.116336
+K_VRH_ens,K_VRH,"bulk, 3-model ensemble",val,1648,0.06079,0.911367,10.110922,15.024395,1.761485
+K_VRH_ens,K_VRH,"bulk, 3-model ensemble",test,1648,0.063015,0.901243,10.199829,15.615279,1.776974
+K_VRH_full,K_VRH,"bulk, single model (seed 42, n_conv 3)",train,7691,0.037478,0.974241,7.395944,9.013008,1.288492
+K_VRH_full,K_VRH,"bulk, single model (seed 42, n_conv 3)",val,1648,0.067235,0.894509,11.154451,16.744063,1.943284
+K_VRH_full,K_VRH,"bulk, single model (seed 42, n_conv 3)",test,1648,0.06956,0.882424,11.536922,17.370782,2.009917

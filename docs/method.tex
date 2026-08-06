@@ -1,0 +1,488 @@
+% Method write-up for the PINK/CGCNN reproduction.
+% Build with:  cd docs && pdflatex method.tex && pdflatex method.tex
+% (twice, so the table of contents and cross-references resolve)
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[colorlinks=true,linkcolor=linknavy,urlcolor=linknavy,
+            citecolor=linknavy]{hyperref}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds}
+
+% Long unbreakable tokens (file paths in \texttt, the DOI URL) otherwise
+% overflow the margin. emergencystretch lets TeX loosen only the offending
+% paragraphs, rather than \sloppy loosening every paragraph in the document.
+\emergencystretch=3em
+
+\definecolor{linknavy}{HTML}{2A78D6}
+\definecolor{inkSoft}{HTML}{52514E}
+\definecolor{boxbg}{HTML}{F4F6FA}
+\definecolor{boxrule}{HTML}{C9D6EA}
+\definecolor{accent}{HTML}{2A78D6}
+\definecolor{accent2}{HTML}{EB6834}
+
+\newcommand{\KV}{$K_{\mathrm{VRH}}$}
+\newcommand{\GV}{$G_{\mathrm{VRH}}$}
+
+% A boxed aside for the "why" behind a decision.
+\newcommand{\keybox}[2]{%
+  \begin{center}
+  \begin{tikzpicture}
+    \node[draw=boxrule,fill=boxbg,rounded corners=3pt,line width=0.8pt,
+          inner sep=10pt,text width=0.92\textwidth,align=left]
+      {\textbf{#1}\\[3pt]\small #2};
+  \end{tikzpicture}
+  \end{center}}
+
+\title{\vspace{-1.5cm}\textbf{Predicting Elastic Moduli with a Crystal Graph
+Neural Network}\\[4pt]
+\large A from-scratch reproduction of the machine-learning stage of PINK}
+\author{Aizaz Khalid}
+\date{August 2026}
+
+\begin{document}
+\maketitle
+\vspace{-0.8cm}
+
+\begin{abstract}
+\noindent
+PINK predicts lattice thermal conductivity $\kappa_L$ directly from a crystal
+structure by feeding machine-learned elastic moduli into a simplified Slack
+model. This document describes a from-scratch reimplementation of its
+machine-learning half: a crystal graph convolutional network (CGCNN) that
+predicts bulk and shear modulus from a CIF file. Trained on all 10{,}987
+crystals of the matbench elastic benchmark, a three-model ensemble reaches a
+test MAE of $0.0630$ $\log_{10}$(GPa) for bulk modulus
+($R^2 = 0.901$) and $0.0781$ for shear modulus ($R^2 = 0.899$), matching and
+slightly exceeding the accuracy reported by PINK. We describe the algorithm,
+the five points at which our approach departs from the paper, and a
+methodological error --- training on the intersection of our structures with
+the labelled benchmark rather than on the benchmark itself --- that cost a
+factor of two in accuracy before it was identified.
+\end{abstract}
+
+\tableofcontents
+\vspace{0.4cm}
+
+% =====================================================================
+\section{The problem}
+
+A CIF file states where the atoms sit in a crystal's unit cell. It says nothing
+about how stiff that crystal is. Elastic moduli come from density functional
+theory (DFT) calculations that cost hours to days of compute per material, which
+is why only about 11{,}000 of the Materials Project's $\sim$150{,}000 entries
+have them.
+
+PINK's goal is to screen for materials with ultralow lattice thermal
+conductivity. Its pipeline is
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=8mm,
+  box/.style={draw=boxrule,fill=boxbg,rounded corners=3pt,line width=0.7pt,
+              inner sep=6pt,align=center,font=\small},
+  net/.style={draw=accent,fill=accent!8,rounded corners=3pt,line width=1pt,
+              inner sep=6pt,align=center,font=\small\bfseries},
+  arr/.style={-{Stealth[length=2.5mm]},line width=0.7pt,draw=inkSoft}]
+  \node[box] (cif) {CIF};
+  \node[net,right=of cif] (cgcnn) {CGCNN};
+  \node[box,right=of cgcnn] (kg) {$K$, $G$};
+  \node[box,right=of kg] (slack) {Slack\\model};
+  \node[box,right=of slack] (kl) {$\kappa_L$};
+  \node[box,below=7mm of cgcnn,font=\scriptsize] (pmg)
+       {pymatgen:\\$V$, $n$, $\rho$};
+  \draw[arr] (cif) -- (cgcnn);
+  \draw[arr] (cgcnn) -- (kg);
+  \draw[arr] (kg) -- (slack);
+  \draw[arr] (slack) -- (kl);
+  \draw[arr] (cif) |- (pmg);
+  \draw[arr] (pmg) -| (slack);
+\end{tikzpicture}
+\end{center}
+
+\noindent
+The elastic moduli are the only learned quantity; everything downstream is
+physics. \textbf{This work implements the first arrow}, CIF $\rightarrow$
+$(K, G)$, including the network itself.
+
+The two targets are the Voigt--Reuss--Hill averages of the bulk modulus
+(\KV, resistance to uniform compression) and the shear modulus (\GV, resistance
+to shape change), both in GPa.
+
+% =====================================================================
+\section{Representing a crystal as a graph}
+
+A neural network cannot read a CIF. The CGCNN representation turns a periodic
+crystal into a graph in which \textbf{nodes are atoms} and \textbf{edges are
+bonds}, chosen so that the representation carries the physics that matters and
+discards what does not.
+
+\subsection{Nodes}
+
+Each atom becomes a 92-dimensional vector looked up by atomic number from a
+fixed table (\texttt{atom\_init.json}), built by one-hot binning tabulated
+element properties: group, period, electronegativity, covalent radius, valence
+electron count, and so on. These features are \emph{not} learned --- they are
+the fixed description of ``what element is this''. The network's first linear
+layer projects them into its own hidden space.
+
+\subsection{Edges}
+
+For every atom we find all neighbours within a cutoff radius of
+$r_{\mathrm{cut}} = 8$~\AA, sort them by distance, and keep the nearest
+$M = 12$. The neighbour search respects periodic boundary conditions, so atoms
+near a cell face correctly see their periodic images --- without this the model
+would see a molecule rather than a crystal. Atoms with fewer than $M$ neighbours
+in range are padded with a distance of $r_{\mathrm{cut}} + 1$, which falls
+outside every basis function below and so contributes almost nothing.
+
+\subsection{Why bond lengths are expanded, not used raw}
+
+A raw bond length fed in as a single number would force the network to learn a
+sharply non-linear response to it from scratch. Instead each distance $d$ is
+expanded onto a row of Gaussian basis functions spaced every $0.2$~\AA:
+\begin{equation}
+  \mathbf{e}_k(d) = \exp\!\left(-\frac{(d - \mu_k)^2}{\sigma^2}\right),
+  \qquad \mu_k = 0,\,0.2,\,\dots,\,8~\text{\AA},\qquad \sigma = 0.2~\text{\AA}
+\end{equation}
+giving a 41-dimensional edge feature. A bond at $2.31$~\AA{} strongly activates
+the basis functions centred near $2.3$ and barely touches the one at $5.0$. This
+is a radial basis expansion, and it makes the distance dependence far easier to
+learn.
+
+\keybox{Why this representation generalises}{The graph is invariant to
+translation, rotation and the choice of unit cell, because it stores only
+\emph{distances} between atoms and never absolute positions. A crystal written
+in two equivalent settings produces the same graph. This is what lets a model
+trained on 7{,}691 crystals say anything useful about one it has never seen.}
+
+% =====================================================================
+\section{The network}
+
+\subsection{Convolution}
+
+Message passing updates each atom's vector using its neighbours. For atom $i$
+with neighbours $j$ and bond features $\mathbf{e}_{ij}$, we form the
+(self, neighbour, bond) triple for every edge, pass it through one shared linear
+layer, and split the result into a \emph{gate} and a \emph{message}:
+\begin{align}
+  \mathbf{z}_{ij}^{(t)} &= \mathbf{v}_i^{(t)} \oplus \mathbf{v}_j^{(t)}
+                           \oplus \mathbf{e}_{ij} \\
+  \mathbf{v}_i^{(t+1)} &= \mathbf{v}_i^{(t)} + \sum_{j}
+      \underbrace{\sigma\!\left(\mathbf{z}_{ij}^{(t)}\mathbf{W}_f^{(t)}
+                  + \mathbf{b}_f^{(t)}\right)}_{\text{gate}}
+      \odot
+      \underbrace{g\!\left(\mathbf{z}_{ij}^{(t)}\mathbf{W}_s^{(t)}
+                  + \mathbf{b}_s^{(t)}\right)}_{\text{message}}
+\end{align}
+where $\oplus$ is concatenation, $\odot$ elementwise product, $\sigma$ the
+sigmoid and $g$ a softplus.
+
+Three properties matter. The \textbf{gate} lets the network decide per bond how
+much that neighbour should contribute, so a weak long bond can be ignored
+without discarding it. The \textbf{shared weights} across all edges are what make
+this a convolution: the same local rule applies everywhere in the graph, so the
+model generalises across crystal sizes and compositions. The \textbf{residual}
+$\mathbf{v}_i^{(t)} +\ \cdots$ lets gradients flow straight through the stack and
+stops early layers being washed out.
+
+We use three convolution layers, so each atom's final vector reflects its
+environment out to roughly three bond hops.
+
+\subsection{Pooling and prediction}
+
+The crystal-level vector is the \emph{mean} over its atoms,
+\begin{equation}
+  \mathbf{v}_c = \frac{1}{N}\sum_{i=1}^{N} \mathbf{v}_i^{(T)},
+\end{equation}
+followed by a small fully-connected head that emits one number. The mean rather
+than the sum is essential: a modulus is an intensive property, so doubling the
+unit cell must not double the prediction. A sum would make the output scale with
+however many atoms the CIF author happened to write down.
+
+\subsection{Training on the logarithm}
+
+The network is trained against $\log_{10}$ of the modulus, not the modulus:
+\begin{equation}
+  \mathcal{L} = \frac{1}{B}\sum_{b=1}^{B}
+    \left(\hat{y}_b - \frac{\log_{10} y_b - \mu}{s}\right)^2
+\end{equation}
+with $\mu, s$ the mean and standard deviation of the \emph{training} targets.
+
+\keybox{Why the log matters more than it looks}{Moduli here span 1--575~GPa.
+Under a plain MSE on raw values, a 40~GPa error on a stiff material contributes
+$100\times$ more gradient than the same \emph{relative} error on a soft one, so
+the model would learn to care only about hard materials --- exactly the wrong
+bias for a project screening for \emph{ultralow} conductivity. Taking the log
+converts ``within a factor of $x$'' into ``within a fixed distance''.
+Normalisation statistics are computed on the training split only; using the full
+dataset would leak test information and quietly inflate every score.}
+
+Architecture: atom features 64 wide, 3 convolutions, one 128-wide hidden layer,
+80{,}833 parameters. Adam at $\eta_0 = 10^{-2}$, batch size 128, 200 epochs,
+cosine annealing to $0.01\eta_0$. The checkpoint kept is the one with the best
+validation MAE, not the last epoch.
+
+% =====================================================================
+\section{Data, and a mistake worth recording}
+
+\subsection{The two datasets}
+
+We have 1{,}213 CIFs from the Materials Project with \emph{no labels}, and the
+matbench elastic benchmarks (\texttt{matbench\_log\_kvrh},
+\texttt{matbench\_log\_gvrh}) with 10{,}987 DFT-computed entries each --- the
+same data the paper trained on.
+
+Matbench strips Materials Project IDs, so the two cannot be joined on ID. We
+join on \emph{structure} in two passes: bucket every benchmark entry by reduced
+formula (cheap, narrows 10{,}987 candidates to a handful), then confirm with
+pymatgen's symmetry-aware \texttt{StructureMatcher}, which matches crystals up
+to lattice choice, origin shift and symmetry operation. \textbf{278 of the
+1{,}213 match.}
+
+\subsection{The mistake}
+
+Our first approach trained on those 278 overlapping crystals. It reached a test
+MAE of $0.152$ $\log_{10}$(GPa) --- more than double the paper's --- and
+overfitted badly, with training error less than half of test error.
+
+\keybox{The 1{,}213 structures were never the limit; the labels were}{Treating
+our CIF collection as ``the dataset'' and intersecting it with the labelled
+benchmark discarded 97\% of the available labels. The correct framing inverts
+the roles: \textbf{train on all 10{,}987 matbench crystals, and treat the 1{,}213
+CIFs purely as a prediction set.} That is what the paper does, and it more than
+halved the error. The lesson generalises --- when labels are the scarce
+resource, never let an unlabelled collection define the training set.}
+
+\begin{table}[h]
+\centering
+\caption{Effect of the reframing. Same architecture and code; only the training
+set differs.}
+\begin{tabular}{lccc}
+\toprule
+Training set & Test MAE $\log_{10}$ & Test $R^2$ & Train/test gap \\
+\midrule
+278 crystals (the intersection) & 0.152 & 0.57 & $0.078 \rightarrow 0.152$ \\
+10{,}987 crystals (all of matbench) & \textbf{0.070} & \textbf{0.882}
+  & $0.037 \rightarrow 0.070$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Note the second column of gaps. On 278 crystals the model scored twice as well
+on data it had seen --- the signature of memorisation. With 40$\times$ more data
+the gap collapses to ordinary generalisation error. The overfitting was a
+data-quantity problem, not a regularisation one.
+
+\subsection{Splits and provenance}
+
+The 10{,}987 crystals are split 70/15/15 into 7{,}691 train, 1{,}648 validation
+and 1{,}648 test. Because 278 of the 1{,}213 prediction crystals \emph{are} in
+matbench, they end up in training --- so every prediction we emit is tagged
+\texttt{train}, \texttt{val}, \texttt{test} or \texttt{unseen} (935 crystals).
+A prediction for a \texttt{train} crystal is recall, not generalisation, and
+quoting it as evidence would be circular.
+
+This doubles as a correctness check: on the 42 \texttt{test}-provenance
+crystals the error is 0.062 (bulk), matching the benchmark test error of 0.063.
+Had the provenance mapping been wrong we would have seen the much lower
+training-set error instead.
+
+% =====================================================================
+\section{Ensembling}
+
+Two networks trained on the same data from different random initialisations
+land in different minima. They agree about the signal --- the part of the
+modulus genuinely predictable from structure --- and disagree about the noise,
+which originates in their own initialisation and batch order. Averaging keeps
+the first and partially cancels the second.
+
+We train three members per target, varying the initialisation seed while
+\textbf{pinning the split seed}, and average in log space:
+\begin{equation}
+  \hat{y}_{\mathrm{ens}} = 10^{\,\frac{1}{K}\sum_{k=1}^{K}\hat{y}_k^{\log}},
+  \qquad
+  u = \mathrm{std}_k\!\left(\hat{y}_k^{\log}\right).
+\end{equation}
+
+Two details matter. \textbf{Log space, not GPa}: members predicting 10 and
+1000~GPa average to 100~GPa in log space but 505~GPa linearly, and 100 is the
+defensible answer when members disagree by two orders of magnitude. \textbf{A
+shared split}: if member A trained on a crystal member B held out, the
+ensemble's test score is partly measured on training data. Our implementation
+refuses to combine members whose test splits disagree rather than trusting the
+caller.
+
+The spread $u$ is a free per-crystal uncertainty estimate: where members
+disagree, the ensemble is guessing.
+
+% =====================================================================
+\section{Results}
+
+\begin{table}[h]
+\centering
+\caption{Test-set performance on 1{,}648 held-out crystals. All models share
+one split, so every row is directly comparable.}
+\begin{tabular}{lccccc}
+\toprule
+Model & MAE $\log_{10}$ & $R^2$ & MAE (GPa) & Rel. error & \% of range \\
+\midrule
+Bulk, single model      & 0.0696 & 0.882 & 11.54 & 17.4\% & 2.01\% \\
+\textbf{Bulk, ensemble} & \textbf{0.0630} & \textbf{0.901} & 10.20
+  & \textbf{15.6\%} & 1.78\% \\
+Shear, single model      & 0.0836 & 0.889 & 7.72 & 21.2\% & 1.48\% \\
+\textbf{Shear, ensemble} & \textbf{0.0781} & \textbf{0.899} & 7.27
+  & \textbf{19.7\%} & 1.39\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Context. Bulk modulus on the same benchmark.}
+\begin{tabular}{lcc}
+\toprule
+& MAE $\log_{10}$(GPa) & Relative error \\
+\midrule
+\textbf{This work (bulk ensemble)} & \textbf{0.0630} & 15.6\% \\
+PINK (Liu \textit{et al.} 2025)    & $\approx$0.07 & $\approx$17\% \\
+coGN (best published on matbench)  & $\approx$0.054 & $\approx$13\% \\
+Our earlier 278-crystal model      & 0.152 & 42\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Ensembling removed 9--10\% of the error, consistent with the 10--15\% typically
+expected. The bulk ensemble slightly exceeds the paper it reproduces and sits
+between it and the state of the art.
+
+\subsection{How far the error can be pushed}
+
+Because the model is trained on $\log_{10}$, MAE converts to a
+\emph{multiplicative} error of $10^{\mathrm{MAE}} - 1$. An MAE of $0.063$ means
+predictions land within a factor of $1.156$, i.e.\ $\sim$16\%.
+
+\keybox{Why $\sim$2\% relative error is unreachable}{A 2\% relative error would
+require MAE $= \log_{10}(1.02) = 0.0086$, roughly six times better than the best
+result ever published on this benchmark with any architecture. The blocker is
+not model capacity but \textbf{label noise}: the targets are DFT-computed
+elastic moduli, and DFT elastic constants themselves disagree with experiment by
+roughly 5--15\%. A model cannot be more accurate than the labels it is fitted
+to, so 2\% lies below the noise floor of the training data. A model reporting it
+would be revealing a leak, not an achievement. The realistic floor for this
+architecture is $\approx$0.06 $\log_{10}$, about 15\%.}
+
+A separate figure, \texttt{pct\_of\_range} (MAE in GPa over the full 1--575~GPa
+span), comes in at 1.4--1.8\%. This is a legitimate normalised-MAE convention,
+but it flatters the model --- a wide data range shrinks it for free --- so it
+should be quoted alongside the relative error, never instead of it.
+
+% =====================================================================
+\section{What we did differently from the paper}
+
+\begin{enumerate}\setlength{\itemsep}{5pt}
+
+\item \textbf{Written from scratch.} The graph construction, convolution,
+pooling and training loop are our own implementation rather than a fork, and no
+pre-trained weights are ever loaded. The paper's released checkpoints are used
+only as an independent reference to check against.
+
+\item \textbf{Ensembles rather than single models.} Three initialisations per
+target, averaged in log space. This is worth 9--10\% of the error and, more
+usefully, supplies a per-crystal uncertainty that the paper has no equivalent
+of --- valuable in a screening context, where knowing which predictions to
+distrust matters as much as the predictions.
+
+\item \textbf{Adam with cosine annealing} in place of the original CGCNN's SGD
+with step decay. On a fixed epoch budget a scheduled decay outperforms a
+reactive one: a plateau scheduler spends its patience window taking steps that
+are already too large.
+
+\item \textbf{Provenance tracking on every prediction.} Each output row records
+whether the model was trained on that crystal. We could not find this
+distinction drawn in the paper's screening results, and without it an accuracy
+claim on a screening set cannot be interpreted --- part of the apparent accuracy
+may simply be recall.
+
+\item \textbf{A documented error floor.} We state explicitly what accuracy is
+achievable and why, and we report both the multiplicative error and the
+range-normalised error rather than choosing whichever is more flattering.
+
+\end{enumerate}
+
+\noindent
+\textbf{What is deliberately the same}: the CGCNN architecture and
+hyperparameters, the training data, the $\log_{10}$ target, and the 70/15/15
+split ratio. The point of a reproduction is that differences should be
+deliberate and few.
+
+% =====================================================================
+\section{Reproducing this work}
+
+\begin{verbatim}
+    conda env create -f environment.yml && conda activate pink-cgcnn
+    ./run_pipeline.sh --predict     # ~2 min, uses committed checkpoints
+    ./run_pipeline.sh               # retrain: ~45 min GPU, ~9 h CPU
+\end{verbatim}
+
+\noindent
+The six trained checkpoints ($\sim$380~KB each) are committed, so every figure
+and number above regenerates in about two minutes without training. The 240~MB
+graph cache is not committed; it rebuilds deterministically in $\sim$6 minutes.
+
+\subsection{A note on compute}
+
+This work was developed on a 2016 dual-core laptop CPU, where one model takes
+$\sim$2 hours. The same model trains in $\sim$7 minutes on a free Colab T4 ---
+all six in 42 minutes. \texttt{colab/PINK\_CGCNN.ipynb} runs the pipeline there
+and returns the checkpoints; it is \emph{generated} from the source files rather
+than maintained by hand, so it cannot drift out of sync with the featuriser it
+is meant to reproduce.
+
+Two portability details worth recording. Python block-buffers stdout at 8~KB
+when it is not a terminal, and a 200-epoch run prints only $\sim$2~KB --- so
+without \texttt{python -u} a healthy remote run is indistinguishable from a hung
+one. And \texttt{torch.load} changed its \texttt{weights\_only} default in torch
+2.6, so every load of our own artifacts sets it explicitly; otherwise code that
+works locally fails on the newer torch of a hosted GPU runtime.
+
+% =====================================================================
+\section{Limitations and next steps}
+
+\begin{itemize}\setlength{\itemsep}{4pt}
+\item \textbf{Soft materials remain the weakest region.} Residuals fan out below
+$\sim$30~GPa. This is partly genuine label noise --- DFT is least reliable for
+soft, anharmonic crystals --- but it is also precisely the ultralow-$\kappa$
+regime PINK targets, so it is the most valuable place to improve.
+\item \textbf{Only $\sim$11k labelled crystals exist.} Accuracy is now limited
+by data and label quality rather than by the model. Semi-supervised pre-training
+on unlabelled structures is the obvious lever.
+\item \textbf{Stage 2 is not yet reimplemented.} The Slack-model half still runs
+on the authors' code. Substituting our \texttt{pink\_moduli\_predictions.csv}
+into it, and propagating our per-crystal uncertainties through to $\kappa_L$, is
+the natural next step --- and something the original pipeline cannot do.
+\end{itemize}
+
+\vspace{0.6cm}
+\hrule
+\vspace{0.3cm}
+\noindent\small
+\textbf{Reference.} Liu, Y.; Wang, X.; Hao, Y.; Li, X.; Sun, J.; Lookman, T.;
+Ding, X.; Gao, Z. \textit{PINK: physics-informed machine learning for lattice
+thermal conductivity.} J. Mater. Inf. 2025, 5, 12.
+\href{https://dx.doi.org/10.20517/jmi.2024.86}{doi:10.20517/jmi.2024.86}
+
+\noindent
+\textbf{Underlying data.} Matbench elastic benchmarks
+\texttt{matbench\_log\_kvrh} and \texttt{matbench\_log\_gvrh} (Dunn \textit{et
+al.}, npj Comput.\ Mater.\ 2020), derived from the Materials Project.
+
+\end{document}

@@ -47,3 +47,13 @@ external/
 kaggle/build/
 kaggle/output/
 kaggle/pulled/
+
+# LaTeX build artifacts (docs/build.sh regenerates the PDF)
+docs/*.aux
+docs/*.log
+docs/*.out
+docs/*.toc
+
+# The published paper - not ours to redistribute. Get it from the DOI in
+# README.md; the pipeline never reads it.
+PINK.pdf

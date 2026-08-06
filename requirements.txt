@@ -1,0 +1,20 @@
+# Exact versions this work was produced with (Python 3.11.13, macOS/CPU).
+#
+# The pins are what we verified; the pipeline is not fragile about them. The
+# one that genuinely matters is torch>=2.6, where torch.load's `weights_only`
+# default flipped to True - every torch.load of our own artifacts passes
+# weights_only=False explicitly, so both sides of that change work.
+#
+#   pip install -r requirements.txt
+
+torch==2.2.2
+numpy==1.26.4
+pandas==2.3.1
+matplotlib==3.10.0
+scipy==1.17.1
+
+# Crystal structures (CIF parsing, symmetry-aware structure matching) and the
+# matbench dataset loader. matminer downloads the elastic benchmark on first
+# use, so the first run needs an internet connection.
+pymatgen==2026.4.16
+matminer==0.10.1
