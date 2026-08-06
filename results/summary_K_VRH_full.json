@@ -1,0 +1,14 @@
+{
+  "tag": "K_VRH_full",
+  "target": "K_VRH",
+  "data_dir": "data_full",
+  "n_total": 10987,
+  "n_train": 7691,
+  "n_val": 1648,
+  "n_test": 1648,
+  "best_val_mae": 0.06736291308426162,
+  "test_mae": 0.07077037156062219,
+  "epochs": 150,
+  "n_params": 80833,
+  "seconds": 7421.710844993591
+}

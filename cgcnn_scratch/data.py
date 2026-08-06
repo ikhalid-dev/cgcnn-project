@@ -277,7 +277,12 @@ class GraphCacheData(Dataset):
     """
 
     def __init__(self, cache_path, targets, ids=None):
-        blob = torch.load(cache_path)
+        # weights_only=False explicitly. torch 2.6 flipped this default to True,
+        # so a cache written under an older torch (or read on a newer one, e.g.
+        # Colab) can fail to unpickle. This file is one we wrote ourselves, so
+        # there is no untrusted-pickle concern - but the default must not be
+        # left to vary with whatever torch the machine happens to have.
+        blob = torch.load(cache_path, weights_only=False)
         self.graphs = dict(zip(blob["ids"], blob["graphs"]))
 
         if ids is None:

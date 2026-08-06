@@ -215,7 +215,8 @@ def build_provenance(data_full_dir, ckpt, labels):
 
     # Rebuild the dataset's id ordering. GraphCacheData keeps the cache's order,
     # restricted to ids that have a label - the same filter clean_labels applied.
-    blob = torch.load(os.path.join(data_full_dir, "graphs.pt"))
+    blob = torch.load(os.path.join(data_full_dir, "graphs.pt"),
+                      weights_only=False)
     labelled = set(labels.mb_id)
     ordered_ids = [i for i in blob["ids"] if i in labelled]
 
@@ -282,7 +283,8 @@ def main():
 
     # Featurisation settings must match what the models were trained on. The
     # training cache recorded them, so read them back rather than assuming.
-    cache_config = torch.load(os.path.join(args.data_full, "graphs.pt"))["config"]
+    cache_config = torch.load(os.path.join(args.data_full, "graphs.pt"),
+                              weights_only=False)["config"]
     print(f"Featurisation from training cache: {cache_config}")
 
     dataset, meta, failed = build_prediction_graphs(
