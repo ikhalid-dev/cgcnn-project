@@ -1,14 +1,14 @@
 {
-  "tag": "G_VRH_full",
+  "tag": "G_VRH_s2",
   "target": "G_VRH",
   "data_dir": "data_full",
   "n_total": 10987,
   "n_train": 7691,
   "n_val": 1648,
   "n_test": 1648,
-  "best_val_mae": 0.08567971251543285,
-  "test_mae": 0.08356470708708161,
+  "best_val_mae": 0.08397114530061055,
+  "test_mae": 0.08588467010305924,
   "epochs": 200,
   "n_params": 80833,
-  "seconds": 409.0174276828766
+  "seconds": 408.0552065372467
 }
