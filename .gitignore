@@ -40,3 +40,10 @@ data_full/graphs.pt
 
 # Cloned upstream repos (see README)
 external/
+
+# Kaggle: generated kernel bundle and downloaded run artifacts. The kernel is
+# rebuilt from source by kaggle/build_kernel.py, so committing it would just be
+# a copy that can go stale.
+kaggle/build/
+kaggle/output/
+kaggle/pulled/
