@@ -40,7 +40,7 @@ BUILD_DIR = os.path.join(PROJECT_ROOT, "kaggle", "build")
 # at .../pink-cgcnn-elastic-moduli-on-matbench while we were asking after
 # .../pink-cgcnn-train, so every status and output call 404'd. Keep the two in
 # lockstep by deriving the slug from the title rather than setting it by hand.
-KERNEL_TITLE = "PINK CGCNN elastic moduli on matbench"
+KERNEL_TITLE = "PINK CGCNN GPU run"
 KERNEL_SLUG = KERNEL_TITLE.lower().replace(" ", "-")
 
 BUNDLE = [
@@ -236,6 +236,12 @@ def main():
         # P100 over T4: ~9.3 vs ~8.1 TFLOPS FP32, and this model trains in FP32.
         "enable_gpu": True,
         "machine_shape": "NvidiaTeslaP100",
+        # Un-pin the docker image. Kaggle pinned this kernel to the exact image
+        # sha of its FIRST run - which was a CPU run - and every later push
+        # inherited that pin, so the container came back CPU-only no matter what
+        # accelerator we asked for. "latest" lets Kaggle pick the image that
+        # matches the requested machine shape.
+        "docker_image_pinning_type": "latest",
         # Needed to pip install pymatgen/matminer and to download matbench.
         # Kaggle only allows internet on kernels for phone-verified accounts.
         "enable_internet": True,
