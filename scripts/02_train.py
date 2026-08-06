@@ -8,12 +8,27 @@ Run this once per target:
     python scripts/02_train.py --target K_VRH    # bulk modulus
     python scripts/02_train.py --target G_VRH    # shear modulus
 
+TWO DATASETS, ONE SCRIPT
+------------------------
+`--data-dir` decides what we train on, and the script adapts to what it finds:
+
+    data/       278 crystals, the overlap between our CIFs and matbench.
+                Read as a directory of .cif files via CIFData.
+
+    data_full/  10,987 crystals, all of matbench's elastic benchmark, with
+                graphs pre-built by 01b_prepare_full_dataset.py. Read from
+                graphs.pt via GraphCacheData - no CIF parsing at all.
+
+If the data dir contains a graphs.pt we use the cache; otherwise we fall back to
+reading CIFs. Everything downstream - splitting, normalising, the training loop,
+the saved checkpoint format - is identical either way, which is the point: the
+278-crystal and 10,987-crystal runs differ only in their data.
+
 WHAT "FROM SCRATCH" MEANS HERE
 ------------------------------
 No pre-trained weights are loaded. Every parameter starts from PyTorch's
-default random initialisation and is learned only from our ~278 labelled
-crystals. This is deliberately a small-data experiment - see the honesty note
-at the bottom of this docstring.
+default random initialisation and is learned only from the labelled crystals in
+`--data-dir`.
 
 KEY DESIGN DECISIONS, AND WHY
 -----------------------------
@@ -31,11 +46,15 @@ KEY DESIGN DECISIONS, AND WHY
    SPLIT ONLY. Computing them over the full dataset would leak information
    about the test set into training and quietly inflate our scores.
 
-3. WE USE A SMALLER MODEL THAN THE PAPER.
+3. MODEL SIZE HAS TO MATCH DATA SIZE.
    The paper trained on 10,987 crystals with atom_fea_len=64, h_fea_len=128.
-   With 278 samples that many parameters will memorise the training set almost
-   immediately. The defaults here are deliberately trimmed. Tune them with the
-   command line flags if you want to see overfitting happen - it is instructive.
+   With 278 samples that many parameters memorises the training set almost
+   immediately, so the DEFAULTS HERE ARE TRIMMED (32/64) for the small run.
+   When training on data_full/, pass the paper's widths explicitly:
+
+       --atom-fea-len 64 --h-fea-len 128
+
+   Leaving the small defaults on 11k crystals just underfits.
 
 4. WE KEEP THE BEST MODEL BY VALIDATION MAE, NOT THE LAST ONE.
    Small datasets produce noisy validation curves. The final epoch is very
@@ -44,11 +63,13 @@ KEY DESIGN DECISIONS, AND WHY
 
 HONEST EXPECTATION
 ------------------
-278 training crystals is a very small dataset for a graph network with tens of
-thousands of parameters. Expect the model to learn the broad trend (soft vs
-stiff) but not to reach the paper's accuracy, which had ~40x more data. The
-point of this stage is a correct, readable, end-to-end pipeline we can then
-scale - not a competitive number.
+On data/ (278 crystals) expect the model to learn the broad trend (soft vs
+stiff) but not to reach the paper's accuracy - test MAE lands around 0.15
+log10(GPa) against the paper's ~0.07, and train MAE sits at half the test MAE,
+which is overfitting exactly as a 26k-parameter model on 195 samples must.
+
+On data_full/ (10,987 crystals) we have the paper's own training set, so the
+paper's numbers are the target rather than an aspiration.
 """
 
 import argparse
@@ -75,32 +96,8 @@ warnings.filterwarnings("ignore")
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-from cgcnn_scratch.data import CIFData, Normalizer, collate_pool  # noqa: E402
+from cgcnn_scratch.data import Normalizer, collate_pool, load_dataset_for  # noqa: E402
 from cgcnn_scratch.model import CrystalGraphConvNet  # noqa: E402
-
-
-def build_id_prop(data_dir, target):
-    """Write the id_prop.csv that CIFData reads, for the requested target.
-
-    CIFData is generic - it just wants "filename, number". This function picks
-    which column of labels.csv becomes that number, and takes the log10.
-    Returns the number of rows written.
-    """
-    labels = pd.read_csv(os.path.join(data_dir, "labels.csv"))
-
-    # Guard against non-positive moduli, which would make log10 explode.
-    # A modulus of zero or below is unphysical and indicates a bad DFT entry.
-    bad = labels[labels[target] <= 0]
-    if len(bad):
-        print(f"  dropping {len(bad)} rows with non-positive {target}")
-        labels = labels[labels[target] > 0]
-
-    rows = pd.DataFrame({
-        "cif_id": labels.material_id + ".cif",
-        "target": np.log10(labels[target]),
-    })
-    rows.to_csv(os.path.join(data_dir, "cifs", "id_prop.csv"), index=False)
-    return len(rows)
 
 
 def split_indices(n_total, train_ratio, val_ratio, seed):
@@ -126,7 +123,41 @@ def mean_absolute_error(prediction, target):
     return torch.mean(torch.abs(target - prediction)).item()
 
 
-def run_epoch(loader, model, criterion, normalizer, optimizer=None):
+def pick_device(requested):
+    """Resolve --device auto to the best thing actually available.
+
+    CUDA first (Colab, any NVIDIA box), then Apple's MPS, then CPU. MPS is
+    checked second because on the Macs this project runs on it is usually
+    unavailable anyway - macOS 12 with torch 2.2 reports False - but on a newer
+    machine it is a large win over CPU.
+    """
+    if requested != "auto":
+        return torch.device(requested)
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
+def to_device(inputs, target, device):
+    """Move one collated batch onto `device`.
+
+    Everything the model touches has to live on the same device as its weights.
+    Three of the four input tensors move the obvious way; `crystal_atom_idx` is
+    a LIST of index tensors (one per crystal in the batch), so it needs mapping
+    element by element rather than a single .to() call.
+    """
+    atom_fea, nbr_fea, nbr_fea_idx, crystal_atom_idx = inputs
+    return (atom_fea.to(device, non_blocking=True),
+            nbr_fea.to(device, non_blocking=True),
+            nbr_fea_idx.to(device, non_blocking=True),
+            [idx.to(device, non_blocking=True) for idx in crystal_atom_idx],
+            target.to(device, non_blocking=True))
+
+
+def run_epoch(loader, model, criterion, normalizer, optimizer=None,
+              device=torch.device("cpu")):
     """Run one pass over `loader`. Trains if an optimizer is given, else evaluates.
 
     Returns (mean loss, MAE in log10 units).
@@ -146,7 +177,8 @@ def run_epoch(loader, model, criterion, normalizer, optimizer=None):
     # usable for both phases without duplicating the loop.
     with torch.enable_grad() if training else torch.no_grad():
         for inputs, target, _ in loader:
-            atom_fea, nbr_fea, nbr_fea_idx, crystal_atom_idx = inputs
+            (atom_fea, nbr_fea, nbr_fea_idx,
+             crystal_atom_idx, target) = to_device(inputs, target, device)
             target_normed = normalizer.norm(target)
 
             output = model(atom_fea, nbr_fea, nbr_fea_idx, crystal_atom_idx)
@@ -172,6 +204,10 @@ def main():
                         help="which modulus to predict")
     parser.add_argument("--data-dir", default=os.path.join(PROJECT_ROOT, "data"))
     parser.add_argument("--out-dir", default=os.path.join(PROJECT_ROOT, "results"))
+    parser.add_argument("--tag", default=None,
+                        help="suffix for the output files. Defaults to --target. "
+                             "Use e.g. K_VRH_full so the big run does not "
+                             "overwrite the 278-crystal results.")
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=0.02)
@@ -185,26 +221,54 @@ def main():
     # Splits
     parser.add_argument("--train-ratio", type=float, default=0.7)
     parser.add_argument("--val-ratio", type=float, default=0.15)
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seed", type=int, default=42,
+                        help="seeds WEIGHT INITIALISATION and batch shuffling. "
+                             "Vary this to build an ensemble.")
+    parser.add_argument("--split-seed", type=int, default=None,
+                        help="seeds the TRAIN/VAL/TEST SPLIT. Defaults to "
+                             "--seed. Every member of an ensemble must pass the "
+                             "SAME value here, or their test sets differ and "
+                             "the ensemble score is measured on data some "
+                             "members trained on.")
+    parser.add_argument("--device", default="auto",
+                        help="auto | cpu | cuda | mps. 'auto' picks CUDA, then "
+                             "MPS, then CPU.")
+    parser.add_argument("--num-workers", type=int, default=0,
+                        help="DataLoader worker processes. Use 2-4 on a GPU "
+                             "box; 0 is faster on a 2-core laptop.")
+    parser.add_argument("--scheduler", choices=["plateau", "cosine"],
+                        default="plateau",
+                        help="cosine anneals the LR smoothly to ~0 over the run "
+                             "and generally beats plateau for a fixed budget")
     args = parser.parse_args()
+    if args.split_seed is None:
+        args.split_seed = args.seed
+    if args.tag is None:
+        args.tag = args.target
 
     # Seed everything we can so a rerun reproduces the same numbers.
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    cif_dir = os.path.join(args.data_dir, "cifs")
-    print(f"=== Training CGCNN from scratch for {args.target} ===\n")
+    device = pick_device(args.device)
+    print(f"=== Training CGCNN from scratch for {args.target} ===")
+    print(f"    device: {device}"
+          f"{' (' + torch.cuda.get_device_name(0) + ')' if device.type == 'cuda' else ''}\n")
 
-    n_rows = build_id_prop(args.data_dir, args.target)
-    print(f"Dataset: {n_rows} labelled crystals")
+    dataset = load_dataset_for(args.data_dir, args.target)
+    print(f"Dataset: {len(dataset)} labelled crystals")
 
-    # Building the graphs is the slow part; CIFData caches them after first use.
-    dataset = CIFData(cif_dir)
+    # Note --split-seed, not --seed: ensemble members vary their init seed but
+    # must share one split, so the held-out test set stays held out for all.
     train_idx, val_idx, test_idx = split_indices(
-        len(dataset), args.train_ratio, args.val_ratio, args.seed)
+        len(dataset), args.train_ratio, args.val_ratio, args.split_seed)
     print(f"Split: {len(train_idx)} train / {len(val_idx)} val / {len(test_idx)} test\n")
 
-    loader_kwargs = dict(batch_size=args.batch_size, collate_fn=collate_pool, num_workers=0)
+    # num_workers>0 pays off on a GPU box, where collating batches on the main
+    # thread becomes the bottleneck instead of the maths. On this 2-core laptop
+    # the worker processes cost more than they save, hence the 0 default.
+    loader_kwargs = dict(batch_size=args.batch_size, collate_fn=collate_pool,
+                         num_workers=args.num_workers)
     train_loader = DataLoader(dataset, sampler=SubsetRandomSampler(train_idx), **loader_kwargs)
     val_loader = DataLoader(dataset, sampler=SubsetRandomSampler(val_idx), **loader_kwargs)
     test_loader = DataLoader(dataset, sampler=SubsetRandomSampler(test_idx), **loader_kwargs)
@@ -212,7 +276,7 @@ def main():
     # --- Normalizer fitted on the TRAINING TARGETS ONLY --------------------
     print("Fitting normalizer on training targets...")
     train_targets = torch.stack([dataset[i][1] for i in train_idx]).view(-1)
-    normalizer = Normalizer(train_targets)
+    normalizer = Normalizer(train_targets).to(device)
     print(f"  log10({args.target}): mean={normalizer.mean:.3f} std={normalizer.std:.3f}")
 
     # --- Model -------------------------------------------------------------
@@ -226,7 +290,7 @@ def main():
     model = CrystalGraphConvNet(
         orig_atom_fea_len, nbr_fea_len,
         atom_fea_len=args.atom_fea_len, n_conv=args.n_conv,
-        h_fea_len=args.h_fea_len, n_h=args.n_h, classification=False)
+        h_fea_len=args.h_fea_len, n_h=args.n_h, classification=False).to(device)
 
     n_params = sum(p.numel() for p in model.parameters())
     print(f"  model parameters: {n_params:,}  "
@@ -237,12 +301,25 @@ def main():
     # per-parameter adaptive step sizes converge far more reliably.
     optimizer = optim.Adam(model.parameters(), lr=args.lr,
                            weight_decay=args.weight_decay)
-    # Decay the learning rate when validation MAE plateaus, so the model can
-    # settle into a minimum instead of bouncing around it.
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=20)
+    # Both schedulers exist to do the same thing - shrink the step size as the
+    # model closes in, so it settles into a minimum instead of bouncing around
+    # it. They differ in how they decide when:
+    #   plateau  reactive: halve the LR after 20 epochs with no improvement.
+    #            Safe, but it spends those 20 epochs taking steps that are
+    #            already too big.
+    #   cosine   scheduled: glide the LR from lr to ~0 over the whole run. With
+    #            a fixed epoch budget this is almost always the better choice,
+    #            because the late epochs are guaranteed to be fine-tuning steps.
+    if args.scheduler == "cosine":
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=args.epochs, eta_min=args.lr * 0.01)
+    else:
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.5, patience=20)
 
     # --- Training loop -----------------------------------------------------
+    # Created up front because the loop checkpoints into it as it goes.
+    os.makedirs(args.out_dir, exist_ok=True)
     history = []
     best_val_mae = float("inf")
     best_state = None
@@ -250,9 +327,12 @@ def main():
 
     for epoch in range(args.epochs):
         train_loss, train_mae = run_epoch(train_loader, model, criterion,
-                                          normalizer, optimizer)
-        val_loss, val_mae = run_epoch(val_loader, model, criterion, normalizer)
-        scheduler.step(val_mae)
+                                          normalizer, optimizer, device)
+        val_loss, val_mae = run_epoch(val_loader, model, criterion, normalizer,
+                                      device=device)
+        # ReduceLROnPlateau needs the metric it is watching; CosineAnnealingLR
+        # is on a fixed schedule and takes no argument.
+        scheduler.step(val_mae) if args.scheduler == "plateau" else scheduler.step()
 
         history.append({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss,
                         "train_mae": train_mae, "val_mae": val_mae,
@@ -261,7 +341,27 @@ def main():
         # Keep the best weights seen so far (see design decision 4).
         if val_mae < best_val_mae:
             best_val_mae = val_mae
-            best_state = {k: v.clone() for k, v in model.state_dict().items()}
+            # .cpu() so a checkpoint trained on Colab loads on a laptop with
+            # no CUDA. Without it torch.load would demand a GPU.
+            best_state = {k: v.detach().cpu().clone()
+                          for k, v in model.state_dict().items()}
+            # Also flush them to disk. On the 11k-crystal run an epoch costs
+            # tens of seconds and the whole thing runs for hours, so a crash
+            # partway through must not throw away the weights we already have.
+            # The file is ~0.5 MB; writing it is free next to an epoch.
+            torch.save({"state_dict": best_state,
+                        "normalizer": normalizer.state_dict(),
+                        "args": vars(args), "epoch": epoch,
+                        "best_val_mae": best_val_mae,
+                        "split": {"train": train_idx, "val": val_idx,
+                                  "test": test_idx},
+                        "feature_lens": {"orig_atom_fea_len": orig_atom_fea_len,
+                                         "nbr_fea_len": nbr_fea_len}},
+                       os.path.join(args.out_dir, f"model_{args.tag}.partial.pth"))
+            # Per-epoch history too, so the training curve is inspectable while
+            # the run is still going.
+            pd.DataFrame(history).to_csv(
+                os.path.join(args.out_dir, f"history_{args.tag}.csv"), index=False)
 
         if epoch % 10 == 0 or epoch == args.epochs - 1:
             print(f"epoch {epoch:3d}  train_loss {train_loss:.4f}  "
@@ -273,13 +373,13 @@ def main():
 
     # Restore the best checkpoint before touching the test set.
     model.load_state_dict(best_state)
-    test_loss, test_mae = run_epoch(test_loader, model, criterion, normalizer)
+    test_loss, test_mae = run_epoch(test_loader, model, criterion, normalizer,
+                                    device=device)
     print(f"Best val MAE : {best_val_mae:.4f} log10(GPa)")
     print(f"Test MAE     : {test_mae:.4f} log10(GPa)")
 
     # --- Save everything the evaluation script will need -------------------
-    os.makedirs(args.out_dir, exist_ok=True)
-    tag = args.target
+    tag = args.tag
 
     torch.save({
         "state_dict": best_state,
@@ -298,11 +398,18 @@ def main():
         os.path.join(args.out_dir, f"history_{tag}.csv"), index=False)
 
     with open(os.path.join(args.out_dir, f"summary_{tag}.json"), "w") as fh:
-        json.dump({"target": tag, "n_total": len(dataset),
+        json.dump({"tag": tag, "target": args.target,
+                   "data_dir": os.path.basename(args.data_dir),
+                   "n_total": len(dataset),
                    "n_train": len(train_idx), "n_val": len(val_idx),
                    "n_test": len(test_idx), "best_val_mae": best_val_mae,
                    "test_mae": test_mae, "epochs": args.epochs,
                    "n_params": n_params, "seconds": elapsed}, fh, indent=2)
+
+    # The run finished, so the crash-recovery copy is now just clutter.
+    partial = os.path.join(args.out_dir, f"model_{tag}.partial.pth")
+    if os.path.exists(partial):
+        os.remove(partial)
 
     print(f"\nSaved to {args.out_dir}/:")
     print(f"  model_{tag}.pth      weights + normalizer + split")

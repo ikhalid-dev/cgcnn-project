@@ -24,9 +24,19 @@ checkpoints/
 runs/
 wandb/
 
-# ...but DO keep our trained checkpoints: they are ~120 KB each and having them
-# in the repo means a fresh clone can reproduce every figure without retraining.
+# ...but DO keep our trained checkpoints: they are 120-380 KB each and having
+# them in the repo means a fresh clone can reproduce every figure without
+# retraining.
 !results/model_*.pth
+
+# ...except the crash-recovery copies 02_train.py writes mid-run. They are
+# deleted when a run finishes normally, so one only exists while training is in
+# flight or after a crash - never something to commit.
+results/model_*.partial.pth
+
+# The 240 MB graph cache. Regenerate with scripts/01b_prepare_full_dataset.py
+# (~6 min); data_full/labels.csv and mp_to_mb.csv next to it ARE committed.
+data_full/graphs.pt
 
 # Cloned upstream repos (see README)
 external/

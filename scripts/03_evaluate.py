@@ -63,7 +63,7 @@ warnings.filterwarnings("ignore")
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-from cgcnn_scratch.data import CIFData, Normalizer, collate_pool  # noqa: E402
+from cgcnn_scratch.data import Normalizer, collate_pool, load_dataset_for  # noqa: E402
 from cgcnn_scratch.model import CrystalGraphConvNet  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -86,6 +86,28 @@ MUTED = "#898781"     # axis labels, ticks
 GRID = "#e1e0d9"      # hairline gridlines
 SURFACE = "#fcfcfb"   # chart background
 
+
+def mark_style(n):
+    """Marker size, alpha and ring width appropriate to n points.
+
+    The same figure now has to work at two very different densities: the
+    278-crystal run puts ~41 points on the parity plot, the 10,987-crystal run
+    puts ~1,648. Mark specs that read well sparse turn into a solid blob dense.
+
+    Two things change with n. Marks shrink and go more transparent, so that
+    overlap becomes visible as tonal build-up rather than a filled region - at
+    high density the shading IS the information. And the 2px surface ring, which
+    exists to separate individual overlapping marks, is dropped: past a few
+    hundred points it stops separating anything and just floods the plot with
+    pale halos that lighten the dense regions most, exactly backwards.
+    """
+    if n <= 150:
+        return dict(s=46, alpha=0.90, linewidth=0.8)
+    if n <= 800:
+        return dict(s=18, alpha=0.45, linewidth=0.0)
+    return dict(s=7, alpha=0.28, linewidth=0.0)
+
+
 plt.rcParams.update({
     "figure.facecolor": SURFACE,
     "axes.facecolor": SURFACE,
@@ -103,22 +125,18 @@ plt.rcParams.update({
 })
 
 
-def load_model_and_data(target, data_dir, results_dir):
-    """Rebuild the dataset, model and normalizer exactly as training left them."""
-    ckpt = torch.load(os.path.join(results_dir, f"model_{target}.pth"),
+def load_model_and_data(target, tag, data_dir, results_dir):
+    """Rebuild the dataset, model and normalizer exactly as training left them.
+
+    `load_dataset_for` is the same function 02_train.py used, so the dataset is
+    rebuilt in identical order - which is what makes the split indices stored in
+    the checkpoint mean the same thing here as they did during training.
+    """
+    ckpt = torch.load(os.path.join(results_dir, f"model_{tag}.pth"),
                       map_location="cpu", weights_only=False)
     targs = ckpt["args"]
 
-    # 02_train.py wrote id_prop.csv for this target; regenerate it so that
-    # evaluating G_VRH after training K_VRH does not silently read the wrong
-    # targets left behind by the previous run.
-    labels = pd.read_csv(os.path.join(data_dir, "labels.csv"))
-    labels = labels[labels[target] > 0]
-    pd.DataFrame({"cif_id": labels.material_id + ".cif",
-                  "target": np.log10(labels[target])}).to_csv(
-        os.path.join(data_dir, "cifs", "id_prop.csv"), index=False)
-
-    dataset = CIFData(os.path.join(data_dir, "cifs"))
+    dataset = load_dataset_for(data_dir, target)
 
     model = CrystalGraphConvNet(
         ckpt["feature_lens"]["orig_atom_fea_len"],
@@ -182,7 +200,29 @@ def metrics(df):
             "R2": 1 - residual_ss / total_ss if total_ss > 0 else float("nan"),
             "MAE_GPa": sub.abs_error_GPa.mean(),
         })
-    return pd.DataFrame(out)
+    return add_relative_columns(pd.DataFrame(out), df)
+
+
+def add_relative_columns(scores, df):
+    """Add the two error measures that are easier to talk about than log-MAE.
+
+    rel_error_pct   the typical MULTIPLICATIVE error, 10^MAE - 1. An MAE of
+                    0.070 log10 means predictions land within a factor of
+                    10^0.070 = 1.17 of the truth, i.e. 17%. This is the honest
+                    "percent error" for a model trained in log space, and it is
+                    the number to compare against the paper.
+    pct_of_range    MAE in GPa as a fraction of the full span of the data - the
+                    "normalised MAE" convention. Much smaller than
+                    rel_error_pct, because the denominator is the whole
+                    1-575 GPa range rather than each crystal's own value. Quote
+                    it only alongside rel_error_pct; on its own it flatters the
+                    model, since a wide data range shrinks it for free.
+    """
+    span = df.true_GPa.max() - df.true_GPa.min()
+    scores = scores.copy()
+    scores["rel_error_pct"] = (10 ** scores.MAE_log10 - 1) * 100
+    scores["pct_of_range"] = scores.MAE_GPa / span * 100
+    return scores
 
 
 def plot_parity(df, target, path):
@@ -205,12 +245,17 @@ def plot_parity(df, target, path):
             linestyle="--", zorder=1)
 
     # Train/val points are context, so they recede; test points are the result,
-    # so they get the saturated colour and a surface-coloured ring to keep
-    # overlapping markers legible.
-    ax.scatter(train_val.true_GPa, train_val.pred_GPa, s=22, color=MUTED,
-               alpha=0.30, linewidth=0, zorder=2, label="Train / validation")
-    ax.scatter(test.true_GPa, test.pred_GPa, s=46, color=BLUE, alpha=0.9,
-               edgecolor=SURFACE, linewidth=0.8, zorder=3, label="Test")
+    # so they get the saturated colour. Sizes adapt to how many points there are
+    # (see mark_style) - the context cloud is ~5x larger than the test set, so
+    # it is sized against its own count rather than the test count.
+    context = mark_style(len(train_val))
+    result = mark_style(len(test))
+    ax.scatter(train_val.true_GPa, train_val.pred_GPa, color=MUTED,
+               s=context["s"] * 0.7, alpha=context["alpha"] * 0.55,
+               linewidth=0, zorder=2, label="Train / validation")
+    ax.scatter(test.true_GPa, test.pred_GPa, color=BLUE, s=result["s"],
+               alpha=result["alpha"], edgecolor=SURFACE,
+               linewidth=result["linewidth"], zorder=3, label="Test")
 
     # Log scales: the moduli span two orders of magnitude, and the model was
     # trained on log10, so a log axis is the space the errors actually live in.
@@ -236,7 +281,15 @@ def plot_parity(df, target, path):
             bbox=dict(boxstyle="round,pad=0.5", facecolor=SURFACE,
                       edgecolor=GRID, linewidth=0.8))
 
-    ax.legend(loc="lower right", frameon=False, fontsize=9, labelcolor=INK_SOFT)
+    # The legend swatch must stay readable even when the plotted marks have
+    # shrunk to 7px for density - identity is carried by the legend, so it is
+    # the one place the mark is not allowed to become a speck. Scale the swatch
+    # back up to a fixed readable size and undo the transparency with it.
+    legend = ax.legend(loc="lower right", frameon=False, fontsize=9,
+                       labelcolor=INK_SOFT,
+                       markerscale=max(1.0, 40.0 / result["s"]))
+    for handle in legend.legend_handles:
+        handle.set_alpha(0.95)
     ax.grid(True, which="major", linewidth=0.6, alpha=0.7)
     ax.set_axisbelow(True)  # gridlines behind the data
 
@@ -301,23 +354,38 @@ def plot_residuals(df, target, path):
     # Left: signed error histogram. Centred on zero means unbiased; shifted
     # means the model systematically over- or under-predicts.
     signed = test.pred_log10 - test.true_log10
-    ax_hist.hist(signed, bins=20, color=BLUE, alpha=0.85, edgecolor=SURFACE,
-                 linewidth=0.8)
+
+    # A couple of catastrophic outliers would otherwise stretch the x-axis to
+    # +/-1.7 and squash the entire distribution into three bars. Clip the view
+    # to where the mass actually is - and say how many crystals fall outside,
+    # so tightening the axis hides nothing.
+    limit = max(float(np.quantile(np.abs(signed), 0.995)), 0.05) * 1.15
+    outside = int((np.abs(signed) > limit).sum())
+
+    # More crystals support more bins without the histogram going spiky.
+    bins = np.linspace(-limit, limit, 21 if len(test) <= 300 else 51)
+    ax_hist.hist(np.clip(signed, -limit, limit), bins=bins, color=BLUE,
+                 alpha=0.85, edgecolor=SURFACE, linewidth=0.8)
+    ax_hist.set_xlim(-limit, limit)
     ax_hist.axvline(0, color=MUTED, linestyle="--", linewidth=1)
     ax_hist.axvline(signed.mean(), color=ORANGE, linewidth=2)
     # Corner label rather than one pinned to the mean line - the tallest bars
     # sit near zero, which is exactly where that line falls.
-    ax_hist.text(0.97, 0.95, f"mean bias {signed.mean():+.3f}",
-                 transform=ax_hist.transAxes, ha="right", va="top",
-                 fontsize=9, color=INK_SOFT)
+    note = f"mean bias {signed.mean():+.3f}"
+    if outside:
+        note += f"\n{outside} crystal{'s' if outside > 1 else ''} beyond axis"
+    ax_hist.text(0.97, 0.95, note, transform=ax_hist.transAxes, ha="right",
+                 va="top", fontsize=9, color=INK_SOFT)
     ax_hist.set_xlabel("Prediction error, log10(GPa)")
     ax_hist.set_ylabel("Test crystals")
     ax_hist.set_title("Error distribution", fontsize=11, pad=10)
 
     # Right: does accuracy degrade at the extremes? A funnel shape here means
     # the model is only reliable in the middle of the range.
-    ax_scatter.scatter(test.true_GPa, signed, s=40, color=BLUE, alpha=0.8,
-                       edgecolor=SURFACE, linewidth=0.8)
+    style = mark_style(len(test))
+    ax_scatter.scatter(test.true_GPa, signed, color=BLUE, s=style["s"],
+                       alpha=style["alpha"], edgecolor=SURFACE,
+                       linewidth=style["linewidth"])
     ax_scatter.axhline(0, color=MUTED, linestyle="--", linewidth=1)
     ax_scatter.set_xscale("log")
     ax_scatter.set_xlabel(f"DFT {target} (GPa)")
@@ -340,35 +408,39 @@ def main():
     parser.add_argument("--target", choices=["K_VRH", "G_VRH"], default="K_VRH")
     parser.add_argument("--data-dir", default=os.path.join(PROJECT_ROOT, "data"))
     parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results"))
+    parser.add_argument("--tag", default=None,
+                        help="which run to evaluate; must match 02_train.py's "
+                             "--tag. Defaults to --target.")
     args = parser.parse_args()
 
     target = args.target
-    print(f"=== Evaluating {target} ===\n")
+    tag = args.tag or target
+    print(f"=== Evaluating {tag} ===\n")
 
     model, dataset, normalizer, ckpt = load_model_and_data(
-        target, args.data_dir, args.results_dir)
+        target, tag, args.data_dir, args.results_dir)
     df = collect_predictions(model, dataset, normalizer, ckpt["split"])
 
     scores = metrics(df)
     print(scores.round(4).to_string(index=False))
 
     # --- CSV ---------------------------------------------------------------
-    pred_path = os.path.join(args.results_dir, f"predictions_{target}.csv")
+    pred_path = os.path.join(args.results_dir, f"predictions_{tag}.csv")
     df.sort_values(["split", "abs_error_log10"]).to_csv(pred_path, index=False)
 
-    metrics_path = os.path.join(args.results_dir, f"metrics_{target}.csv")
+    metrics_path = os.path.join(args.results_dir, f"metrics_{tag}.csv")
     scores.to_csv(metrics_path, index=False)
 
     # --- Figures -----------------------------------------------------------
-    history = pd.read_csv(os.path.join(args.results_dir, f"history_{target}.csv"))
-    plot_parity(df, target, os.path.join(args.results_dir, f"parity_{target}.png"))
-    plot_training(history, target, os.path.join(args.results_dir, f"training_{target}.png"))
-    plot_residuals(df, target, os.path.join(args.results_dir, f"residuals_{target}.png"))
+    history = pd.read_csv(os.path.join(args.results_dir, f"history_{tag}.csv"))
+    plot_parity(df, target, os.path.join(args.results_dir, f"parity_{tag}.png"))
+    plot_training(history, target, os.path.join(args.results_dir, f"training_{tag}.png"))
+    plot_residuals(df, target, os.path.join(args.results_dir, f"residuals_{tag}.png"))
 
     print(f"\nWrote:")
-    for name in [f"predictions_{target}.csv", f"metrics_{target}.csv",
-                 f"parity_{target}.png", f"training_{target}.png",
-                 f"residuals_{target}.png"]:
+    for name in [f"predictions_{tag}.csv", f"metrics_{tag}.csv",
+                 f"parity_{tag}.png", f"training_{tag}.png",
+                 f"residuals_{tag}.png"]:
         print(f"  results/{name}")
 
     # Worst predictions are worth eyeballing - they often reveal a systematic

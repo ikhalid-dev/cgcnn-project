@@ -10,8 +10,23 @@ There are three pieces of machinery here:
 
     GaussianDistance      expands a single bond length into a smooth vector
     AtomFeaturiser        looks up a fixed feature vector for each element
-    CIFData               a torch Dataset that ties it all together
+    structure_to_graph    the actual Structure -> graph conversion
+    CIFData               a torch Dataset that reads a directory of CIFs
+    GraphCacheData        a torch Dataset that reads pre-built graphs from disk
     collate_pool          batches variable-sized graphs into flat tensors
+
+WHY THERE ARE TWO DATASET CLASSES
+---------------------------------
+CIFData re-parses a .cif and redoes the neighbour search every time a graph is
+requested for the first time. That is fine for a few hundred crystals; at
+11,000 it costs the better part of an hour, and it has to be paid again in
+every new process. So `scripts/01b_prepare_full_dataset.py` runs the conversion
+ONCE and pickles the resulting tensors, and GraphCacheData just loads them.
+
+Both classes call the same `structure_to_graph`, which matters more than it
+sounds: if the training graphs and the prediction graphs were built by two
+slightly different code paths, the model would silently be fed features it was
+never trained on.
 
 WHY EXPAND DISTANCES INTO A VECTOR?
 -----------------------------------
@@ -105,6 +120,64 @@ class AtomFeaturiser(object):
         return len(self._embedding)
 
 
+def structure_to_graph(crystal, ari, gdf, max_num_nbr=12, radius=8):
+    """Convert one pymatgen Structure into (atom_fea, nbr_fea, nbr_fea_idx).
+
+    This is the single source of truth for how a crystal becomes a graph. Both
+    CIFData (training from a directory of CIFs) and the prediction script go
+    through here, so the features can never drift apart between the two.
+
+    Parameters
+    ----------
+    crystal : pymatgen Structure
+    ari : AtomFeaturiser
+    gdf : GaussianDistance
+    max_num_nbr : int
+        Neighbours kept per atom. Fixed so every atom yields the same shape.
+    radius : float
+        Neighbour search cutoff in Angstrom.
+
+    Returns
+    -------
+    (atom_fea, nbr_fea, nbr_fea_idx) as torch tensors.
+    """
+    # --- NODE FEATURES -------------------------------------------------------
+    # One row per atom, looked up by atomic number.
+    atom_fea = np.vstack([ari.get_atom_fea(crystal[i].specie.number)
+                          for i in range(len(crystal))])
+    atom_fea = torch.Tensor(atom_fea)
+
+    # --- EDGES AND EDGE FEATURES --------------------------------------------
+    # get_all_neighbors respects periodic boundary conditions, so atoms near a
+    # cell face correctly see their periodic images.
+    all_nbrs = crystal.get_all_neighbors(radius, include_index=True)
+    # Sort each atom's neighbours by distance so "nearest M" is well defined.
+    all_nbrs = [sorted(nbrs, key=lambda x: x[1]) for nbrs in all_nbrs]
+
+    nbr_fea_idx, nbr_fea = [], []
+    for nbr in all_nbrs:
+        if len(nbr) < max_num_nbr:
+            # Not enough neighbours within the cutoff. Pad the index list with 0
+            # and the distance list with radius + 1. The padded distance sits
+            # outside every Gaussian, so its expanded feature is ~0 and the
+            # padded neighbour contributes almost nothing.
+            nbr_fea_idx.append(
+                list(map(lambda x: x[2], nbr)) + [0] * (max_num_nbr - len(nbr)))
+            nbr_fea.append(
+                list(map(lambda x: x[1], nbr)) +
+                [radius + 1.] * (max_num_nbr - len(nbr)))
+        else:
+            # Plenty of neighbours - just take the closest max_num_nbr.
+            nbr_fea_idx.append(list(map(lambda x: x[2], nbr[:max_num_nbr])))
+            nbr_fea.append(list(map(lambda x: x[1], nbr[:max_num_nbr])))
+
+    nbr_fea_idx = np.array(nbr_fea_idx)
+    nbr_fea = np.array(nbr_fea)
+    nbr_fea = gdf.expand(nbr_fea)  # raw distances -> Gaussian vectors
+
+    return atom_fea, torch.Tensor(nbr_fea), torch.LongTensor(nbr_fea_idx)
+
+
 class CIFData(Dataset):
     """A torch Dataset that yields (graph, target, id) for each CIF.
 
@@ -179,48 +252,51 @@ class CIFData(Dataset):
     def __getitem__(self, idx):
         cif_id, target = self.id_prop_data[idx]
         crystal = Structure.from_file(os.path.join(self.root_dir, cif_id))
+        graph = structure_to_graph(crystal, self.ari, self.gdf,
+                                   self.max_num_nbr, self.radius)
+        return graph, torch.Tensor([float(target)]), cif_id
 
-        # --- NODE FEATURES ---------------------------------------------------
-        # One row per atom, looked up by atomic number.
-        atom_fea = np.vstack([self.ari.get_atom_fea(crystal[i].specie.number)
-                              for i in range(len(crystal))])
-        atom_fea = torch.Tensor(atom_fea)
 
-        # --- EDGES AND EDGE FEATURES ----------------------------------------
-        # get_all_neighbors respects periodic boundary conditions, so atoms
-        # near a cell face correctly see their periodic images.
-        all_nbrs = crystal.get_all_neighbors(self.radius, include_index=True)
-        # Sort each atom's neighbours by distance so "nearest M" is well defined.
-        all_nbrs = [sorted(nbrs, key=lambda x: x[1]) for nbrs in all_nbrs]
+class GraphCacheData(Dataset):
+    """Serve graphs that were already built and pickled to disk.
 
-        nbr_fea_idx, nbr_fea = [], []
-        for nbr in all_nbrs:
-            if len(nbr) < self.max_num_nbr:
-                # Not enough neighbours within the cutoff. Pad the index list
-                # with 0 and the distance list with radius + 1. The padded
-                # distance sits outside every Gaussian, so its expanded feature
-                # is ~0 and the padded neighbour contributes almost nothing.
-                nbr_fea_idx.append(
-                    list(map(lambda x: x[2], nbr)) +
-                    [0] * (self.max_num_nbr - len(nbr)))
-                nbr_fea.append(
-                    list(map(lambda x: x[1], nbr)) +
-                    [self.radius + 1.] * (self.max_num_nbr - len(nbr)))
-            else:
-                # Plenty of neighbours - just take the closest max_num_nbr.
-                nbr_fea_idx.append(list(map(lambda x: x[2],
-                                            nbr[:self.max_num_nbr])))
-                nbr_fea.append(list(map(lambda x: x[1],
-                                        nbr[:self.max_num_nbr])))
+    The cache file is whatever `scripts/01b_prepare_full_dataset.py` wrote: a
+    dict with a list of (atom_fea, nbr_fea, nbr_fea_idx) tuples and the ids that
+    go with them. Targets are supplied separately, because the same cache is
+    reused for both the bulk and the shear run - only the label column changes.
 
-        nbr_fea_idx = np.array(nbr_fea_idx)
-        nbr_fea = np.array(nbr_fea)
-        nbr_fea = self.gdf.expand(nbr_fea)  # raw distances -> Gaussian vectors
+    Parameters
+    ----------
+    cache_path : str
+        Path to the .pt written by the preparation script.
+    targets : dict
+        Maps id -> target value (already log10'd by the caller).
+    ids : list of str, optional
+        Restrict to (and order by) these ids. Defaults to every id in the cache
+        that also appears in `targets`.
+    """
 
-        nbr_fea = torch.Tensor(nbr_fea)
-        nbr_fea_idx = torch.LongTensor(nbr_fea_idx)
-        target = torch.Tensor([float(target)])
-        return (atom_fea, nbr_fea, nbr_fea_idx), target, cif_id
+    def __init__(self, cache_path, targets, ids=None):
+        blob = torch.load(cache_path)
+        self.graphs = dict(zip(blob["ids"], blob["graphs"]))
+
+        if ids is None:
+            # Keep only ids we have a label for, in the cache's own order.
+            ids = [i for i in blob["ids"] if i in targets]
+        missing = [i for i in ids if i not in self.graphs]
+        assert not missing, f"{len(missing)} ids missing from cache, e.g. {missing[:3]}"
+
+        self.ids = list(ids)
+        self.targets = targets
+
+    def __len__(self):
+        return len(self.ids)
+
+    def __getitem__(self, idx):
+        item_id = self.ids[idx]
+        return (self.graphs[item_id],
+                torch.Tensor([float(self.targets[item_id])]),
+                item_id)
 
 
 def collate_pool(dataset_list):
@@ -265,6 +341,53 @@ def collate_pool(dataset_list):
         batch_cif_ids
 
 
+def clean_labels(data_dir, target):
+    """Read labels.csv from a data dir and drop rows we cannot take a log of.
+
+    A modulus of zero or below is unphysical and indicates a bad DFT entry;
+    left in, log10 would hand the loss a -inf and destroy the whole run.
+    """
+    import pandas as pd
+
+    labels = pd.read_csv(os.path.join(data_dir, 'labels.csv'))
+    bad = labels[labels[target] <= 0]
+    if len(bad):
+        print(f'  dropping {len(bad)} rows with non-positive {target}')
+        labels = labels[labels[target] > 0]
+    return labels
+
+
+def load_dataset_for(data_dir, target):
+    """Build the Dataset for `target`, from a graph cache or from raw CIFs.
+
+    Which branch runs depends only on whether the data dir has a graphs.pt, i.e.
+    on whether 01b_prepare_full_dataset.py has been run for it. Training and
+    evaluation both come through here so they can never disagree about what the
+    dataset is or what order it is in - the split indices saved in a checkpoint
+    are only meaningful if the dataset is rebuilt identically.
+    """
+    import numpy as np
+    import pandas as pd
+
+    labels = clean_labels(data_dir, target)
+    cache_path = os.path.join(data_dir, 'graphs.pt')
+
+    if os.path.exists(cache_path):
+        # --- Big run: pre-built graphs, keyed by matbench id ----------------
+        print(f'Using pre-built graph cache: {cache_path}')
+        targets = dict(zip(labels.mb_id, np.log10(labels[target])))
+        return GraphCacheData(cache_path, targets)
+
+    # --- Small run: parse the CIFs, via the id_prop.csv CIFData expects -----
+    # Rewritten every time so that evaluating G_VRH after training K_VRH cannot
+    # silently read the targets left behind by the previous run.
+    print(f'Reading CIFs from {data_dir}/cifs')
+    pd.DataFrame({'cif_id': labels.material_id + '.cif',
+                  'target': np.log10(labels[target])}).to_csv(
+        os.path.join(data_dir, 'cifs', 'id_prop.csv'), index=False)
+    return CIFData(os.path.join(data_dir, 'cifs'))
+
+
 class Normalizer(object):
     """Standardise targets to zero mean and unit variance, and undo it later.
 
@@ -287,8 +410,20 @@ class Normalizer(object):
     def denorm(self, normed_tensor):
         return normed_tensor * self.std + self.mean
 
+    def to(self, device):
+        """Move the statistics onto `device`.
+
+        norm/denorm combine these with the model's output, so they have to live
+        wherever the model does or torch raises a device mismatch.
+        """
+        self.mean = self.mean.to(device)
+        self.std = self.std.to(device)
+        return self
+
     def state_dict(self):
-        return {'mean': self.mean, 'std': self.std}
+        # Always serialise on CPU. A checkpoint written on a GPU box has to
+        # load on a laptop that has no CUDA at all.
+        return {'mean': self.mean.cpu(), 'std': self.std.cpu()}
 
     def load_state_dict(self, state_dict):
         self.mean = state_dict['mean']

@@ -24,10 +24,13 @@ CIF ──► CGCNN ──► bulk modulus B, shear modulus G
 | Path | What it is |
 |---|---|
 | `cgcnn_scratch/` | **Our own CGCNN implementation** — heavily commented `model.py` and `data.py` |
-| `scripts/01_prepare_dataset.py` | Match raw CIFs to DFT elastic moduli → labelled training set |
+| `scripts/01_prepare_dataset.py` | Match raw CIFs to DFT elastic moduli → small labelled set (278) |
+| `scripts/01b_prepare_full_dataset.py` | Build the **full** matbench training set (10,987) as cached graphs |
 | `scripts/02_train.py` | Train a CGCNN from scratch for one modulus |
 | `scripts/03_evaluate.py` | Metrics, prediction CSVs, and figures |
+| `scripts/04_predict_moduli.py` | Predict K and G for all 1,213 PINK CIFs → stage-2 input |
 | `data/` | `labels.csv` (278 labelled crystals) + the matched CIFs |
+| `data_full/` | `labels.csv` (10,987), `graphs.pt` cache, `mp_to_mb.csv` provenance |
 | `results/` | Trained checkpoints, per-epoch history, predictions, figures |
 | `pink_predict.py` | Separate: PINK inference using the *paper's* pre-trained models |
 | `complete-data/` | 1,213 Materials Project CIFs (raw input) |
@@ -76,6 +79,138 @@ as a 26k-parameter network on 195 samples must.
 Figures land in `results/`: `parity_*.png` (predicted vs DFT),
 `training_*.png` (loss and MAE per epoch), `residuals_*.png` (error
 distribution and error vs stiffness).
+
+## Stage 1b: scale to the full matbench set (10,987 crystals)
+
+The 278-crystal experiment above is limited by **labels, not structures**. Our
+1,213 CIFs are fine; only 278 of them have ever had an elastic tensor computed.
+Intersecting the two sets throws away 97% of the available labels.
+
+So stop treating the 1,213 CIFs as the universe. The labels live in matbench, so
+train on *all* of matbench — the same 10,987 crystals the paper used — and let
+our 1,213 CIFs be what they should always have been: the **prediction** set that
+feeds the κ_L stage.
+
+```bash
+python scripts/01b_prepare_full_dataset.py      # ~6 min, once
+python scripts/02_train.py --target K_VRH --data-dir data_full --tag K_VRH_full \
+    --epochs 150 --batch-size 128 --lr 0.01 --atom-fea-len 64 --h-fea-len 128
+python scripts/03_evaluate.py --target K_VRH --data-dir data_full --tag K_VRH_full
+# ...and the same two commands with G_VRH / G_VRH_full
+python scripts/04_predict_moduli.py             # → results/pink_moduli_predictions.csv
+```
+
+Two things to know about how this is built:
+
+**Graphs are cached, not re-parsed.** The slow step in the whole pipeline is
+turning a crystal into a graph — a periodic neighbour search per atom. Rather
+than round-trip 10,987 matbench `Structure` objects through `.cif` files on disk
+and re-parse them on every run, `01b` converts them once and pickles the tensors
+to `data_full/graphs.pt`. Both training runs then load it in seconds. The
+conversion goes through the same `structure_to_graph` that `CIFData` uses, so a
+cached graph is identical to one built from a CIF.
+
+**`--tag` keeps the two experiments apart.** The big run writes
+`model_K_VRH_full.pth`, `parity_K_VRH_full.png` and so on, so the 278-crystal
+results stay on disk for comparison instead of being overwritten.
+
+### Predictions carry their provenance
+
+278 of the 1,213 CIFs *are* in matbench, so the model was trained on them. A
+prediction for one of those is recall, not generalisation, and quoting it as
+evidence would be circular. Every row of `pink_moduli_predictions.csv` therefore
+carries a `provenance` column:
+
+| Value | Meaning |
+|---|---|
+| `train` / `val` | the model was fitted on this crystal — not evidence |
+| `test` | in matbench, held out during training — genuine evidence |
+| `unseen` | not in matbench at all; no DFT reference exists. This is the model doing its actual job |
+
+Rows also carry `K_VRH_dft` / `G_VRH_dft` where a reference exists, so the error
+on the 278 can be inspected directly rather than taken on trust.
+
+## Stage 1c: pushing the error down with an ensemble
+
+Three models per target, averaged. Different random initialisations land in
+different minima; they agree about the signal and disagree about their own
+noise, so averaging keeps the first and partially cancels the second. Worth
+10–15% off the error in practice.
+
+```bash
+# members 2 and 3 - note --split-seed is PINNED while --seed varies
+python scripts/02_train.py --target K_VRH --tag K_VRH_s1 --data-dir data_full \
+    --seed 1 --split-seed 42 --n-conv 4 --scheduler cosine --epochs 200 \
+    --batch-size 128 --lr 0.01 --atom-fea-len 64 --h-fea-len 128
+python scripts/05_ensemble.py --target K_VRH --data-dir data_full \
+    --tags K_VRH_full,K_VRH_s1,K_VRH_s2
+```
+
+**`--seed` and `--split-seed` are deliberately separate.** `--seed` controls
+weight initialisation and batch order — vary it, that is what makes members
+differ. `--split-seed` controls the train/val/test split and must be *identical*
+across members: if member A trained on a crystal member B held out, the
+ensemble's "test" score is partly measured on training data. `05_ensemble.py`
+refuses to combine members whose test splits disagree rather than trusting the
+caller to have got this right.
+
+Ensembling also averages **in log space, not in GPa**. The models are trained
+against a log-space loss, so that is where their errors are symmetric. Two
+members predicting 10 and 1000 GPa average to 100 GPa in log space and 505 GPa
+in linear space — and 100 is the defensible answer when members disagree that
+badly. The per-crystal spread between members is carried through to the output
+as a free uncertainty estimate.
+
+### How low can the error actually go?
+
+The model predicts log₁₀(modulus), so MAE converts to a *multiplicative* error
+of `10^MAE − 1`. Both numbers are reported in `metrics_*.csv` as
+`rel_error_pct` and `pct_of_range`.
+
+| | MAE log₁₀(GPa) | Relative error |
+|---|---|---|
+| 278-crystal model | 0.152 | 42% |
+| 10,987-crystal model | ≈0.07 | ≈17% |
+| PINK paper | ≈0.07 | ≈17% |
+| Best published on this benchmark (coGN) | ≈0.054 | ≈13% |
+
+**A ~2% relative error is not attainable here, by anyone.** The targets are
+DFT-computed elastic moduli, and DFT elastic constants themselves disagree with
+experiment by roughly 5–15%. A model cannot be more accurate than the labels it
+is fitted to, so 2% is below the noise floor of the training data — a model
+reporting it would be revealing a leak, not an achievement. The realistic floor
+for this architecture is ~0.06 log₁₀, about 15%.
+
+Note that `pct_of_range` (MAE in GPa over the full 1–575 GPa span) *does* come
+in under 2%. It is a legitimate normalised-MAE convention, but it flatters the
+model — a wide data range shrinks it for free — so it should only ever be quoted
+next to `rel_error_pct`, never instead of it.
+
+## Running it on a GPU (Colab)
+
+This laptop is an **Intel i5-6360U** — a 2016 dual-core 15 W ultrabook chip with
+no usable GPU (macOS 12 + torch 2.2 report `mps.is_available() == False`). At
+~26–34 s/epoch it takes about **9 hours** to train six ensemble members. A Colab
+T4 does the same work in roughly **30–60 minutes**.
+
+```bash
+python colab/PINK_CGCNN_colab.py     # regenerates colab/PINK_CGCNN.ipynb
+```
+
+Upload the notebook to [Colab](https://colab.research.google.com), set
+**Runtime → Change runtime type → T4 GPU**, and run it top to bottom.
+
+**The notebook is generated, not hand-maintained.** It embeds the current
+`cgcnn_scratch/` and `scripts/` as a base64 zip, because Colab cannot reach this
+private repo. Regenerate it after touching either — a stale embedded copy would
+train with the wrong featuriser and produce a model whose predictions look
+plausible and are wrong. Nothing is uploaded by hand, and the 240 MB graph cache
+is not transferred at all: the notebook rebuilds it from matbench in ~2 minutes,
+which is faster than pushing it over a network.
+
+`04_predict_moduli.py` stays on the laptop — it needs the 1,213 local CIFs,
+which never leave it. Checkpoints are always serialised on CPU, so GPU-trained
+weights load here without CUDA.
 
 ## Setup
 
