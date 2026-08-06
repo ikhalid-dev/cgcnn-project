@@ -38,7 +38,7 @@ Only the TEST numbers are meaningful as a measure of generalisation. Train
 numbers tell you the model has capacity; validation numbers were used to pick
 the checkpoint, so they are mildly optimistic. The script reports all three so
 the gap between them is visible - a large train/test gap is the signature of
-overfitting, which is exactly what we expect to have to manage on 278 samples.
+overfitting.
 """
 
 import argparse
@@ -90,9 +90,9 @@ SURFACE = "#fcfcfb"   # chart background
 def mark_style(n):
     """Marker size, alpha and ring width appropriate to n points.
 
-    The same figure now has to work at two very different densities: the
-    278-crystal run puts ~41 points on the parity plot, the 10,987-crystal run
-    puts ~1,648. Mark specs that read well sparse turn into a solid blob dense.
+    The parity plot carries ~1,648 test points and ~9,300 context points, but
+    the same code also renders small subsets. Mark specs that read well sparse
+    turn into a solid blob dense, so they scale with n.
 
     Two things change with n. Marks shrink and go more transparent, so that
     overlap becomes visible as tonal build-up rather than a filled region - at
@@ -406,7 +406,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--target", choices=["K_VRH", "G_VRH"], default="K_VRH")
-    parser.add_argument("--data-dir", default=os.path.join(PROJECT_ROOT, "data"))
+    parser.add_argument("--data-dir", default=os.path.join(PROJECT_ROOT, "data_full"))
     parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results"))
     parser.add_argument("--tag", default=None,
                         help="which run to evaluate; must match 02_train.py's "

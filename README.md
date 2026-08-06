@@ -43,7 +43,6 @@ For scale:
 | **This work (bulk ensemble)** | **0.0630** |
 | PINK paper | ≈0.07 |
 | Best published on this benchmark ([coGN](https://matbench.materialsproject.org/)) | ≈0.054 |
-| Our earlier 278-crystal model | 0.152 |
 
 The bulk ensemble slightly beats the paper it reproduces and sits between it and the state of the
 art. Full breakdown in [`results/RESULTS.md`](results/RESULTS.md).
@@ -129,7 +128,6 @@ Detailed in [`docs/method.pdf`](docs/method.pdf); in brief:
 | Path | What it is |
 |---|---|
 | `cgcnn_scratch/` | The network. `model.py` (conv, pooling), `data.py` (CIF → graph) |
-| `scripts/01_prepare_dataset.py` | Small 278-crystal set (superseded; kept for the comparison) |
 | `scripts/01b_prepare_full_dataset.py` | **The training set**: all 10,987 matbench crystals |
 | `scripts/02_train.py` | Train one model |
 | `scripts/03_evaluate.py` | Metrics, parity/residual/training figures |
@@ -138,18 +136,16 @@ Detailed in [`docs/method.pdf`](docs/method.pdf); in brief:
 | `scripts/06_summarise.py` | Collapse all runs into one table + `RESULTS.md` |
 | `run_pipeline.sh` | Everything above, in order |
 | `results/` | Checkpoints, metrics, figures, predictions |
-| `results/archive/` | Superseded runs, kept for comparison (see below) |
+| `results/archive/` | One superseded run, kept for comparison (see below) |
 | `complete-data/` | The 1,213 Materials Project CIFs (prediction set) |
 | `data_full/` | Labels + provenance mapping for the 10,987 training crystals |
 | `colab/`, `kaggle/` | GPU runners (see `docs/method.pdf` §7) |
 | `docs/` | The method write-up and its LaTeX source |
 | `pink_predict.py` | Separate: full κ_L inference using the *paper's* pre-trained weights |
 
-`results/archive/` holds two superseded runs: `small-278/` (the first attempt, trained only on the
-278 crystals that overlap matbench) and `cpu-150epoch/` (150 epochs with a plateau LR schedule
-instead of 200 with cosine). Both share `--split-seed 42` with the current models, so they remain
-directly comparable — they are the evidence for what the dataset change and the schedule change
-each bought.
+`results/archive/cpu-150epoch/` holds one superseded run: 150 epochs with a plateau LR schedule
+instead of 200 with cosine annealing. It shares `--split-seed 42` with the current models, so it
+remains directly comparable — it is the evidence for what the schedule change bought.
 
 ## Where the data comes from
 
@@ -157,19 +153,18 @@ each bought.
 *prediction* set.
 
 **Labels.** From the matbench elastic benchmarks — `matbench_log_kvrh` and `matbench_log_gvrh`,
-10,987 DFT-computed entries each, the same data the paper trained on. Downloaded automatically by
-`matminer` on first run.
+10,987 DFT-computed entries each, the same data the paper trained on. These are the *training*
+set. Downloaded automatically by `matminer` on first run.
 
 A CIF says where the atoms are; it does not say what the modulus is. The two sets are joined on
 *structure*, not ID, because matbench strips Materials Project IDs: bucket by reduced formula
 (cheap), then confirm with pymatgen's symmetry-aware `StructureMatcher`. **278 of the 1,213 match**
 — that is the ceiling, not a bug, since matbench covers ~11k of MP's ~150k materials.
 
-**This is the key methodological point.** Our first attempt trained on only those 278 overlapping
-crystals and reached MAE 0.152. But the 1,213 CIFs were never the limiting factor — *labels* were,
-and intersecting the two sets threw away 97% of the available ones. Training on all 10,987
-matbench crystals instead, and treating the 1,213 CIFs purely as a prediction set, more than halved
-the error. That is also what the paper does.
+**This is the key methodological point.** It is tempting to label what you can and train on the
+overlap — but the 1,213 CIFs were never the limiting factor, *labels* were, and intersecting the
+two sets discards 97% of the labels that exist. We instead train on all 10,987 matbench crystals
+and treat the 1,213 CIFs purely as a prediction set, which is also what the paper does.
 
 ## Environment
 

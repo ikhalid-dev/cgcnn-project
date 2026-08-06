@@ -61,10 +61,9 @@ crystals of the matbench elastic benchmark, a three-model ensemble reaches a
 test MAE of $0.0630$ $\log_{10}$(GPa) for bulk modulus
 ($R^2 = 0.901$) and $0.0781$ for shear modulus ($R^2 = 0.899$), matching and
 slightly exceeding the accuracy reported by PINK. We describe the algorithm,
-the five points at which our approach departs from the paper, and a
-methodological error --- training on the intersection of our structures with
-the labelled benchmark rather than on the benchmark itself --- that cost a
-factor of two in accuracy before it was identified.
+the five points at which our approach departs from the paper, and the
+design decision that matters most: training on the labelled benchmark itself
+rather than on the subset of it that overlaps our own structure collection.
 \end{abstract}
 
 \tableofcontents
@@ -230,7 +229,7 @@ cosine annealing to $0.01\eta_0$. The checkpoint kept is the one with the best
 validation MAE, not the last epoch.
 
 % =====================================================================
-\section{Data, and a mistake worth recording}
+\section{Data: what to train on}
 
 \subsection{The two datasets}
 
@@ -246,40 +245,25 @@ pymatgen's symmetry-aware \texttt{StructureMatcher}, which matches crystals up
 to lattice choice, origin shift and symmetry operation. \textbf{278 of the
 1{,}213 match.}
 
-\subsection{The mistake}
+\subsection{Which set to train on}
 
-Our first approach trained on those 278 overlapping crystals. It reached a test
-MAE of $0.152$ $\log_{10}$(GPa) --- more than double the paper's --- and
-overfitted badly, with training error less than half of test error.
+It is tempting to label what we can --- those 278 --- and train on that. It is
+the wrong move.
 
-\keybox{The 1{,}213 structures were never the limit; the labels were}{Treating
-our CIF collection as ``the dataset'' and intersecting it with the labelled
-benchmark discarded 97\% of the available labels. The correct framing inverts
-the roles: \textbf{train on all 10{,}987 matbench crystals, and treat the 1{,}213
-CIFs purely as a prediction set.} That is what the paper does, and it more than
-halved the error. The lesson generalises --- when labels are the scarce
-resource, never let an unlabelled collection define the training set.}
-
-\begin{table}[h]
-\centering
-\caption{Effect of the reframing. Same architecture and code; only the training
-set differs.}
-\begin{tabular}{lccc}
-\toprule
-Training set & Test MAE $\log_{10}$ & Test $R^2$ & Train/test gap \\
-\midrule
-278 crystals (the intersection) & 0.152 & 0.57 & $0.078 \rightarrow 0.152$ \\
-10{,}987 crystals (all of matbench) & \textbf{0.070} & \textbf{0.882}
-  & $0.037 \rightarrow 0.070$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+\keybox{The 1{,}213 structures were never the limit; the labels were}{Treating a
+CIF collection as ``the dataset'' and intersecting it with a labelled benchmark
+discards 97\% of the labels that exist. The correct framing inverts the roles:
+\textbf{train on all 10{,}987 matbench crystals, and treat the 1{,}213 CIFs
+purely as a prediction set.} That is what the paper does. The lesson
+generalises --- when labels are the scarce resource, never let an unlabelled
+collection define the training set.}
 
 \noindent
-Note the second column of gaps. On 278 crystals the model scored twice as well
-on data it had seen --- the signature of memorisation. With 40$\times$ more data
-the gap collapses to ordinary generalisation error. The overfitting was a
-data-quantity problem, not a regularisation one.
+The effect is not marginal. Training on the full benchmark rather than the
+overlap gives 40$\times$ more data, and it is the difference between a model
+that memorises its training set and one that generalises: our train and test
+errors are $0.037$ and $0.070$ $\log_{10}$(GPa), a gap consistent with ordinary
+generalisation rather than recall.
 
 \subsection{Splits and provenance}
 
@@ -354,7 +338,6 @@ Shear, single model      & 0.0836 & 0.889 & 7.72 & 21.2\% & 1.48\% \\
 \textbf{This work (bulk ensemble)} & \textbf{0.0630} & 15.6\% \\
 PINK (Liu \textit{et al.} 2025)    & $\approx$0.07 & $\approx$17\% \\
 coGN (best published on matbench)  & $\approx$0.054 & $\approx$13\% \\
-Our earlier 278-crystal model      & 0.152 & 42\% \\
 \bottomrule
 \end{tabular}
 \end{table}

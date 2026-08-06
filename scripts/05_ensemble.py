@@ -146,11 +146,11 @@ def main():
                                              reference_split))
 
     # --- Average in log space ----------------------------------------------
+    # The split is stored as indices into the dataset; turn them back into ids.
     split_of = {}
     for split_name, indices in reference_split.items():
         for idx in indices:
-            split_of[dataset.ids[idx] if hasattr(dataset, "ids")
-                     else dataset.id_prop_data[idx][0]] = split_name
+            split_of[dataset.ids[idx]] = split_name
 
     rows = []
     for item_id, (true_log, _) in per_member[0].items():

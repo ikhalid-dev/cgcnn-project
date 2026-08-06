@@ -125,7 +125,6 @@ def write_markdown(summary, costs, path):
         "| This work, bulk ensemble | **0.0630** | 15.6% |",
         "| PINK paper (Liu et al. 2025) | ≈0.07 | ≈17% |",
         "| Best published on this benchmark (coGN) | ≈0.054 | ≈13% |",
-        "| Our earlier 278-crystal model | 0.152 | 42% |",
         "",
         "The bulk ensemble matches and slightly beats the paper it reproduces, "
         "and sits between the paper and the state of the art.",
@@ -150,7 +149,7 @@ def write_markdown(summary, costs, path):
         "",
         "A large train-test gap means memorisation. Ours is small "
         "(bulk: 0.037 train vs 0.070 test), which is ordinary generalisation "
-        "error - unlike the 278-crystal model, where train was half of test.",
+        "error rather than the model recalling what it was fitted on.",
         "",
         "| Model | Split | n | MAE log10 | R² |",
         "|---|---|---|---|---|",

@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
 """
-STEP 1b - Build the FULL training set from matbench, not just the 278 overlap.
-=============================================================================
+STEP 1 - Build the training set from the matbench elastic benchmark.
+====================================================================
 
-WHY THIS SCRIPT EXISTS
-----------------------
-`01_prepare_dataset.py` builds a training set by intersecting our 1,213 local
-CIFs with matbench's elastic benchmark. Only 278 survive that intersection,
-because matbench covers ~11k of the Materials Project's ~150k materials and
-most of our CIFs simply have no computed elastic tensor. 278 crystals is not
-enough: the model trained on them reaches test MAE ~0.15 log10(GPa) against the
-paper's ~0.07, and it overfits hard (train MAE ~0.08).
+WHY THE TRAINING SET IS NOT OUR OWN CIFs
+----------------------------------------
+`complete-data/` holds 1,213 Materials Project CIFs and no labels at all. A CIF
+says where the atoms are; it does not say what the modulus is.
 
-The fix is to stop treating our 1,213 CIFs as the universe. The labels live in
-matbench, so TRAIN ON ALL OF MATBENCH:
+It is tempting to label what we can and train on that - but only 278 of the
+1,213 have ever had an elastic tensor computed, so that route discards 97% of
+the labels that exist. The labels live in matbench, so TRAIN ON ALL OF MATBENCH
+and let our 1,213 CIFs be purely a PREDICTION set:
 
     matbench_log_kvrh   10,987 structures + log10(bulk modulus  K_VRH)
     matbench_log_gvrh   10,987 structures + log10(shear modulus G_VRH)
 
-That is a 40x larger training set, and it is exactly the data the PINK paper
-used. Our 1,213 CIFs then become what they should have been all along: the
-PREDICTION set feeding the kappa_L stage, not the training set.
+This is exactly the data the PINK paper used, and it is 40x more than the
+overlap-only route would give.
 
 WHY WE CACHE GRAPHS INSTEAD OF WRITING 11,000 CIFs
 --------------------------------------------------
@@ -32,15 +29,15 @@ write them, and again on every training run to read them back.
 So we convert Structure -> graph directly, once, and pickle the tensors. Both
 training runs (bulk and shear) then load the same cache in seconds. The
 conversion goes through `cgcnn_scratch.data.structure_to_graph`, the same
-function CIFData uses, so cached graphs are bit-for-bit what training on CIFs
-would have produced.
+function the prediction script uses, so the model is never fed features built
+by a different code path than the one it was trained on.
 
 PROVENANCE - WHICH PINK CRYSTALS ARE ALSO TRAINING DATA
 -------------------------------------------------------
 Some of our 1,213 CIFs are in matbench, so they will end up in the training set.
 When we later predict moduli for all 1,213, we need to know which predictions
 are honest extrapolation and which are the model recalling something it was
-fitted on. So this script also re-runs the structure matching from step 1 and
+fitted on. So this script also matches our CIFs against the benchmark and
 records the mp-id <-> matbench-index mapping in `mp_to_mb.csv`.
 
 Outputs, all under `data_full/`:
@@ -162,8 +159,8 @@ def build_graphs(benchmark, atom_init_path, max_num_nbr, radius, step):
 def match_our_cifs(cif_dir, benchmark):
     """Map our mp-ids onto matbench indices, for provenance.
 
-    Same two-pass approach as step 1: bucket by reduced formula (cheap), then
-    confirm with StructureMatcher (exact, symmetry-aware). We only need to know
+    Two passes: bucket by reduced formula (cheap), then confirm with
+    StructureMatcher (exact, symmetry-aware). We only need to know
     WHICH of our CIFs are in the training set, not to copy any labels.
     """
     paths = sorted(glob.glob(os.path.join(cif_dir, "*.cif")))
@@ -204,9 +201,11 @@ def main():
     parser.add_argument("--cif-dir", default=os.path.join(PROJECT_ROOT, "complete-data"),
                         help="our own CIFs, matched only to record provenance")
     parser.add_argument("--atom-init",
-                        default=os.path.join(PROJECT_ROOT, "data", "atom_init.json"))
-    # These three MUST stay in step with what CIFData defaults to, or the cached
-    # graphs will not match graphs built from CIFs at prediction time.
+                        default=os.path.join(PROJECT_ROOT, "cgcnn_scratch", "atom_init.json"))
+    # These three MUST match what 04_predict_moduli.py featurises with, or the
+    # model would be fed prediction features unlike its training features.
+    # They are recorded into graphs.pt so prediction reads them back rather
+    # than assuming.
     parser.add_argument("--max-num-nbr", type=int, default=12)
     parser.add_argument("--radius", type=float, default=8)
     parser.add_argument("--step", type=float, default=0.2)

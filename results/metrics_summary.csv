@@ -10,4 +10,4 @@ K_VRH_ens,K_VRH,"bulk, 3-model ensemble",val,1648,0.06079,0.911367,10.110922,15.
 K_VRH_ens,K_VRH,"bulk, 3-model ensemble",test,1648,0.063015,0.901243,10.199829,15.615279,1.776974
 K_VRH_full,K_VRH,"bulk, single model (seed 42, n_conv 3)",train,7691,0.037478,0.974241,7.395944,9.013008,1.288492
 K_VRH_full,K_VRH,"bulk, single model (seed 42, n_conv 3)",val,1648,0.067235,0.894509,11.154451,16.744063,1.943284
-K_VRH_full,K_VRH,"bulk, single model (seed 42, n_conv 3)",test,1648,0.06956,0.882424,11.536922,17.370782,2.009917
+K_VRH_full,K_VRH,"bulk, single model (seed 42, n_conv 3)",test,1648,0.06956,0.882424,11.536923,17.370783,2.009917

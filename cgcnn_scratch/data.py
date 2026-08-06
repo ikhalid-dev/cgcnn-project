@@ -11,22 +11,21 @@ There are three pieces of machinery here:
     GaussianDistance      expands a single bond length into a smooth vector
     AtomFeaturiser        looks up a fixed feature vector for each element
     structure_to_graph    the actual Structure -> graph conversion
-    CIFData               a torch Dataset that reads a directory of CIFs
     GraphCacheData        a torch Dataset that reads pre-built graphs from disk
     collate_pool          batches variable-sized graphs into flat tensors
 
-WHY THERE ARE TWO DATASET CLASSES
----------------------------------
-CIFData re-parses a .cif and redoes the neighbour search every time a graph is
-requested for the first time. That is fine for a few hundred crystals; at
-11,000 it costs the better part of an hour, and it has to be paid again in
-every new process. So `scripts/01b_prepare_full_dataset.py` runs the conversion
-ONCE and pickles the resulting tensors, and GraphCacheData just loads them.
+WHY GRAPHS ARE CACHED
+---------------------
+Turning a crystal into a graph means a periodic neighbour search for every
+atom, which is the slowest step in the whole pipeline. Doing it lazily would
+cost the better part of an hour for 11,000 crystals, and it would have to be
+paid again in every new process. So `scripts/01b_prepare_full_dataset.py` runs
+the conversion ONCE and pickles the tensors; GraphCacheData just loads them.
 
-Both classes call the same `structure_to_graph`, which matters more than it
-sounds: if the training graphs and the prediction graphs were built by two
-slightly different code paths, the model would silently be fed features it was
-never trained on.
+Training and prediction both go through `structure_to_graph`, which matters
+more than it sounds: if the training graphs and the prediction graphs were
+built by two slightly different code paths, the model would silently be fed
+features it was never trained on.
 
 WHY EXPAND DISTANCES INTO A VECTOR?
 -----------------------------------
@@ -50,16 +49,18 @@ hidden space.
 
 from __future__ import print_function, division
 
-import csv
-import functools
+# torch MUST be imported before numpy. In a conda environment MKL loads its own
+# OpenMP runtime first, and the duplicate libiomp5 aborts the process with
+# "OMP: Error #15". Every script here orders its imports this way, but the
+# package has to be safe to import on its own too - `import cgcnn_scratch`
+# should not crash. Do not "tidy" these into alphabetical order.
+import torch
+from torch.utils.data import Dataset
+
 import json
 import os
-import random
 
 import numpy as np
-import torch
-from pymatgen.core.structure import Structure
-from torch.utils.data import Dataset
 
 
 class GaussianDistance(object):
@@ -123,9 +124,9 @@ class AtomFeaturiser(object):
 def structure_to_graph(crystal, ari, gdf, max_num_nbr=12, radius=8):
     """Convert one pymatgen Structure into (atom_fea, nbr_fea, nbr_fea_idx).
 
-    This is the single source of truth for how a crystal becomes a graph. Both
-    CIFData (training from a directory of CIFs) and the prediction script go
-    through here, so the features can never drift apart between the two.
+    This is the single source of truth for how a crystal becomes a graph. The
+    training-set builder and the prediction script both go through here, so the
+    features can never drift apart between the two.
 
     Parameters
     ----------
@@ -176,85 +177,6 @@ def structure_to_graph(crystal, ari, gdf, max_num_nbr=12, radius=8):
     nbr_fea = gdf.expand(nbr_fea)  # raw distances -> Gaussian vectors
 
     return atom_fea, torch.Tensor(nbr_fea), torch.LongTensor(nbr_fea_idx)
-
-
-class CIFData(Dataset):
-    """A torch Dataset that yields (graph, target, id) for each CIF.
-
-    Expects a directory laid out like:
-
-        root_dir/
-            atom_init.json      <- the element embedding table
-            id_prop.csv         <- two columns: filename, target value
-            mp-1234.cif
-            mp-5678.cif
-            ...
-
-    IMPORTANT - this differs from the original Xie CGCNN in two ways, chosen to
-    match the AI4Kappa fork so that its pre-trained checkpoints stay usable:
-
-        * id_prop.csv HAS a header row, which we skip.
-        * the first column is the FULL FILENAME including the .cif suffix,
-          not a bare id.
-
-    Getting either wrong fails quietly - a missing header silently eats your
-    first structure - so we validate explicitly below.
-    """
-
-    def __init__(self, root_dir, max_num_nbr=12, radius=8, dmin=0, step=0.2,
-                 random_seed=123):
-        """
-        Parameters
-        ----------
-        root_dir : str
-            Directory laid out as described above.
-        max_num_nbr : int
-            How many nearest neighbours to keep per atom. Fixed so that every
-            atom produces the same shaped tensor and batching is easy.
-        radius : float
-            Search cutoff in Angstrom. Neighbours further than this are never
-            considered, even if an atom has fewer than max_num_nbr of them.
-        dmin, step : float
-            Passed to GaussianDistance for the bond feature expansion.
-        random_seed : int
-            Seeds the shuffle of the id/property list so runs are reproducible.
-        """
-        self.root_dir = root_dir
-        self.max_num_nbr, self.radius = max_num_nbr, radius
-        assert os.path.exists(root_dir), f'root_dir does not exist: {root_dir}'
-
-        id_prop_file = os.path.join(self.root_dir, 'id_prop.csv')
-        assert os.path.exists(id_prop_file), 'id_prop.csv does not exist!'
-        with open(id_prop_file) as f:
-            reader = csv.reader(f)
-            next(reader)  # discard the header row
-            self.id_prop_data = [row for row in reader]
-
-        # Shuffle once, deterministically. Downstream code slices this list into
-        # train/val/test, so shuffling here removes any ordering bias that may
-        # be baked into the CSV (e.g. sorted by formula or by id).
-        random.seed(random_seed)
-        random.shuffle(self.id_prop_data)
-
-        atom_init_file = os.path.join(self.root_dir, 'atom_init.json')
-        assert os.path.exists(atom_init_file), 'atom_init.json does not exist!'
-        self.ari = AtomFeaturiser(atom_init_file)
-        self.gdf = GaussianDistance(dmin=dmin, dmax=self.radius, step=step)
-
-    def __len__(self):
-        return len(self.id_prop_data)
-
-    # Cache parsed graphs in RAM. Building a graph means a full neighbour
-    # search, which is the single slowest step in the whole pipeline - and every
-    # epoch asks for the same structures again. With a few hundred crystals the
-    # entire dataset fits in memory comfortably.
-    @functools.lru_cache(maxsize=None)
-    def __getitem__(self, idx):
-        cif_id, target = self.id_prop_data[idx]
-        crystal = Structure.from_file(os.path.join(self.root_dir, cif_id))
-        graph = structure_to_graph(crystal, self.ari, self.gdf,
-                                   self.max_num_nbr, self.radius)
-        return graph, torch.Tensor([float(target)]), cif_id
 
 
 class GraphCacheData(Dataset):
@@ -363,34 +285,24 @@ def clean_labels(data_dir, target):
 
 
 def load_dataset_for(data_dir, target):
-    """Build the Dataset for `target`, from a graph cache or from raw CIFs.
+    """Build the Dataset for `target` from the pre-built graph cache.
 
-    Which branch runs depends only on whether the data dir has a graphs.pt, i.e.
-    on whether 01b_prepare_full_dataset.py has been run for it. Training and
-    evaluation both come through here so they can never disagree about what the
-    dataset is or what order it is in - the split indices saved in a checkpoint
-    are only meaningful if the dataset is rebuilt identically.
+    Training and evaluation both come through here so they can never disagree
+    about what the dataset is or what order it is in - the split indices saved
+    in a checkpoint are only meaningful if the dataset is rebuilt identically.
     """
     import numpy as np
-    import pandas as pd
 
     labels = clean_labels(data_dir, target)
     cache_path = os.path.join(data_dir, 'graphs.pt')
+    if not os.path.exists(cache_path):
+        raise FileNotFoundError(
+            f'No graph cache at {cache_path}. Build it first with:\n'
+            f'    python scripts/01b_prepare_full_dataset.py')
 
-    if os.path.exists(cache_path):
-        # --- Big run: pre-built graphs, keyed by matbench id ----------------
-        print(f'Using pre-built graph cache: {cache_path}')
-        targets = dict(zip(labels.mb_id, np.log10(labels[target])))
-        return GraphCacheData(cache_path, targets)
-
-    # --- Small run: parse the CIFs, via the id_prop.csv CIFData expects -----
-    # Rewritten every time so that evaluating G_VRH after training K_VRH cannot
-    # silently read the targets left behind by the previous run.
-    print(f'Reading CIFs from {data_dir}/cifs')
-    pd.DataFrame({'cif_id': labels.material_id + '.cif',
-                  'target': np.log10(labels[target])}).to_csv(
-        os.path.join(data_dir, 'cifs', 'id_prop.csv'), index=False)
-    return CIFData(os.path.join(data_dir, 'cifs'))
+    print(f'Using pre-built graph cache: {cache_path}')
+    targets = dict(zip(labels.mb_id, np.log10(labels[target])))
+    return GraphCacheData(cache_path, targets)
 
 
 class Normalizer(object):

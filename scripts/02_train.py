@@ -8,21 +8,13 @@ Run this once per target:
     python scripts/02_train.py --target K_VRH    # bulk modulus
     python scripts/02_train.py --target G_VRH    # shear modulus
 
-TWO DATASETS, ONE SCRIPT
-------------------------
-`--data-dir` decides what we train on, and the script adapts to what it finds:
-
-    data/       278 crystals, the overlap between our CIFs and matbench.
-                Read as a directory of .cif files via CIFData.
-
-    data_full/  10,987 crystals, all of matbench's elastic benchmark, with
-                graphs pre-built by 01b_prepare_full_dataset.py. Read from
-                graphs.pt via GraphCacheData - no CIF parsing at all.
-
-If the data dir contains a graphs.pt we use the cache; otherwise we fall back to
-reading CIFs. Everything downstream - splitting, normalising, the training loop,
-the saved checkpoint format - is identical either way, which is the point: the
-278-crystal and 10,987-crystal runs differ only in their data.
+THE DATASET
+-----------
+`--data-dir` points at a directory prepared by 01b_prepare_full_dataset.py:
+`data_full/` holds all 10,987 crystals of matbench's elastic benchmark, with
+their graphs pre-built into graphs.pt. Nothing here parses CIFs - the graphs
+were converted once and pickled, because the periodic neighbour search is the
+slowest step in the pipeline.
 
 WHAT "FROM SCRATCH" MEANS HERE
 ------------------------------
@@ -46,30 +38,21 @@ KEY DESIGN DECISIONS, AND WHY
    SPLIT ONLY. Computing them over the full dataset would leak information
    about the test set into training and quietly inflate our scores.
 
-3. MODEL SIZE HAS TO MATCH DATA SIZE.
-   The paper trained on 10,987 crystals with atom_fea_len=64, h_fea_len=128.
-   With 278 samples that many parameters memorises the training set almost
-   immediately, so the DEFAULTS HERE ARE TRIMMED (32/64) for the small run.
-   When training on data_full/, pass the paper's widths explicitly:
-
-       --atom-fea-len 64 --h-fea-len 128
-
-   Leaving the small defaults on 11k crystals just underfits.
+3. MODEL SIZE MATCHES THE PAPER.
+   atom_fea_len=64, h_fea_len=128, 3 convolutions - the same widths the paper
+   used on this same 10,987-crystal dataset, giving ~81k parameters.
 
 4. WE KEEP THE BEST MODEL BY VALIDATION MAE, NOT THE LAST ONE.
    Small datasets produce noisy validation curves. The final epoch is very
    often not the best epoch, so we checkpoint whenever validation improves and
    restore that checkpoint at the end.
 
-HONEST EXPECTATION
-------------------
-On data/ (278 crystals) expect the model to learn the broad trend (soft vs
-stiff) but not to reach the paper's accuracy - test MAE lands around 0.15
-log10(GPa) against the paper's ~0.07, and train MAE sits at half the test MAE,
-which is overfitting exactly as a 26k-parameter model on 195 samples must.
-
-On data_full/ (10,987 crystals) we have the paper's own training set, so the
-paper's numbers are the target rather than an aspiration.
+WHAT TO EXPECT
+--------------
+This is the paper's own training set, so the paper's numbers (~0.07 log10 GPa
+test MAE) are the target rather than an aspiration. A single model lands at
+about 0.070 for bulk and 0.084 for shear; three of them ensembled by
+05_ensemble.py reach 0.063 and 0.078.
 """
 
 import argparse
@@ -103,9 +86,9 @@ from cgcnn_scratch.model import CrystalGraphConvNet  # noqa: E402
 def split_indices(n_total, train_ratio, val_ratio, seed):
     """Split [0, n_total) into train / validation / test index lists.
 
-    CIFData already shuffled its internal list with a fixed seed, but we
-    shuffle again here with our own seed so that the *split* can be varied
-    independently of the dataset ordering.
+    The dataset order is fixed by the graph cache, so this shuffle is what
+    makes the split random - and seeding it separately is what lets ensemble
+    members share one split while differing in initialisation.
     """
     rng = np.random.RandomState(seed)
     indices = rng.permutation(n_total)
@@ -202,20 +185,20 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--target", choices=["K_VRH", "G_VRH"], default="K_VRH",
                         help="which modulus to predict")
-    parser.add_argument("--data-dir", default=os.path.join(PROJECT_ROOT, "data"))
+    parser.add_argument("--data-dir", default=os.path.join(PROJECT_ROOT, "data_full"))
     parser.add_argument("--out-dir", default=os.path.join(PROJECT_ROOT, "results"))
     parser.add_argument("--tag", default=None,
                         help="suffix for the output files. Defaults to --target. "
-                             "Use e.g. K_VRH_full so the big run does not "
-                             "overwrite the 278-crystal results.")
+                             "Ensemble members need distinct tags, e.g. "
+                             "K_VRH_full / K_VRH_s1 / K_VRH_s2.")
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=0.02)
     parser.add_argument("--weight-decay", type=float, default=1e-5,
                         help="L2 penalty; small but non-zero helps on tiny datasets")
-    # Model size - deliberately smaller than the paper's, see docstring point 3.
-    parser.add_argument("--atom-fea-len", type=int, default=32)
-    parser.add_argument("--h-fea-len", type=int, default=64)
+    # Model size - the paper's widths, see docstring point 3.
+    parser.add_argument("--atom-fea-len", type=int, default=64)
+    parser.add_argument("--h-fea-len", type=int, default=128)
     parser.add_argument("--n-conv", type=int, default=3)
     parser.add_argument("--n-h", type=int, default=1)
     # Splits

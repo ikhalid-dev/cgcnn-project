@@ -15,17 +15,15 @@ physics half. PINK's pipeline is:
 Steps 1-3 built and trained the CGCNN. This script runs it over all 1,213 of our
 CIFs and writes the (K, G) table that the kappa_L stage consumes.
 
-WHY THE PREDICTIONS ARE TRUSTWORTHY HERE AND WERE NOT BEFORE
-------------------------------------------------------------
-The first version of this project trained on the 278 CIFs that happen to have
-matbench labels, then predicted the other 935 - training and predicting on
-nearly the same small pool. Now the model is trained on all 10,987 matbench
-crystals, and our 1,213 CIFs are purely a prediction set. That is the right way
-round, and it is what the PINK paper does.
+WHY EVERY ROW CARRIES ITS PROVENANCE
+------------------------------------
+The models are trained on all 10,987 matbench crystals, and these 1,213 CIFs
+are purely a prediction set - which is the right way round, and what the PINK
+paper does.
 
-278 of the 1,213 are still IN the training data, because they are in matbench.
-Those predictions are not evidence of anything - the model was fitted on them.
-So every row carries a `provenance` column:
+But 278 of the 1,213 ARE in matbench, so the model was fitted on them. A
+prediction for one of those is recall, not generalisation, and quoting it as
+evidence would be circular. So every row carries a `provenance` column:
 
     train / val / test   this crystal is in matbench and the model saw it in
                          that split. `test` rows are genuine held-out evidence;
@@ -73,9 +71,9 @@ from cgcnn_scratch.model import CrystalGraphConvNet  # noqa: E402
 class PredictionSet(torch.utils.data.Dataset):
     """Graphs built from a directory of CIFs, with no targets.
 
-    Deliberately mirrors CIFData's output shape - (graph, target, id) - so the
-    existing collate_pool works unchanged. The target slot is filled with a
-    dummy zero that is never read; only the model's output matters here.
+    Deliberately mirrors GraphCacheData's output shape - (graph, target, id) -
+    so the existing collate_pool works unchanged. The target slot is filled
+    with a dummy zero that is never read; only the model's output matters.
     """
 
     def __init__(self, graphs, ids):
@@ -242,7 +240,7 @@ def main():
     parser.add_argument("--data-full", default=os.path.join(PROJECT_ROOT, "data_full"))
     parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results"))
     parser.add_argument("--atom-init",
-                        default=os.path.join(PROJECT_ROOT, "data", "atom_init.json"))
+                        default=os.path.join(PROJECT_ROOT, "cgcnn_scratch", "atom_init.json"))
     parser.add_argument("--k-tag", default="K_VRH_full",
                         help="checkpoint tag(s) for the bulk modulus model. "
                              "Comma-separate several to average them as an "

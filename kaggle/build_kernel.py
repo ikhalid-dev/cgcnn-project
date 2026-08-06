@@ -52,7 +52,7 @@ BUNDLE = [
     "scripts/03_evaluate.py",
     "scripts/04_predict_moduli.py",
     "scripts/05_ensemble.py",
-    "data/atom_init.json",
+    "cgcnn_scratch/atom_init.json",
 ]
 
 
