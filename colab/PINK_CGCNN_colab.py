@@ -142,8 +142,9 @@ Six runs — three ensemble members per target. Each member varies `--seed`
 share one train/val/test split. Without that the ensemble's test score would be
 measured partly on data some members trained on.
 
-`--num-workers 2` matters on a GPU: with a fast device, building batches on the
-main thread becomes the bottleneck instead of the maths.
+`--num-workers 0` is deliberate: the graphs are already in RAM, so worker
+processes would only add per-batch pickling across a process boundary. Workers
+help when a dataset reads files; they cost here.
 """),
         # subprocess rather than a ! magic: ! inside a loop, with interpolated
         # variables and line continuations, is exactly where IPython's shell
@@ -155,12 +156,18 @@ import subprocess, sys, time
 COMMON = ["--data-dir", "data_full", "--batch-size", "128", "--lr", "0.01",
           "--atom-fea-len", "64", "--h-fea-len", "128", "--n-h", "1",
           "--split-seed", "42", "--scheduler", "cosine", "--epochs", "200",
-          "--device", "cuda", "--num-workers", "2"]
+          "--device", "cuda", "--num-workers", "0"]
 
 def run(args):
-    \"\"\"Run a pipeline step, streaming its output, and stop on failure.\"\"\"
+    \"\"\"Run a pipeline step, streaming its output, and stop on failure.
+
+    The -u matters. Python block-buffers stdout at 8 KB when it is not a
+    terminal, and a whole 200-epoch run prints only ~2 KB - so without it the
+    cell shows NOTHING until each model finishes, and a healthy run is
+    indistinguishable from a hung one.
+    \"\"\"
     print("$", " ".join(args), flush=True)
-    result = subprocess.run([sys.executable] + args)
+    result = subprocess.run([sys.executable, "-u"] + args)
     if result.returncode:
         raise SystemExit(f"FAILED (exit {result.returncode}): {' '.join(args)}")
 
@@ -169,9 +176,13 @@ for target in ("K_VRH", "G_VRH"):
     for tag, seed, n_conv in ((f"{target}_full", "42", "3"),
                               (f"{target}_s1",   "1", "4"),
                               (f"{target}_s2",   "2", "3")):
-        print(f"\\n{'=' * 62}\\n{tag}  (seed {seed}, n_conv {n_conv})\\n{'=' * 62}")
+        t0 = time.time()
+        print(f"\\n{'=' * 62}\\n{tag}  (seed {seed}, n_conv {n_conv})"
+              f"   [{(time.time() - start) / 60:.0f} min elapsed]\\n{'=' * 62}",
+              flush=True)
         run(["scripts/02_train.py", "--target", target, "--tag", tag,
              "--seed", seed, "--n-conv", n_conv] + COMMON)
+        print(f">>> {tag} done in {(time.time() - t0) / 60:.1f} min", flush=True)
 
 print(f"\\nAll six runs finished in {(time.time() - start) / 60:.0f} min")
 """),
