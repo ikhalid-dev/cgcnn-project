@@ -141,7 +141,29 @@ Detailed in [`docs/method.pdf`](docs/method.pdf); in brief:
 | `data_full/` | Labels + provenance mapping for the 10,987 training crystals |
 | `colab/`, `kaggle/` | GPU runners (see `docs/method.pdf` §7) |
 | `docs/` | The method write-up and its LaTeX source |
+| `presentation/` | A from-scratch-explainer Beamer deck for a non-CGCNN audience (see below) |
 | `pink_predict.py` | Separate: full κ_L inference using the *paper's* pre-trained weights |
+
+## The presentation
+
+**[`presentation/CGCNN_presentation.pdf`](presentation/CGCNN_presentation.pdf)** (34 slides, LaTeX/Beamer)
+teaches the whole project to someone who has never seen a CGCNN: why crystals need a graph
+representation at all, nodes/edges/cutoff radius worked through concretely in real rock-salt NaCl
+(own figures, generated from the actual CIF via `pymatgen`/`networkx` — not a hand-drawn schematic),
+the gated convolution and pooling explained before their equations, and then this project's own
+results — the same performance table, literature comparison, parity plots, residuals and ensemble
+figures as above.
+
+Like the method PDF, nothing is hand-typed: `presentation/make_figures.py` regenerates every figure
+and a `metrics.tex` macro file straight from `results/metrics_summary.csv`, so the talk can never go
+stale relative to the pipeline's actual output.
+
+```bash
+cd presentation && ./build.sh    # regenerates figures + metrics.tex, then compiles (xelatex)
+```
+
+Requires `xelatex` (for the Georgia/Avenir Next system fonts via `fontspec` — `pdflatex` will not
+work) and Python with `networkx`/`pymatgen`/`matplotlib` for the figure generator.
 
 `results/archive/cpu-150epoch/` holds one superseded run: 150 epochs with a plateau LR schedule
 instead of 200 with cosine annealing. It shares `--split-seed 42` with the current models, so it

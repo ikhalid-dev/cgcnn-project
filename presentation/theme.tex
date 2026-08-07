@@ -1,0 +1,133 @@
+% Custom beamer theme for the CGCNN presentation.
+% ================================================
+%
+% Kept separate from the content file so the visual system - colours, fonts,
+% the card/eyebrow building blocks - can be read and adjusted in one place
+% without wading through forty frames of prose.
+%
+% DESIGN
+% ------
+% Georgia for headings (a serif with the same weight/character as the
+% Cambria used in the project's other teaching decks), Avenir Next for body
+% text (same role as their Calibri). Both are macOS system fonts, loaded via
+% fontspec, so this MUST be built with xelatex or lualatex - not pdflatex.
+%
+% Cards are TikZ nodes with `text width` set and NO fixed height. That one
+% choice eliminates an entire class of bug: a fixed-height text box that
+% silently overflows its frame is exactly what an earlier (PowerPoint)
+% version of this deck kept getting wrong. A TikZ node sized only by its
+% content cannot overflow itself - it grows to fit, by construction.
+
+\usepackage{fontspec}
+\setmainfont{Avenir Next}
+\setsansfont{Avenir Next}
+\newfontfamily\headingfont{Georgia}
+\newfontfamily\monofont{Menlo}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,backgrounds,fit}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\graphicspath{{figures/}{../results/}}
+
+% --- Palette ----------------------------------------------------------------
+\definecolor{Navy}{HTML}{0F1B33}
+\definecolor{SlideBlue}{HTML}{1450AA}
+\definecolor{LightBlue}{HTML}{6FA8FF}
+\definecolor{SlideGreen}{HTML}{1E8E5A}
+\definecolor{SlideAmber}{HTML}{D97B12}
+\definecolor{SlideRed}{HTML}{B02A2A}
+\definecolor{SlideInk}{HTML}{1F2937}
+\definecolor{Muted}{HTML}{5B6B82}
+\definecolor{Subtle}{HTML}{AAB6C8}
+\definecolor{CardBg}{HTML}{F4F6FA}
+\definecolor{CardRule}{HTML}{D8E0EC}
+\definecolor{GreenBg}{HTML}{EFF5EF}
+\definecolor{GreenRule}{HTML}{C8E0C8}
+\definecolor{AmberBg}{HTML}{FDF4E8}
+\definecolor{AmberRule}{HTML}{F0D8B8}
+\definecolor{BlueBg}{HTML}{E8EFFA}
+\definecolor{RedBg}{HTML}{FDF0F0}
+\definecolor{RedRule}{HTML}{F0C8C8}
+\definecolor{NaColor}{HTML}{7A3FA0}   % matches figures/nacl_*.png
+\definecolor{ClColor}{HTML}{1E8E5A}
+
+% --- Bare beamer plumbing: no default chrome, we draw our own -------------
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{%
+  \hfill\color{Subtle}\scriptsize\insertframenumber\,/\,\inserttotalframenumber\hspace{4mm}\vspace{2mm}
+}
+\setbeamercolor{background canvas}{bg=white}
+\setbeamersize{text margin left=0.85cm, text margin right=0.85cm}
+\setbeamertemplate{itemize item}{\textcolor{SlideBlue}{\raisebox{0.15em}{\rule{5pt}{5pt}}}}
+\setbeamertemplate{itemize subitem}{\textcolor{Muted}{--}}
+\setlength{\parskip}{0pt}
+
+% frametitle is unused throughout - every content frame builds its own header
+% with \SlideHeader, so its template is blanked out rather than left to draw
+% something nobody positioned.
+\setbeamertemplate{frametitle}{}
+\setbeamertemplate{headline}{}
+
+% --- The eyebrow + title header every content slide starts with -----------
+\newcommand{\Chapter}[0]{}
+\newcommand{\SlideHeader}[2]{%
+  \par\noindent{\color{SlideBlue}\bfseries\sffamily\fontsize{10}{12}\selectfont #1}\\[2pt]
+  \noindent{\color{SlideInk}\bfseries\headingfont\fontsize{19}{22}\selectfont #2}\\[5pt]%
+}
+
+% --- A soft card panel; sizes to its content, never the other way round ----
+% #1 width  #2 fill  #3 rule (use `none` for no border)  #4 content
+\newcommand{\Card}[4]{%
+  \begin{tikzpicture}
+    \node[rounded corners=4pt, fill=#2,
+          draw=#3, line width=0.7pt,
+          text width=#1, inner sep=6pt, align=left,
+          minimum height=0pt] {#4};
+  \end{tikzpicture}%
+}
+% A card with a coloured accent bar down the left edge - used for the three-
+% way "why" explainer boxes.
+\newcommand{\AccentCard}[3]{%
+  \begin{tikzpicture}
+    \node[rounded corners=4pt, fill=CardBg, draw=CardRule, line width=0.7pt,
+          text width=#1, inner sep=6pt, align=left,
+          minimum height=0pt] (box) {#3};
+    \fill[#2, rounded corners=2pt] (box.north west) rectangle
+      ($(box.south west)+(0.09,0)$);
+  \end{tikzpicture}%
+}
+
+% --- The "so what" strip anchored to the bottom of a frame -----------------
+\newcommand{\Takeaway}[1]{%
+  \vfill
+  \begin{tikzpicture}
+    \node[rounded corners=4pt, fill=CardBg, draw=none,
+          text width=11.3cm, inner sep=6pt, align=left,
+          minimum height=0pt] (box) {\sffamily\bfseries\footnotesize\color{SlideInk} #1};
+    \fill[SlideBlue, rounded corners=2pt] (box.north west) rectangle
+      ($(box.south west)+(0.08,0)$);
+  \end{tikzpicture}%
+}
+
+% --- Section-divider frame: full navy, one big line of text ---------------
+\newenvironment{dividerframe}{%
+  \begingroup
+  \setbeamercolor{background canvas}{bg=Navy}
+  \begin{frame}[plain]
+  \vspace{2.6cm}
+}{%
+  \end{frame}
+  \endgroup
+}
+
+% --- Title-slide flow pill (the row of stage names on slide 1) ------------
+\newcommand{\FlowPill}[1]{%
+  \tikz\node[rounded corners=4pt, fill=Navy!60, draw=LightBlue!40,
+             line width=0.5pt, text width=2.1cm, align=center,
+             inner sep=7pt, font=\sffamily\bfseries\small\color{white}]
+             {#1};%
+}
+
+\input{metrics.tex}
