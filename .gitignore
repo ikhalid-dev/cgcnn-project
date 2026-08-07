@@ -57,3 +57,7 @@ docs/*.toc
 # The published paper - not ours to redistribute. Get it from the DOI in
 # README.md; the pipeline never reads it.
 PINK.pdf
+
+# Presentation build artifacts. The deck IS committed (it is a deliverable);
+# the two charts it generates are rebuilt by build_presentation.py.
+presentation/figures/
