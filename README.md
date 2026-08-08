@@ -155,6 +155,9 @@ matching ours. The paper's text and its own model disagree with each other.
 | `scripts/08_compare_kappa.py` | Validates stage 2 against the paper's own pipeline |
 | `scripts/09_fetch_validation_set.py` | Fetches the paper's Table 1 (45 real materials) and runs our pipeline on them |
 | `scripts/10_validate_table1.py` | Validates stage 2 against **real experimental κ_L** (Table 1) |
+| `scripts/11_prepare_alignn_data.py` | matbench → ALIGNN's format, same split as the CGCNN ensemble |
+| `scripts/12_train_alignn.py` | Trains ALIGNN (Phase 2, a second architecture) on one target |
+| `colab/PINK_ALIGNN_colab.py` | Generates `colab/PINK_ALIGNN.ipynb`, the GPU run for the above |
 | `run_pipeline.sh` | Stage 1, everything above, in order |
 | `results/` | Checkpoints, metrics, figures, predictions |
 | `results/archive/` | One superseded run, kept for comparison (see below) |
@@ -370,3 +373,60 @@ intermediate quantity rather than accepting one aggregate number.
 `results/table1_validation.png` is the parity plot against real κ_exp; `results/table1_gamma_diagnostic.png`
 shows the two diagnostic panels (shear modulus agreement vs. Grüneisen disagreement) side by side;
 `results/table1_comparison.csv` is the full merged table.
+
+## Trying a second architecture: ALIGNN
+
+CGCNN's convolution only ever sees bond *lengths* (the edges of the crystal graph). ALIGNN
+(Choudhary & DeCost, 2021) adds a second, "line" graph over bond *angles* — the one piece of local
+geometry a plain bond graph cannot represent at all — so it's a natural architecture to check PINK's
+own recommended one (coGN, which was ruled out early: it isn't an installable package on its own and
+realistically needs a working TensorFlow install alongside this project's existing torch pipeline,
+the same class of framework-coexistence risk documented below).
+
+**The comparison only means something if it's on the same data and the same split.** ALIGNN's own
+`split_seed` shuffles with Python's stdlib `random`, not numpy's `RandomState` — a different RNG
+algorithm entirely, so "the same seed number" would silently produce a *different* partition than the
+one the CGCNN ensemble trained on. So the split is computed exactly once, with this project's own
+`split_indices()` (imported directly, not re-derived), and ALIGNN is told `keep_data_order=True` —
+"the order you were given already **is** train/val/test," rather than trying to make two different
+RNGs agree.
+
+```bash
+python scripts/11_prepare_alignn_data.py     # matbench -> ALIGNN's format, same split as CGCNN
+python scripts/12_train_alignn.py --target bulk_modulus_kv
+python scripts/12_train_alignn.py --target shear_modulus_gv
+```
+
+**Status: infrastructure built and verified, full training run not yet done.** Both scripts ran
+successfully end-to-end in a local smoke test (2–3 epochs on 60–90 crystals) — but ALIGNN builds a
+line graph on top of the bond graph, real extra work per crystal per epoch that CGCNN never does, so
+a full ~150-epoch run on all 7,691 training crystals needs a GPU. `colab/PINK_ALIGNN_colab.py`
+generates `colab/PINK_ALIGNN.ipynb`, mirroring the CGCNN notebook's pattern (source embedded as a
+zip so it can't drift from what's actually committed) — running it top to bottom is the next step,
+not yet done in this session.
+
+**Getting to a working smoke test surfaced three real bugs, worth recording rather than glossing
+over:**
+
+- **ALIGNN's own release notes say it dropped its DGL dependency; its actual installed code
+  disagrees with its own notes.** `pip install alignn` pulls in no `dgl`, and the default training
+  path (`model="alignn_atomwise"`, `neighbor_strategy="k-nearest"`) calls literal `dgl.graph(...)`
+  regardless — confirmed by running it and reading the traceback, not by re-reading the release
+  notes more carefully. The fix, found by reading `alignn/graphs.py` directly: pass
+  `neighbor_strategy="pure_torch"` (routes through a genuinely dgl-free graph builder) together with
+  `model="alignn_atomwise_pure"` (the model variant written to consume that builder's output) — both
+  together, since either alone leaves a DGL-shaped object meeting code that doesn't expect one.
+- **Installing `dgl` separately to sidestep the above was tried and reverted.** Its prebuilt wheel
+  for this exact torch build fails at import with a symbol-not-found error from its compiled
+  extension — an ABI mismatch, a different flavour of the same "two compiled extensions fighting
+  over one runtime" problem already documented for MKL/`libiomp5` elsewhere in this project. The
+  pure-torch path above avoids needing `dgl` at all, which is the better fix anyway.
+- **The model's default `atom_input_features=1` doesn't match the data.** `get_train_val_loaders`'s
+  default atom featuriser produces a 92-element one-hot vector (elements 1–92 — the same convention
+  this project's own `atom_init.json` uses), so the model needs `atom_input_features=92` or its
+  first linear layer's shapes don't line up. Caught by the shape-mismatch error it throws, not by
+  reading either side's source closely enough to predict it in advance.
+
+None of these are exotic — they're exactly the class of doc-vs-code mismatch this project has run
+into before (the paper's own "two hidden layers" vs. its checkpoint's `n_h=1`), and exactly why every
+claim in this project gets checked by running something, not by reading about it.

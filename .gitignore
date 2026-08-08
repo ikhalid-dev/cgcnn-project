@@ -38,6 +38,10 @@ results/model_*.partial.pth
 # (~6 min); data_full/labels.csv and mp_to_mb.csv next to it ARE committed.
 data_full/graphs.pt
 
+# Same idea, for ALIGNN's converted+split matbench data (Phase 2). Regenerate
+# with scripts/11_prepare_alignn_data.py (seconds, not minutes).
+data_full/alignn_data.pkl
+
 # Cloned upstream repos (see README)
 external/
 
