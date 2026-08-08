@@ -153,10 +153,13 @@ matching ours. The paper's text and its own model disagree with each other.
 | `scripts/06_summarise.py` | Collapse all runs into one table + `RESULTS.md` |
 | `scripts/07_predict_kappa.py` | **Stage 2**: our moduli → κ_L, with Monte Carlo uncertainty |
 | `scripts/08_compare_kappa.py` | Validates stage 2 against the paper's own pipeline |
+| `scripts/09_fetch_validation_set.py` | Fetches the paper's Table 1 (45 real materials) and runs our pipeline on them |
+| `scripts/10_validate_table1.py` | Validates stage 2 against **real experimental κ_L** (Table 1) |
 | `run_pipeline.sh` | Stage 1, everything above, in order |
 | `results/` | Checkpoints, metrics, figures, predictions |
 | `results/archive/` | One superseded run, kept for comparison (see below) |
 | `complete-data/` | The 1,213 Materials Project CIFs (prediction set) |
+| `data/table1_validation/` | The 45 fetched Table 1 CIFs used for real-data validation |
 | `data_full/` | Labels + provenance mapping for the 10,987 training crystals |
 | `colab/`, `kaggle/` | GPU runners (see `docs/method.pdf` §7) |
 | `docs/` | The method write-up and its LaTeX source |
@@ -268,10 +271,11 @@ signal an uncertainty estimate is supposed to produce.
 
 ### Validation against the paper's own pipeline
 
-There is no ground-truth κ_L to check against — real measurements are rare and expensive, which is
-why PINK predicts it in the first place. The only honest check available is the one this repo has
-pointed at since stage 1: run the paper's own pre-trained CGCNN through the identical physics on
-the identical 1,213 crystals, and see whether two independently-trained models agree.
+Real κ_L measurements are rare and expensive, which is why PINK predicts it in the first place —
+so before turning to the small amount of real experimental data that does exist (next section), the
+cheapest check available is the one this repo has pointed at since stage 1: run the paper's own
+pre-trained CGCNN through the identical physics on the identical 1,213 crystals, and see whether two
+independently-trained models agree.
 
 | | Value |
 |---|---|
@@ -298,3 +302,71 @@ strong one given what it can actually observe.
 `pink_predict.py` and its dependency on `external/AI4Kappa` remain as the reference implementation
 (needs the authors' code and checkpoints — `git clone https://github.com/ikhalid-dev/AI4Kappa.git`
 into `external/`, not vendored here).
+
+### Validation against real experimental κ_L (the paper's Table 1)
+
+The check above compares two models against each other. The paper itself supplies something
+stronger: **Table 1** of Liu *et al.* lists 46 real materials with room-temperature
+*experimentally measured* κ_L, mp-ids included, alongside the paper's own predicted κ_PINK for
+each. 45 of these 46 structures were fetched from the Materials Project (GaP's `mp-3490` has since
+been deprecated/merged and couldn't be retrieved) and pushed through our own pipeline unchanged —
+the same `04_predict_moduli.py` and `slack_physics()` used everywhere else, not a parallel
+implementation that could quietly diverge.
+
+```bash
+python scripts/09_fetch_validation_set.py   # fetches the 45 CIFs, runs our pipeline on them
+python scripts/10_validate_table1.py        # the comparison below
+```
+
+**Provenance, checked before anything else.** 43 of these 45 materials turned out to already be
+inside the matbench training set our ensemble learned from (the same formula-bucket-then-
+`StructureMatcher` check used throughout this project, against the live matbench structures — not
+assumed from a material's absence in `complete-data/`). Only two — LiF and Bi₂Te₃ — are genuinely
+unseen. Every number below is reported for both groups; the 43 are recall, not generalisation, and
+are never blended into a headline figure that would overstate what they prove.
+
+| | Ours | PINK (paper) |
+|---|---|---|
+| MAE, all 45 (log₁₀) | 0.427 | 0.227 |
+| MAE, 43 in matbench training (log₁₀) | 0.437 | 0.229 |
+| MAE, 2 genuinely unseen (log₁₀) | 0.196 | 0.172 |
+| Head-to-head, closer to experiment | 8/45 | 37/45 |
+
+Read at face value, the paper's own numbers win clearly. That didn't match what every earlier
+section of this document found — our moduli ensemble matches or beats the paper's on the matbench
+test set — so a sudden, large gap here demanded an explanation rather than a shrug.
+
+**Localising the gap instead of stopping at one number.** Table 1 also lists the paper's own
+predicted shear modulus and sound velocity for each material, so each pipeline stage can be checked
+independently instead of only ever seeing one aggregate κ_L number:
+
+- **Shear modulus**: our predictions agree closely with the paper's own (MAE 0.056 log₁₀, Pearson
+  r = 0.988). Not the source of the gap.
+- **Sound velocity** (folds in our bulk modulus K, which Table 1 has no separate column for): also
+  close agreement (r = 0.991). K is fine too.
+- **Grüneisen parameter**: our formula-derived γ (from predicted K/G via the standard Slack-model
+  relation) differs from the paper's own tabulated γ by a mean of +0.42, systematically — our γ runs
+  2–3.8× too high specifically for covalent semiconductors (AlAs, GaAs, InSb, ZnTe, CdTe, ...).
+  **This is where the gap lives.**
+
+The paper's own Results text explains why: Table 1's Grüneisen parameters "were obtained from the
+AFLOW database and experimental data" — real, looked-up values, not ones derived from predicted
+elastic constants. Neither our pipeline nor the paper's own released `pink_predict.py` (confirmed
+directly by inspection — no AFLOW lookup anywhere in it) has access to this at genuine screening
+scale, where no literature γ exists for a hypothetical GNoME candidate.
+
+**The decisive check**: substituting the paper's own tabulated γ into our pipeline — K, G, and
+structure otherwise unchanged — drops our MAE from 0.427 to **0.226 log₁₀**, matching the paper's
+own 0.227 almost exactly.
+
+**The honest reading**: once both pipelines are compared on equal footing (same γ source), our
+from-scratch model is competitive with the paper's own pre-trained one against real experimental
+κ_L. Table 1's headline accuracy benefits from a manual, non-scalable input that the paper's own
+actual use case — a 377,221-candidate high-throughput screen — cannot have either. Both pipelines,
+run the way they'd actually be run for screening, land in the same place. This is a materially
+different conclusion from "the paper's model beats ours," and it was only found by checking each
+intermediate quantity rather than accepting one aggregate number.
+
+`results/table1_validation.png` is the parity plot against real κ_exp; `results/table1_gamma_diagnostic.png`
+shows the two diagnostic panels (shear modulus agreement vs. Grüneisen disagreement) side by side;
+`results/table1_comparison.csv` is the full merged table.

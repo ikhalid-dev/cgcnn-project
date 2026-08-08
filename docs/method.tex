@@ -65,11 +65,15 @@ report (``$<13$'') we also come out ahead. We then run the paper's unchanged
 Slack-model physics on our own moduli end to end, propagate the ensemble's
 uncertainty through to $\kappa_L$ via Monte Carlo --- something the paper's
 single pre-trained model cannot do --- and validate the result against the
-paper's own pipeline (Spearman $r = 0.93$ on 1{,}213 crystals). We describe the
-algorithm, the six points at which our approach departs from the paper, and
-the design decision that matters most: training on the labelled benchmark
-itself rather than on the subset of it that overlaps our own structure
-collection.
+paper's own pipeline (Spearman $r = 0.93$ on 1{,}213 crystals) and, separately,
+against 45 real experimentally-measured $\kappa_L$ values from the paper's own
+Table~1. On raw aggregate, the paper's Table~1 numbers win; tracing the gap
+localises it entirely to one input (a Gr\"uneisen parameter looked up from the
+AFLOW database, not predicted) rather than to our elastic-moduli model, and
+substituting it in closes nearly all of the gap. We describe the algorithm,
+the six points at which our approach departs from the paper, and the design
+decision that matters most: training on the labelled benchmark itself rather
+than on the subset of it that overlaps our own structure collection.
 \end{abstract}
 
 \tableofcontents
@@ -439,9 +443,10 @@ in exactly this circumstance would be the one worth distrusting.}
 
 \subsection{Validation against the paper's own pipeline}
 
-No ground-truth $\kappa_L$ exists to check against --- real measurements are
-rare and expensive, which is the entire reason PINK predicts it. The only
-honest check available is to run the paper's own pre-trained CGCNN through the
+Real $\kappa_L$ measurements are rare and expensive, which is the entire
+reason PINK predicts it instead --- so before turning to the small amount of
+real experimental data that does exist (Section~7.4), the first and cheapest
+check available is to run the paper's own pre-trained CGCNN through the
 identical physics on the identical 1{,}213 crystals, and ask whether two
 independently-trained models agree.
 
@@ -474,6 +479,92 @@ $r = 0.20$) --- expected, since "disagreement with an independently trained
 reference" is a noisy proxy entangling that model's own idiosyncrasies with
 our actual error, not a clean measurement of either. A weak positive is the
 honest answer this particular check was ever going to give.
+
+\subsection{Validation against real experimental $\kappa_L$ (the paper's Table 1)}
+
+The check above compares two models against each other. The paper itself
+supplies something stronger: Table~1 of Liu \textit{et al.} lists 46 real
+materials with room-temperature \emph{experimentally measured} $\kappa_L$,
+mp-ids included, alongside the paper's own predicted $\kappa_{\text{PINK}}$
+for each. 45 of these 46 structures were fetched from the Materials Project
+(one, GaP's \texttt{mp-3490}, has since been deprecated/merged in MP's
+database and could not be retrieved) and pushed through our own pipeline
+unchanged --- the same \texttt{04\_predict\_moduli.py} and
+\texttt{slack\_physics()} used everywhere else in this document, not a
+parallel implementation that could quietly diverge.
+
+\textbf{Provenance, checked before anything else.} 43 of these 45 materials
+turned out to already be inside the matbench training set our ensemble
+learned from (checked the same way as everywhere else in this project: a
+formula-bucket-then-\texttt{StructureMatcher} pass against the live matbench
+structures, not assumed from the material's absence in
+\texttt{complete-data/}). Only two --- LiF and
+Bi\textsubscript{2}Te\textsubscript{3} --- are genuinely unseen. Every number
+below is reported for both groups separately; the 43 are recall, not
+generalisation, and are never blended into a single headline figure that
+would overstate what they prove.
+
+\begin{table}[h]
+\centering
+\caption{Our $\kappa_L$ and the paper's own $\kappa_{\text{PINK}}$, both
+against real experimental values, on the 45 Table~1 materials we could fetch.}
+\begin{tabular}{lcc}
+\toprule
+ & Ours & PINK (paper) \\
+\midrule
+MAE, all 45 ($\log_{10}$) & 0.427 & 0.227 \\
+MAE, 43 in matbench training ($\log_{10}$) & 0.437 & 0.229 \\
+MAE, 2 genuinely unseen ($\log_{10}$) & 0.196 & 0.172 \\
+Head-to-head, closer to experiment & 8/45 & 37/45 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Read at face value, the paper's own numbers win clearly. That did not match
+what every earlier section of this document found --- our moduli ensemble
+matches or beats the paper's on the matbench test set (Section~5) --- so a
+sudden, large gap here demanded an explanation rather than a shrug.
+
+\keybox{Localising the gap instead of stopping at one number}{Table~1 also
+lists the paper's own predicted shear modulus and sound velocity for each
+material, so each stage of the pipeline can be checked independently instead
+of only ever seeing one aggregate $\kappa_L$ number. Our shear modulus agrees
+closely with the paper's own predictions on these 45 crystals (MAE
+$0.056\ \log_{10}$, Pearson $r=0.988$); our sound velocity, which folds in
+our bulk modulus --- Table~1 has no separate $K$ column to check directly ---
+agrees just as well ($r=0.991$). Neither is the source of the gap. The
+Gr\"uneisen parameter is: our formula-derived $\gamma$ (from predicted $K/G$
+via the standard Slack-model relation) differs from the paper's own tabulated
+$\gamma$ by a mean of $+0.42$, and the disagreement is systematic --- our
+$\gamma$ runs 2--3.8$\times$ too high specifically for covalent semiconductors
+(AlAs, GaAs, InSb, ZnTe, CdTe, and similar). The paper's own Results text
+explains why: Table~1's Gr\"uneisen parameters ``were obtained from the AFLOW
+database and experimental data'' --- real, looked-up values, not ones derived
+from predicted elastic constants. Neither our pipeline nor the paper's own
+released \texttt{pink\_predict.py} (confirmed directly by inspection --- it
+contains no AFLOW lookup) has access to this at genuine screening scale,
+where no literature $\gamma$ exists for a hypothetical GNoME candidate.
+\textbf{The decisive check}: substituting the paper's own tabulated $\gamma$
+into our pipeline, $K$, $G$, and structure otherwise unchanged, drops our MAE
+from $0.427$ to $0.226\ \log_{10}$ --- matching the paper's own $0.227$
+almost exactly. See \texttt{results/table1\_gamma\_diagnostic.png}.}
+
+\noindent
+The honest reading: once both pipelines are compared on equal footing (same
+$\gamma$ source), our from-scratch model is competitive with the paper's own
+pre-trained one against real experimental $\kappa_L$. Table~1's headline
+accuracy benefits from a manual, non-scalable input that the paper's own
+actual use case --- a 377{,}221-candidate high-throughput screen --- cannot
+have either, since no material in a hypothetical-crystal screen has a
+literature Gr\"uneisen parameter to look up. Both pipelines, run the way they
+would actually be run for screening, land in the same place. This is a
+materially different conclusion from ``the paper's model beats ours,'' and it
+was only found by checking each intermediate quantity rather than accepting
+one aggregate number. \texttt{results/table1\_validation.png} is the parity
+plot against real $\kappa_{\text{exp}}$; \texttt{results/table1\_comparison.csv}
+the full merged table; \texttt{scripts/09\_fetch\_validation\_set.py} and
+\texttt{scripts/10\_validate\_table1.py} reproduce all of it end to end.
 
 % =====================================================================
 \section{What we did differently from the paper}
@@ -572,11 +663,24 @@ the reference pipeline is not a new failure mode --- $\kappa_L$ multiplies
 several quantities that each carry stage 1's own error, so the same
 soft-material weakness that limits $K$ and $G$ limits $\kappa_L$ more.
 Improving stage 1 remains the highest-leverage way to improve stage 2.
-\item \textbf{The uncertainty-calibration check is weak by construction.} With
-no ground-truth $\kappa_L$, disagreement against the reference model is the
-only available proxy, and it entangles the reference's own idiosyncrasies with
-our error. A true calibration check would need real measured $\kappa_L$ values
-for at least a handful of these crystals.
+\item \textbf{The uncertainty-calibration check (Section~7) is weak by
+construction.} Disagreement against the reference model entangles that
+model's own idiosyncrasies with our error, and is not a clean measurement of
+either. Section~7.4's real experimental data does not fix this: only 2 of the
+45 Table~1 materials are genuinely unseen by our ensemble, far too few to
+check whether a $p05$--$p95$ interval actually contains the true value at the
+right rate. A true calibration check would need real measured $\kappa_L$
+values for many more crystals our ensemble never trained on than currently
+exist in this project.
+\item \textbf{Table~1's own $\kappa_L$ numbers are not a fully-automated
+prediction.} Section~7.4 traces the gap against our model to the Gr\"uneisen
+parameter specifically: the paper's Table~1 uses AFLOW/experimental
+$\gamma$ values, not ones derived from predicted elastic constants the way a
+real screening run (ours, and the paper's own \texttt{pink\_predict.py})
+must. A learned or looked-up $\gamma$ that scales to hypothetical GNoME
+candidates --- rather than only to materials well-studied enough to have a
+literature value --- is the single highest-leverage improvement identified
+in this entire reproduction, ahead of a better modulus model.
 \end{itemize}
 
 \vspace{0.6cm}
