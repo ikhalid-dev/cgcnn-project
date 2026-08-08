@@ -41,11 +41,17 @@ For scale:
 | Reference | MAE log₁₀(GPa) |
 |---|---|
 | **This work (bulk ensemble)** | **0.0630** |
-| PINK paper | ≈0.07 |
+| matbench CGCNN baseline (context only — see note below) | ≈0.07 |
 | Best published on this benchmark ([coGN](https://matbench.materialsproject.org/)) | ≈0.054 |
 
-The bulk ensemble slightly beats the paper it reproduces and sits between it and the state of the
-art. Full breakdown in [`results/RESULTS.md`](results/RESULTS.md).
+**Note on that middle row.** The PINK paper never states its own modulus accuracy in log₁₀(GPa) —
+it reports "MAE < 13" with no log unit, i.e. *raw* GPa. The ≈0.07 figure long attached to "the PINK
+paper" here is the general matbench leaderboard's own published CGCNN baseline on this identical
+benchmark — almost certainly close to what PINK's model scores, since both are CGCNN on the same
+data, but never verified to be PINK's own stated number, because PINK doesn't report one in these
+units. On the metric the paper *does* state, we also come out ahead: our ensemble's raw-GPa MAE is
+10.2 (bulk) / 7.3 (shear), both under its stated "< 13." Full breakdown in
+[`results/RESULTS.md`](results/RESULTS.md).
 
 ### Reading the error
 
@@ -122,6 +128,17 @@ Detailed in [`docs/method.pdf`](docs/method.pdf); in brief:
    without it, accuracy claims on a screening set are not interpretable.
 5. **A documented error floor.** We state explicitly why ~15% relative error is the realistic
    target and what sets it.
+6. **A different train/validation/test split — caught, not chosen.** The paper's own released
+   checkpoint (`args` saved inside its `.pth.tar`) records an 80/10/10 split; we use 70/15/15. This
+   was found by inspecting the checkpoint directly, after an earlier version of this README
+   incorrectly listed the split as unchanged — kept here as an honest difference rather than
+   silently corrected to match, since retraining on 80/10/10 purely to match a number wouldn't
+   itself improve anything.
+
+Everything else architectural is verified identical **against the paper's own released
+checkpoint**, not just its prose: `atom_fea_len=64`, `h_fea_len=128`, `n_conv=3`, `n_h=1`. Worth
+noting — the paper's *text* says "two hidden layers," but the checkpoint's own saved `n_h` is 1,
+matching ours. The paper's text and its own model disagree with each other.
 
 ## Repository layout
 

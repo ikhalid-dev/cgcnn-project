@@ -59,14 +59,14 @@ machine-learning half: a crystal graph convolutional network (CGCNN) that
 predicts bulk and shear modulus from a CIF file. Trained on all 10{,}987
 crystals of the matbench elastic benchmark, a three-model ensemble reaches a
 test MAE of $0.0630$ $\log_{10}$(GPa) for bulk modulus
-($R^2 = 0.901$) and $0.0781$ for shear modulus ($R^2 = 0.899$), matching and
-slightly exceeding the accuracy reported by PINK. We then run the paper's
-unchanged Slack-model physics on our own moduli end to end, propagate the
-ensemble's uncertainty through to $\kappa_L$ via Monte Carlo --- something the
-paper's single pre-trained model cannot do --- and validate the result against
-the paper's own pipeline (Spearman $r = 0.93$ on 1{,}213 crystals, with no
-ground-truth $\kappa_L$ available to check against directly). We describe the
-algorithm, the five points at which our approach departs from the paper, and
+($R^2 = 0.901$) and $0.0781$ for shear modulus ($R^2 = 0.899$). The paper does
+not state its own accuracy in these units, but on the raw-GPa figure it does
+report (``$<13$'') we also come out ahead. We then run the paper's unchanged
+Slack-model physics on our own moduli end to end, propagate the ensemble's
+uncertainty through to $\kappa_L$ via Monte Carlo --- something the paper's
+single pre-trained model cannot do --- and validate the result against the
+paper's own pipeline (Spearman $r = 0.93$ on 1{,}213 crystals). We describe the
+algorithm, the six points at which our approach departs from the paper, and
 the design decision that matters most: training on the labelled benchmark
 itself rather than on the subset of it that overlaps our own structure
 collection.
@@ -336,17 +336,32 @@ Shear, single model      & 0.0836 & 0.889 & 7.72 & 21.2\% & 1.48\% \\
 
 \begin{table}[h]
 \centering
-\caption{Context. Bulk modulus on the same benchmark.}
+\caption{Context. Bulk modulus on the same benchmark. Two different accuracy
+figures are given for the PINK paper because the paper itself never states its
+own accuracy in $\log_{10}$(GPa) --- see the note below.}
 \begin{tabular}{lcc}
 \toprule
 & MAE $\log_{10}$(GPa) & Relative error \\
 \midrule
 \textbf{This work (bulk ensemble)} & \textbf{0.0630} & 15.6\% \\
-PINK (Liu \textit{et al.} 2025)    & $\approx$0.07 & $\approx$17\% \\
+matbench CGCNN baseline (context only) & $\approx$0.07 & $\approx$17\% \\
 coGN (best published on matbench)  & $\approx$0.054 & $\approx$13\% \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\keybox{What the PINK paper actually reports, and why the table above is careful
+about it}{The paper states its own modulus accuracy as ``MAE $<13$'' with no
+$\log_{10}$ unit given --- i.e.\ \emph{raw} GPa, a different measurement than
+the $\log_{10}$(GPa) figures this document uses everywhere else. The
+$\approx 0.07\ \log_{10}$(GPa) figure long associated with ``the PINK paper''
+in earlier drafts of this work is the general matbench leaderboard's own
+published CGCNN baseline on this same benchmark --- almost certainly close to
+what PINK's model would score, since both are CGCNN on the identical dataset,
+but never verified to be \emph{PINK's own} stated number, because PINK does
+not report one in these units. On the metric the paper does state, we also
+win: our ensemble's raw-GPa MAE is 10.20 (bulk) and 7.27 (shear), both under
+its stated ``$<13$.''}
 
 \noindent
 Ensembling removed 9--10\% of the error, consistent with the 10--15\% typically
@@ -490,14 +505,26 @@ may simply be recall.
 \item \textbf{A documented error floor.} We state explicitly what accuracy is
 achievable and why, and we report both the multiplicative error and the
 range-normalised error rather than choosing whichever is more flattering.
-
+\item \textbf{A different train/validation/test split.} The paper's own
+released checkpoint (\texttt{args} saved inside the \texttt{.pth.tar}) records
+an 80/10/10 split; we use 70/15/15. This was not a deliberate choice made
+against the paper --- it was only caught by inspecting the checkpoint's saved
+config directly, after an earlier draft of this document incorrectly listed
+the split as unchanged. Left as a genuine, acknowledged difference rather than
+silently corrected to match, since re-training on 80/10/10 purely to match a
+number does not itself improve the model.
 \end{enumerate}
 
 \noindent
 \textbf{What is deliberately the same}: the CGCNN architecture and
-hyperparameters, the training data, the $\log_{10}$ target, and the 70/15/15
-split ratio. The point of a reproduction is that differences should be
-deliberate and few.
+hyperparameters (verified directly against the paper's released checkpoint:
+\texttt{atom\_fea\_len=64}, \texttt{h\_fea\_len=128}, \texttt{n\_conv=3},
+\texttt{n\_h=1} --- the paper's own \emph{text} says ``two hidden layers,''
+but its checkpoint's saved \texttt{n\_h} is 1, matching ours; the text and the
+paper's own model disagree with each other), the training data, and the
+$\log_{10}$ target. The point of a reproduction is that differences should be
+deliberate, few, and --- as this section shows --- actually checked against
+the paper's own artifacts rather than assumed from its prose.
 
 % =====================================================================
 \section{Reproducing this work}
