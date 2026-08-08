@@ -60,10 +60,16 @@ predicts bulk and shear modulus from a CIF file. Trained on all 10{,}987
 crystals of the matbench elastic benchmark, a three-model ensemble reaches a
 test MAE of $0.0630$ $\log_{10}$(GPa) for bulk modulus
 ($R^2 = 0.901$) and $0.0781$ for shear modulus ($R^2 = 0.899$), matching and
-slightly exceeding the accuracy reported by PINK. We describe the algorithm,
-the five points at which our approach departs from the paper, and the
-design decision that matters most: training on the labelled benchmark itself
-rather than on the subset of it that overlaps our own structure collection.
+slightly exceeding the accuracy reported by PINK. We then run the paper's
+unchanged Slack-model physics on our own moduli end to end, propagate the
+ensemble's uncertainty through to $\kappa_L$ via Monte Carlo --- something the
+paper's single pre-trained model cannot do --- and validate the result against
+the paper's own pipeline (Spearman $r = 0.93$ on 1{,}213 crystals, with no
+ground-truth $\kappa_L$ available to check against directly). We describe the
+algorithm, the five points at which our approach departs from the paper, and
+the design decision that matters most: training on the labelled benchmark
+itself rather than on the subset of it that overlaps our own structure
+collection.
 \end{abstract}
 
 \tableofcontents
@@ -369,6 +375,92 @@ but it flatters the model --- a wide data range shrinks it for free --- so it
 should be quoted alongside the relative error, never instead of it.
 
 % =====================================================================
+\section{Stage 2: from moduli to \texorpdfstring{$\kappa_L$}{kappa\_L}}
+
+Sections~2--6 cover the first arrow of Figure~1: CIF $\rightarrow (K, G)$. The
+second half of PINK turns $(K, G)$ into $\kappa_L$ through a closed-form
+formula --- sound velocities from $K$, $G$ and density; an acoustic Debye
+temperature from those velocities and the cell volume; a Gr\"uneisen parameter
+from the ratio of longitudinal to transverse sound speed; and finally $\kappa_L$
+itself (Eq.~2 of the paper, three-phonon scattering with $\delta = 1$). None of
+this is learned --- it is physics, unchanged from the paper, and already
+implemented in \texttt{pink\_predict.py} against the paper's own pre-trained
+weights. What was missing was driving that same physics with \emph{our}
+moduli instead.
+
+\subsection{Reusing the physics, not reimplementing it}
+
+The existing implementation operates on scalar pandas columns --- one $K$, one
+$G$ per crystal --- which is fine for a point estimate but cannot express "$K$
+and $G$ are each a distribution," exactly what an ensemble provides and a
+single pre-trained model cannot. So the formulas were rewritten once more in
+plain NumPy, shape-agnostic via broadcasting: called with scalars it reproduces
+the original function; called with $(n_{\text{crystals}}, n_{\text{samples}})$
+arrays it becomes a vectorised Monte Carlo. Rather than trust that the rewrite
+matches, it is checked directly against 200 random test cases at
+$10^{-9}$ relative tolerance before being used on real data.
+
+\subsection{Propagating the ensemble's own uncertainty}
+
+Every crystal already carries a bulk and shear modulus \emph{spread} --- the
+standard deviation across the three independently-seeded ensemble members, in
+log space --- a free per-crystal confidence signal a single pre-trained model
+has no equivalent of. For each crystal, 2{,}000 samples of $\log_{10} K$ and
+$\log_{10} G$ are drawn from $\mathcal{N}(\text{prediction}, \text{spread})$
+independently (the $K$- and $G$-ensembles are separately seeded, sharing no
+randomness to correlate), pushed through the identical physics used for the
+point estimate, and summarised as a 5th--95th percentile interval.
+
+\keybox{An honest finding, not a decoration}{Interval width correlates with
+shear-modulus disagreement far more than with bulk: Spearman
+$r = 0.98$ against $G$-spread versus $r = 0.51$ against $K$-spread. This is not
+an artefact --- $\kappa_L$ depends on $G$ twice over, once directly and once
+through the sound-velocity term, so a modest shear-ensemble disagreement
+amplifies into a much wider $\kappa_L$ range. Median interval width is a modest
+$1.9\times$, but the tail is real: the widest crystal spans nearly $900\times$
+between its 5th and 95th percentile, and it is exactly the crystal with one of
+the largest $G$-spreads in the set. An uncertainty estimate that did not widen
+in exactly this circumstance would be the one worth distrusting.}
+
+\subsection{Validation against the paper's own pipeline}
+
+No ground-truth $\kappa_L$ exists to check against --- real measurements are
+rare and expensive, which is the entire reason PINK predicts it. The only
+honest check available is to run the paper's own pre-trained CGCNN through the
+identical physics on the identical 1{,}213 crystals, and ask whether two
+independently-trained models agree.
+
+\begin{table}[h]
+\centering
+\caption{Our from-scratch $\kappa_L$ against the paper's own pipeline, both
+run through identical physics, on all 1{,}213 crystals.}
+\begin{tabular}{lc}
+\toprule
+Pearson $r$ ($\log_{10}\kappa_L$) & 0.932 \\
+Spearman rank correlation & 0.926 \\
+MAE & 0.169 $\log_{10}$ ($\approx$47\% typical error) \\
+Overlap, 20 lowest-$\kappa_L$ candidates & 10/20 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Rank correlation is reported alongside Pearson because PINK's actual use case
+is \emph{screening} --- getting the ordering right matters as much as matching
+the paper's absolute number. 0.93 on both, from two models sharing nothing but
+architecture and the physics formula, is strong agreement. The larger MAE here
+than in Section~6 is expected, not a new weakness: $\kappa_L$ is a
+\emph{product} of several quantities that each carry their own error, so
+stage-1 error compounds rather than cancels.
+
+A weaker, secondary check: does predicted interval width correlate with
+disagreement against the reference model? Only modestly (Spearman
+$r = 0.20$) --- expected, since "disagreement with an independently trained
+reference" is a noisy proxy entangling that model's own idiosyncrasies with
+our actual error, not a clean measurement of either. A weak positive is the
+honest answer this particular check was ever going to give.
+
+% =====================================================================
 \section{What we did differently from the paper}
 
 \begin{enumerate}\setlength{\itemsep}{5pt}
@@ -448,10 +540,16 @@ regime PINK targets, so it is the most valuable place to improve.
 \item \textbf{Only $\sim$11k labelled crystals exist.} Accuracy is now limited
 by data and label quality rather than by the model. Semi-supervised pre-training
 on unlabelled structures is the obvious lever.
-\item \textbf{Stage 2 is not yet reimplemented.} The Slack-model half still runs
-on the authors' code. Substituting our \texttt{pink\_moduli\_predictions.csv}
-into it, and propagating our per-crystal uncertainties through to $\kappa_L$, is
-the natural next step --- and something the original pipeline cannot do.
+\item \textbf{$\kappa_L$ error compounds stage 1's.} Section~7's 47\% MAE against
+the reference pipeline is not a new failure mode --- $\kappa_L$ multiplies
+several quantities that each carry stage 1's own error, so the same
+soft-material weakness that limits $K$ and $G$ limits $\kappa_L$ more.
+Improving stage 1 remains the highest-leverage way to improve stage 2.
+\item \textbf{The uncertainty-calibration check is weak by construction.} With
+no ground-truth $\kappa_L$, disagreement against the reference model is the
+only available proxy, and it entangles the reference's own idiosyncrasies with
+our error. A true calibration check would need real measured $\kappa_L$ values
+for at least a handful of these crystals.
 \end{itemize}
 
 \vspace{0.6cm}

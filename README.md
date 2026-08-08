@@ -134,7 +134,9 @@ Detailed in [`docs/method.pdf`](docs/method.pdf); in brief:
 | `scripts/04_predict_moduli.py` | **K and G for the 1,213 PINK crystals** |
 | `scripts/05_ensemble.py` | Combine members, score the ensemble |
 | `scripts/06_summarise.py` | Collapse all runs into one table + `RESULTS.md` |
-| `run_pipeline.sh` | Everything above, in order |
+| `scripts/07_predict_kappa.py` | **Stage 2**: our moduli → κ_L, with Monte Carlo uncertainty |
+| `scripts/08_compare_kappa.py` | Validates stage 2 against the paper's own pipeline |
+| `run_pipeline.sh` | Stage 1, everything above, in order |
 | `results/` | Checkpoints, metrics, figures, predictions |
 | `results/archive/` | One superseded run, kept for comparison (see below) |
 | `complete-data/` | The 1,213 Materials Project CIFs (prediction set) |
@@ -216,20 +218,66 @@ Two things that will bite otherwise:
   Regenerate it after changing anything in `cgcnn_scratch/` or `scripts/`.
 - **`PINK.pdf`** is not redistributed here; get it from the DOI above.
 
-## Stage 2: κ_L (not yet reimplemented)
+## Stage 2: from moduli to κ_L
 
-`pink_predict.py` runs the complete PINK pipeline using the *paper's* pre-trained weights, so it
-serves as the reference implementation to check ours against:
-
-```bash
-python pink_predict.py <cif_dir> [-o out.csv]
-```
-
-It needs the authors' code and checkpoints, which are not vendored:
+`scripts/07_predict_kappa.py` runs the second half of PINK — a closed-form Slack-model physics
+formula, not machine-learned — on our own predicted moduli:
 
 ```bash
-mkdir -p external && cd external
-git clone https://github.com/ikhalid-dev/AI4Kappa.git
+python scripts/07_predict_kappa.py          # → results/pink_kappa_predictions.csv
+python scripts/08_compare_kappa.py          # validates it against the paper's own pipeline
 ```
 
-Substituting our `pink_moduli_predictions.csv` into the Slack-model half is the natural next step.
+**The physics is not new — it's the same formula `pink_predict.py` already implements** (sound
+velocities → Debye temperature → Grüneisen parameter → κ_L, Eq. 2 of the paper), reused rather than
+reimplemented: `slack_physics()` is a numpy rewrite verified bit-for-bit identical to
+`pink_predict.py`'s `add_physics()` (`--self-test` checks this directly, to machine precision).
+What's new is *what drives it* — our own from-scratch CGCNN's predictions, not the paper's
+pre-trained one — and a genuine addition the paper's single-model pipeline has no equivalent of:
+
+**Uncertainty propagation.** The ensemble already gives every crystal a bulk/shear modulus spread
+(std across 3 independently-seeded models, in log space) — a free confidence signal a single
+pre-trained model can't produce. `07_predict_kappa.py` propagates it: 2,000 Monte Carlo draws of
+(K, G) per crystal from that spread, each pushed through the identical physics, giving every κ_L
+prediction a `p05`–`p95` interval rather than a bare point estimate.
+
+**That propagation surfaced a real finding, not a decoration.** Interval width correlates with
+shear-modulus disagreement (Spearman r = 0.98) far more than with bulk (r = 0.51) — because κ_L
+depends on G *through* the sound-velocity term as well as directly, so a modest shear-ensemble
+disagreement amplifies into a much wider κ_L range. Median interval width is a modest 1.9×, but the
+tail is real: the widest crystal in the set spans nearly 900× between its 5th and 95th percentile,
+and every such case traces back to an unusually large `G_VRH_spread_log10` — exactly the honest
+signal an uncertainty estimate is supposed to produce.
+
+### Validation against the paper's own pipeline
+
+There is no ground-truth κ_L to check against — real measurements are rare and expensive, which is
+why PINK predicts it in the first place. The only honest check available is the one this repo has
+pointed at since stage 1: run the paper's own pre-trained CGCNN through the identical physics on
+the identical 1,213 crystals, and see whether two independently-trained models agree.
+
+| | Value |
+|---|---|
+| Pearson r (log₁₀ κ_L) | 0.932 |
+| Spearman rank correlation | 0.926 |
+| MAE | 0.169 log₁₀ (≈47% typical multiplicative error) |
+| Overlap in the 20 lowest-κ_L candidates | 10/20 |
+
+Rank correlation is reported alongside Pearson because PINK's actual use case is *screening* —
+getting the ordering right matters as much as matching the paper's absolute number. 0.93 on both
+counts, from two models that share nothing but architecture and the physics formula, is strong
+agreement. The 47% MAE is larger than stage 1's own bulk/shear error because κ_L is a **product of
+several quantities each carrying their own error** — it is not a new weakness so much as the
+compounding of stage 1's already-documented one. `results/kappa_validation.png` is the parity plot;
+`results/kappa_comparison.csv` the full merged table.
+
+The uncertainty-calibration check is honestly weak (Spearman r = 0.20 between predicted interval
+width and disagreement with the reference) — expected, since "disagreement with an independently
+trained reference model" is a noisy proxy that also carries the reference model's own
+idiosyncrasies, not a clean measure of our own error. Weak-but-positive is the correct, unexciting
+answer here; reporting it any other way would be overselling a check that was never going to be a
+strong one given what it can actually observe.
+
+`pink_predict.py` and its dependency on `external/AI4Kappa` remain as the reference implementation
+(needs the authors' code and checkpoints — `git clone https://github.com/ikhalid-dev/AI4Kappa.git`
+into `external/`, not vendored here).
