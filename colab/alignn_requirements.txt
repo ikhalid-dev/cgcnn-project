@@ -1,0 +1,9 @@
+# Deps for the ALIGNN GPU run only - not part of the project's regular
+# environment.yml, same reasoning as PINK_ALIGNN_colab.py's own %pip install
+# cell: alignn (which pulls in jarvis-tools) is specific to this one
+# experiment. Passed to `colab install -r colab/alignn_requirements.txt`.
+# Unpinned deliberately: Colab's own base image already has a matching torch
+# build, and pinning versions here risks fighting that rather than reusing it.
+pymatgen
+matminer
+alignn

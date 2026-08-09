@@ -56,6 +56,12 @@ kaggle/build/
 kaggle/output/
 kaggle/pulled/
 
+# Same idea for the ALIGNN Colab-CLI runner: the uploaded bundle zip is
+# rebuilt from BUNDLE by run_alignn_cli.py, and alignn_output/ is where
+# downloaded status/log/results files land before being merged into results/.
+colab/build/
+colab/alignn_output/
+
 # LaTeX build artifacts (docs/build.sh regenerates the PDF)
 docs/*.aux
 docs/*.log

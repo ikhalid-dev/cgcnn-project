@@ -75,7 +75,15 @@ BUNDLE = [
     "scripts/02_train.py",
     "scripts/11_prepare_alignn_data.py",
     "scripts/12_train_alignn.py",
+    # alignn_gpu_driver.py needs to exist as a real file on disk too, not
+    # just live in this notebook's embedded cell - its own worker mode
+    # re-launches itself via a fixed on-disk path (colab/alignn_gpu_driver.py),
+    # since colab exec -f / a notebook cell has no reliable __file__ to
+    # re-derive that path from. See that script's own docstring.
+    "colab/alignn_gpu_driver.py",
 ]
+
+DRIVER_PATH = os.path.join(PROJECT_ROOT, "colab", "alignn_gpu_driver.py")
 
 
 def build_bundle_b64():
@@ -99,7 +107,12 @@ def code(text):
             "outputs": [], "source": text.strip().splitlines(keepends=True)}
 
 
-def build_cells(bundle_b64):
+def read_driver_source():
+    with open(DRIVER_PATH) as fh:
+        return fh.read()
+
+
+def build_cells(bundle_b64, driver_source):
     return [
         markdown("""
 # PINK / ALIGNN — a second architecture, same data, same split
@@ -160,54 +173,36 @@ print("\\n".join(sorted(
     if not root.startswith("./."))))
 '''),
         markdown("""
-## 4. Convert matbench to ALIGNN's format
+## 4. Convert matbench to ALIGNN's format, then train both targets
 
-Downloads both matbench elastic datasets (~100 MB, same download the CGCNN
-notebook does) and converts all 10,987 structures to JARVIS `Atoms` dicts -
-this conversion itself is fast (seconds); the slow part (line-graph
-construction) happens per-run in step 5, not here. Also computes the exact
-same train/val/test split the CGCNN ensemble used.
+This cell embeds `colab/alignn_gpu_driver.py`'s actual source (the same file
+`colab/run_alignn_cli.py` sends via `colab exec -f` for the CLI-driven path -
+one driver, two ways to launch it, so notebook and CLI can never drift
+apart). `check_gpu()` fails loudly if this session isn't actually a GPU
+runtime; `run_data_prep()` downloads matbench (~100 MB) and converts all
+10,987 structures to JARVIS `Atoms` dicts, computing the exact same
+train/val/test split the CGCNN ensemble used; `train_all_targets()` then
+trains `bulk_modulus_kv` and `shear_modulus_gv` in turn (4 ALIGNN layers + 4
+GCN layers + 256 hidden features are the published ALIGNN defaults;
+`--n-early-stopping 30` stops a target early once validation loss plateaus)
+and zips both results directories when done.
+
+**If one target fails, this cell does NOT stop** - it logs the failure and
+moves on to the next target, then reports which of the two actually
+succeeded. That's a deliberate change from an earlier version of this
+notebook, which raised `SystemExit` on the first failure and hid the actual
+Python traceback that explained why - if a target does fail here, the real
+traceback prints above, in this same cell's output, not hidden behind a
+generic "FAILED (exit 1)".
 """),
-        code("""
-!python scripts/11_prepare_alignn_data.py
-"""),
+        # Plain concatenation, NOT an f-string: driver_source is a full
+        # Python script full of its own {braces} (f-strings, dict/set
+        # literals) that an outer f-string would misinterpret as format
+        # placeholders and fail to parse - caught by checking, not assumed
+        # safe by analogy with step 3's bundle_b64 (which has no braces).
+        code(driver_source + "\n\ncheck_gpu()\nrun_data_prep()\ntrain_all_targets()\n"),
         markdown("""
-## 5. Train both targets
-
-One model per target - the plan here is "does a different architecture beat
-ours," not another ensemble. 4 ALIGNN layers + 4 GCN layers, 256 hidden
-features are the published ALIGNN defaults; `--n-early-stopping 30` stops a
-target early if validation loss hasn't improved in 30 epochs rather than
-burning the rest of the epoch budget once it's clearly converged.
-"""),
-        code("""
-import subprocess, sys, time
-
-COMMON = ["--epochs", "150", "--batch-size", "64", "--learning-rate", "0.001",
-          "--alignn-layers", "4", "--gcn-layers", "4", "--hidden-features", "256",
-          "--embedding-features", "64", "--n-early-stopping", "30",
-          "--device", "cuda"]
-
-def run(args):
-    \"\"\"Stream output live - see PINK_CGCNN_colab.py for why -u matters here.\"\"\"
-    print("$", " ".join(args), flush=True)
-    result = subprocess.run([sys.executable, "-u"] + args)
-    if result.returncode:
-        raise SystemExit(f"FAILED (exit {result.returncode}): {' '.join(args)}")
-
-start = time.time()
-for target in ("bulk_modulus_kv", "shear_modulus_gv"):
-    t0 = time.time()
-    print(f"\\n{'=' * 62}\\n{target}   [{(time.time() - start) / 60:.0f} min elapsed]\\n{'=' * 62}",
-          flush=True)
-    run(["scripts/12_train_alignn.py", "--target", target,
-         "--out-dir", f"results/alignn_{target}"] + COMMON)
-    print(f">>> {target} done in {(time.time() - t0) / 60:.1f} min", flush=True)
-
-print(f"\\nBoth targets finished in {(time.time() - start) / 60:.0f} min")
-"""),
-        markdown("""
-## 6. Quick look at test-set accuracy
+## 5. Quick look at test-set accuracy
 
 Same log10 convention as the rest of this project - matbench's targets are
 already log10(GPa), and scripts/12 passes them through unchanged, so this MAE
@@ -217,19 +212,24 @@ is directly comparable to the CGCNN ensemble's 0.0630 / 0.0781.
 import json
 
 for target in ("bulk_modulus_kv", "shear_modulus_gv"):
-    with open(f"results/alignn_{target}/Test_results.json") as fh:
+    path = f"results/alignn_{target}/Test_results.json"
+    if not os.path.exists(path):
+        print(target, "-> no Test_results.json (this target failed - see cell 4's output above)")
+        continue
+    with open(path) as fh:
         test_results = json.load(fh)
     print(target, "->", test_results if isinstance(test_results, dict) else test_results[:1])
 """),
         markdown("""
-## 7. Download the results
+## 6. Download the results
 
-Brings back both checkpoints, configs, and test-set predictions.
+Downloads the zip cell 4 already built (`colab/alignn_results.zip`) - both
+checkpoints, configs, and test-set predictions for whichever target(s)
+succeeded.
 """),
         code("""
-!cd /content/pink_alignn && zip -qr /content/alignn_results.zip results
 from google.colab import files
-files.download("/content/alignn_results.zip")
+files.download("colab/alignn_results.zip")
 """),
         markdown("""
 ### Back on the laptop
@@ -264,7 +264,7 @@ def main():
             "language_info": {"name": "python"},
             "accelerator": "GPU",
         },
-        "cells": build_cells(build_bundle_b64()),
+        "cells": build_cells(build_bundle_b64(), read_driver_source()),
     }
 
     out_path = os.path.join(PROJECT_ROOT, "colab", "PINK_ALIGNN.ipynb")
