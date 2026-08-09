@@ -57,7 +57,20 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Deliberately code only. data_full/alignn_data.pkl (the converted matbench
 # structures) is rebuilt on Colab from matminer directly - faster than
 # uploading it, and it's a few hundred MB.
+#
+# cgcnn_scratch/ is bundled too even though ALIGNN never uses it: scripts/11
+# and scripts/12 both import 01b_prepare_full_dataset.py / 02_train.py via
+# importlib to reuse load_benchmark()/split_indices()/pick_device() rather
+# than duplicate them - but importing a module runs ALL of its top-level
+# code, including 01b's and 02_train's own `from cgcnn_scratch.data import
+# ...`. Without cgcnn_scratch/ physically present, that import fails with
+# ModuleNotFoundError before either helper function is ever reached - caught
+# by actually running this notebook on Colab, not predicted in advance.
 BUNDLE = [
+    "cgcnn_scratch/__init__.py",
+    "cgcnn_scratch/data.py",
+    "cgcnn_scratch/model.py",
+    "cgcnn_scratch/atom_init.json",
     "scripts/01b_prepare_full_dataset.py",
     "scripts/02_train.py",
     "scripts/11_prepare_alignn_data.py",
