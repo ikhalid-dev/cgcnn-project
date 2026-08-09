@@ -12,7 +12,17 @@ Produces, all under presentation/:
                                  abstract graph - "the same thing, as a graph"
     figures/literature.png      our result vs the paper vs the leaderboard
     figures/ensemble.png        single model vs ensemble, both targets
-    metrics.tex                 \\def macros for every number the deck quotes
+    metrics.tex                 \\def macros for every number the deck quotes,
+                                 including Table 1 and GNoME-screen figures
+                                 (requires scripts/10 and scripts/13/14's
+                                 output to already exist in results/ - see
+                                 main()'s own check)
+
+Table 1 and GNoME-screen slides reuse the already-generated PNGs directly
+from results/ (table1_validation.png, table1_gamma_diagnostic.png,
+gnome_kappa_distributions.png, gnome_overlap_confidence.png) rather than
+redrawing them here - same precedent as parity_K_VRH_ens.png etc., already
+pulled straight from results/ by the original version of this deck.
 
 WHY NUMBERS ARE MACROS, NEVER TYPED INTO THE SLIDES
 ----------------------------------------------------
@@ -36,6 +46,8 @@ table salt - so nothing crosses that shouldn't.
 
 import math
 import os
+import sys
+from importlib import import_module
 
 import matplotlib
 matplotlib.use("Agg")
@@ -50,6 +62,11 @@ PROJECT_ROOT = os.path.dirname(HERE)
 RESULTS = os.path.join(PROJECT_ROOT, "results")
 FIGS = os.path.join(HERE, "figures")
 os.makedirs(FIGS, exist_ok=True)
+
+# Digit-prefixed module, so a string import via importlib rather than a plain
+# `import` statement - same pattern scripts/05, 11 and 12 already use to reuse
+# each other's helper functions instead of duplicating them.
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts"))
 
 # --- Palette - the beamer theme uses the same values (see theme.tex) -------
 NAVY = "#0F1B33"
@@ -334,14 +351,95 @@ def figure_ensemble_gain(test, path):
 
 
 # ===========================================================================
-# 4. Metrics macros
+# 4. Table 1 (real-data validation) and GNoME-screen metrics
+# ===========================================================================
+
+def stage2_metrics():
+    """Reuse scripts/08_compare_kappa.py's own functions for the
+    model-vs-model kappa_L sanity check, on the paper's own 1,213-crystal
+    prediction set, through identical (bit-verified) physics."""
+    s2 = import_module("08_compare_kappa")
+    merged = s2.load_and_merge(
+        os.path.join(RESULTS, "pink_kappa_predictions.csv"),
+        os.path.join(RESULTS, "pink_reference_kappa.csv"))
+    summary = s2.summarise(merged)
+    overlap = s2.screening_overlap(merged, top_n=20)
+    return {"n": summary["n"], "r": summary["pearson_r_log"],
+           "rho": summary["spearman_r"], "mae": summary["mae_log10"],
+           "rel_pct": summary["rel_error_pct"], "overlap20": overlap}
+
+
+def table1_metrics():
+    """Reuse scripts/10_validate_table1.py's own verified functions rather
+    than recompute the gamma-substitution test by hand. Its sign is easy to
+    get backwards (kappa_cal ~ exp(-gamma), not exp(+gamma) - confirmed the
+    hard way once already while drafting the extended talk, which is exactly
+    the kind of mistake "reuse the physics, don't reimplement it" prevents).
+    """
+    t1 = import_module("10_validate_table1")
+    merged = t1.load_and_merge(
+        os.path.join(RESULTS, "table1_kappa_predictions.csv"),
+        os.path.join(RESULTS, "table1_reference.csv"))
+
+    ours = t1.compute_metrics(merged, t1.OURS_COL)
+    paper = t1.compute_metrics(merged, "kappa_pink")
+    corrected = t1.gamma_substitution_test(merged)
+
+    log_err_ours = (np.log10(merged[t1.OURS_COL]) - np.log10(merged["kappa_exp"])).abs()
+    log_err_paper = (np.log10(merged["kappa_pink"]) - np.log10(merged["kappa_exp"])).abs()
+    ours_closer = int((log_err_ours < log_err_paper).sum())
+
+    log_g = np.log10(merged["G_VRH_pred"] / merged["G_paper"])
+    r_g = np.corrcoef(np.log10(merged["G_VRH_pred"]), np.log10(merged["G_paper"]))[0, 1]
+
+    v_long = ((merged["K_VRH_pred"] + 4 * merged["G_VRH_pred"] / 3)
+             / merged["Density (g cm-3)"]) ** 0.5 * 1000
+    v_trans = (merged["G_VRH_pred"] / merged["Density (g cm-3)"]) ** 0.5 * 1000
+    v_sound_ours = ((1 / v_long ** 3 + 2 / v_trans ** 3) / 3) ** (-1 / 3)
+    r_vs = np.corrcoef(np.log10(v_sound_ours), np.log10(merged["vs_paper"]))[0, 1]
+
+    gamma_diff = merged["Gruneisen parameter"] - merged["gamma_paper"]
+    n_unseen = int((merged.provenance == "unseen").sum())
+    n_train = int((merged.provenance == "in_matbench_training").sum())
+
+    return {
+        "n": len(merged), "n_train": n_train, "n_unseen": n_unseen,
+        "ours_closer": ours_closer, "paper_closer": len(merged) - ours_closer,
+        "mae_ours": ours["mae_log10"], "mae_paper": paper["mae_log10"],
+        "mae_corrected": corrected["mae_log10"],
+        "r_g": r_g, "r_vs": r_vs, "gamma_offset": gamma_diff.mean(),
+    }
+
+
+def gnome_metrics():
+    """Counts and confidence tiers straight from the already-screened CSVs -
+    scripts/13/14 take ~25 min end to end, so this reads their output rather
+    than re-running the screen itself every time the deck's figures rebuild.
+    """
+    candidates = pd.read_csv(os.path.join(RESULTS, "gnome_screen_candidates.csv"))
+    overlap = pd.read_csv(os.path.join(RESULTS, "gnome_overlap.csv"))
+    width = overlap["Kappa_cal_p95"] / overlap["Kappa_cal_p05"]
+
+    return {
+        "n_candidates": len(candidates),
+        "n_overlap": len(overlap),
+        "pct_of_paper": len(overlap) / 11869 * 100,   # paper's own published count, a fixed external fact
+        "pct_of_ours": len(overlap) / len(candidates) * 100,
+        "n_tight": int((width < 2).sum()),
+        "n_moderate": int(((width >= 2) & (width < 5)).sum()),
+        "n_wide": int((width >= 5).sum()),
+    }
+
+
+# ===========================================================================
+# 5. Metrics macros
 # ===========================================================================
 
 def tex_num(x, digits=4):
     return f"{x:.{digits}f}"
 
 
-def write_metrics_tex(allrows, test, path):
+def write_metrics_tex(allrows, test, t1, gn, s2, path):
     """Write \\def macros for every number the deck quotes.
 
     Macro names are CamelCase and start with a letter (TeX control sequences
@@ -385,6 +483,33 @@ def write_metrics_tex(allrows, test, path):
     define("EnsembleGainPct", tex_num(gain, 0))
     define("KFactor", tex_num(10 ** k_ens.MAE_log10, 3))
 
+    define("TOneN", t1["n"])
+    define("TOneNTrain", t1["n_train"])
+    define("TOneNUnseen", t1["n_unseen"])
+    define("TOneOursCloser", t1["ours_closer"])
+    define("TOnePaperCloser", t1["paper_closer"])
+    define("TOneMaeOurs", tex_num(t1["mae_ours"], 3))
+    define("TOneMaePaper", tex_num(t1["mae_paper"], 3))
+    define("TOneMaeCorrected", tex_num(t1["mae_corrected"], 3))
+    define("TOneRG", tex_num(t1["r_g"], 3))
+    define("TOneRVs", tex_num(t1["r_vs"], 3))
+    define("TOneGammaOffset", tex_num(t1["gamma_offset"], 2))
+
+    define("GnCandidates", f"{gn['n_candidates']:,}".replace(",", "{,}"))
+    define("GnOverlap", f"{gn['n_overlap']:,}".replace(",", "{,}"))
+    define("GnPctOfPaper", tex_num(gn["pct_of_paper"], 1))
+    define("GnPctOfOurs", tex_num(gn["pct_of_ours"], 1))
+    define("GnTight", f"{gn['n_tight']:,}".replace(",", "{,}"))
+    define("GnModerate", f"{gn['n_moderate']:,}".replace(",", "{,}"))
+    define("GnWide", f"{gn['n_wide']:,}".replace(",", "{,}"))
+
+    define("STwoN", s2["n"])
+    define("STwoR", tex_num(s2["r"], 3))
+    define("STwoRho", tex_num(s2["rho"], 3))
+    define("STwoMae", tex_num(s2["mae"], 3))
+    define("STwoRel", tex_num(s2["rel_pct"], 1))
+    define("STwoOverlap", s2["overlap20"])
+
     with open(path, "w") as fh:
         fh.write("\n".join(lines) + "\n")
 
@@ -393,6 +518,13 @@ def main():
     metrics_path = os.path.join(RESULTS, "metrics_summary.csv")
     if not os.path.exists(metrics_path):
         raise SystemExit(f"No {metrics_path} - run scripts/06_summarise.py first.")
+    for needed in ("pink_kappa_predictions.csv", "pink_reference_kappa.csv",
+                  "table1_kappa_predictions.csv", "table1_reference.csv",
+                  "gnome_screen_candidates.csv", "gnome_overlap.csv"):
+        if not os.path.exists(os.path.join(RESULTS, needed)):
+            raise SystemExit(f"No results/{needed} - run scripts/08_compare_kappa.py, "
+                            f"scripts/10_validate_table1.py and scripts/13/14_*gnome*.py "
+                            f"first (see docs/method.tex).")
 
     allrows = pd.read_csv(metrics_path)
     test = allrows[allrows.split == "test"].set_index("tag")
@@ -406,7 +538,10 @@ def main():
     figure_ensemble_gain(test, os.path.join(FIGS, "ensemble.png"))
     print("wrote figures/ensemble.png")
 
-    write_metrics_tex(allrows, test, os.path.join(HERE, "metrics.tex"))
+    s2 = stage2_metrics()
+    t1 = table1_metrics()
+    gn = gnome_metrics()
+    write_metrics_tex(allrows, test, t1, gn, s2, os.path.join(HERE, "metrics.tex"))
     print("wrote metrics.tex")
 
 

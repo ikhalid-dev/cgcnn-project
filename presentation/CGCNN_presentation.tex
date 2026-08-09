@@ -28,8 +28,8 @@
 {\color{white}\bfseries\headingfont\fontsize{34}{40}\selectfont
   Crystal Graph Neural Networks}\\[4pt]
 {\color{Subtle}\sffamily\large
-  Predicting elastic moduli from crystal structure --- a from-scratch
-  reproduction of PINK}\\[14pt]
+  From crystal structure to a 554{,}054-material thermal-conductivity
+  screen --- a from-scratch reproduction and stress-test of PINK}\\[14pt]
 \begin{tikzpicture}[node distance=4mm,
   pill/.style={rounded corners=4pt, fill=Navy!60, draw=LightBlue!40,
                line width=0.5pt, minimum height=0.85cm, align=center,
@@ -152,13 +152,15 @@ downstream of them is physics, not machine learning.}
 
 \vspace{4pt}
 {\sffamily\small\color{Muted}
-This project implements the first arrow --- CIF $\rightarrow$ $(K,G)$ ---
-including the network itself, written from scratch rather than forked from
-the paper's code. Its output is the $(K,G)$ table the $\kappa_L$ stage
-consumes.}
+Parts Two through Five build the first arrow from scratch --- CIF
+$\rightarrow$ $(K,G)$ --- including the network itself, not forked from the
+paper's code. Parts Six through Eight then carry that output through the
+physics stage, a real-data validation, and the actual
+554{,}054-material screen.}
 
-\Takeaway{Scope of this talk: the machine-learning half of PINK, explained
-from first principles and reproduced independently.}
+\Takeaway{Scope of this talk: the entire PINK pipeline, reproduced and
+independently stress-tested end to end --- not just the machine-learning
+half.}
 \end{frame}
 
 % =============================================================================
@@ -870,9 +872,535 @@ about 15\%. We are at \KEnsMae.}
 \end{frame}
 
 % =============================================================================
+% PART SIX - PHYSICS: FROM MODULI TO KAPPA_L
+% =============================================================================
 \begin{dividerframe}
 \begin{center}
 {\color{LightBlue}\bfseries\sffamily\large PART SIX}\\[8pt]
+{\color{white}\bfseries\headingfont\fontsize{30}{36}\selectfont
+  From Moduli to Thermal Conductivity}\\[9pt]
+{\color{Subtle}\sffamily\normalsize
+  The physics half of PINK: not learned, but just as important}
+\end{center}
+\end{dividerframe}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{26 \textperiodcentered\ PHYSICS}{Picking the pipeline back up}
+
+\begin{center}
+\begin{tikzpicture}[node distance=7mm,
+  box/.style={rounded corners=4pt, draw=CardRule, fill=CardBg, line width=0.7pt,
+              text width=2.5cm, align=center, inner sep=8pt, font=\sffamily\small},
+  hl/.style={rounded corners=4pt, draw=SlideBlue, fill=BlueBg, line width=1.1pt,
+             text width=2.5cm, align=center, inner sep=8pt,
+             font=\sffamily\bfseries\small\color{SlideBlue}},
+  arr/.style={-{Stealth[length=2.7mm]}, line width=0.9pt, draw=Muted}]
+  \node[box] (cif) {CIF\\[2pt]\footnotesize\color{Muted} crystal structure};
+  \node[box, right=of cif] (cgcnn) {CGCNN\\[2pt]\footnotesize\color{Muted} predicts $K$, $G$};
+  \node[hl, right=of cgcnn] (slack) {Slack model\\[2pt]\footnotesize physics, not learned};
+  \node[box, right=of slack] (kl) {$\kappa_L$\\[2pt]\footnotesize\color{Muted} lattice thermal\\ conductivity};
+  \draw[arr] (cif) -- (cgcnn);
+  \draw[arr] (cgcnn) -- (slack);
+  \draw[arr] (slack) -- (kl);
+\end{tikzpicture}
+\end{center}
+
+\vspace{6pt}
+{\sffamily\small
+Parts Two through Five covered the first arrow only: a learned network
+turning a crystal graph into two numbers, $K$ and $G$. Those numbers are not
+PINK's actual output --- they are an \emph{input} to a second stage that is
+not machine learning at all.}
+
+\vspace{4pt}
+\Card{11.9cm}{BlueBg}{SlideBlue}{%
+  \sffamily\footnotesize\color{SlideInk}
+  \textbf{The Slack model} is a closed-form formula from the phonon-transport
+  literature, decades old and unchanged from the original paper. Given $K$,
+  $G$, density, cell volume, and atomic mass, it returns $\kappa_L$ directly
+  --- no training, no data, no gradient descent.}
+
+\Takeaway{Everything from here on is arithmetic, not learning --- the only
+open question is whether the arithmetic is implemented correctly.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{27 \textperiodcentered\ PHYSICS}{The formula, ingredient by ingredient}
+
+{\sffamily\footnotesize
+Simplified to the terms that matter --- the full expression lives in
+\texttt{scripts/07\_predict\_kappa.py}, checked line-for-line against the
+paper's own code (200 random cases, $10^{-9}$ relative tolerance):}
+
+\vspace{3pt}
+\Card{11.9cm}{CardBg}{CardRule}{%
+  \centering\headingfont\bfseries\fontsize{15}{19}\selectfont\color{SlideInk}
+  $\kappa_L \;\propto\; G \cdot v_{\text{sound}} \cdot V^{1/3} \cdot
+  e^{-\gamma} \,/\, N$}
+
+\vspace{5pt}
+\begin{columns}[T]
+\column{0.32\linewidth}
+\AccentCard{3.85cm}{SlideBlue}{%
+  \sffamily\small
+  {\bfseries\color{SlideBlue}Sound velocity $v_{\text{sound}}$}\\[3pt]
+  Computed from $K$, $G$, and density --- how fast a vibration travels
+  through the lattice.}
+\column{0.32\linewidth}
+\AccentCard{3.85cm}{SlideAmber}{%
+  \sffamily\small
+  {\bfseries\color{SlideAmber}Gr\"uneisen parameter $\gamma$}\\[3pt]
+  How \emph{unevenly} the bonds stretch as the lattice vibrates. Enters as
+  $e^{-\gamma}$ --- the single most sensitive term in the formula.}
+\column{0.32\linewidth}
+\AccentCard{3.85cm}{SlideGreen}{%
+  \sffamily\small
+  {\bfseries\color{SlideGreen}$G$, $V^{1/3}$, $N$}\\[3pt]
+  Shear stiffness, a cell-size length scale, and atom count --- each enters
+  once; none is where this talk's story lives.}
+\end{columns}
+
+\vspace{2pt}
+{\sffamily\footnotesize\color{Muted}
+Unlike the other terms, $\gamma$ is not a free input --- it is derived
+purely from predicted $K$ and $G$. Part Seven finds a place where that was
+not what happened.}
+
+\Takeaway{Remember $\gamma$ --- it sits in an exponent, so being off by
+even a little moves $\kappa_L$ by a lot.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{28 \textperiodcentered\ PHYSICS}{How sure is the model? Monte Carlo uncertainty}
+
+\begin{columns}[T]
+\column{0.52\linewidth}
+{\sffamily\small
+The ensemble already gives every crystal a $K$ and $G$ \emph{spread} ---
+three models rarely agree exactly. Rather than average that spread away
+before the physics stage, it is propagated through.}
+
+\vspace{4pt}
+\Card{6.0cm}{BlueBg}{SlideBlue}{%
+  \sffamily\footnotesize\color{SlideInk}
+  \textbf{2{,}000 draws per crystal} from $\mathcal{N}(\text{prediction},
+  \text{spread})$ for $\log_{10}K$ and $\log_{10}G$ independently, each
+  pushed through the identical Slack-model formula, summarised as a
+  5th--95th percentile interval.}
+
+\column{0.44\linewidth}
+{\sffamily\small
+\textbf{Analogy:} instead of one weather forecaster giving one number, run
+2{,}000 slightly different forecasters --- each starting from a plausible
+$K$ and $G$ --- and report the \emph{range} they land in, not just their
+average.}
+\end{columns}
+
+\Takeaway{A single pre-trained model has no equivalent of this --- one $K$,
+one $G$, one $\kappa_L$, no sense of how confident that number is.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{29 \textperiodcentered\ PHYSICS}{Sanity check: do we agree with the paper's own model?}
+
+\begin{columns}[T]
+\column{0.50\linewidth}
+\includegraphics[height=5.3cm]{kappa_validation}
+\column{0.46\linewidth}
+{\sffamily\small
+Real experimental $\kappa_L$ is rare --- the reason PINK predicts it at all.
+The cheapest check available first: run the paper's own pre-trained CGCNN
+through \emph{our} physics implementation, on the same \STwoN\ crystals, and
+ask whether two independently-trained models agree.}
+
+\vspace{4pt}
+\Card{5.6cm}{CardBg}{CardRule}{%
+  \sffamily\footnotesize\color{SlideInk}
+  Pearson $r=\STwoR$, Spearman $\rho=\STwoRho$, MAE $=\STwoMae$
+  $\log_{10}$ ($\approx$\STwoRel\% typical error). \STwoOverlap/20 overlap
+  among each model's 20 lowest-$\kappa_L$ picks.}
+\end{columns}
+
+\Takeaway{Strong agreement --- but this is still two models agreeing with
+each other, not yet a test against reality.}
+\end{frame}
+
+% =============================================================================
+% PART SEVEN - THE DETECTIVE STORY: REAL EXPERIMENTAL VALIDATION
+% =============================================================================
+\begin{dividerframe}
+\begin{center}
+{\color{LightBlue}\bfseries\sffamily\large PART SEVEN}\\[8pt]
+{\color{white}\bfseries\headingfont\fontsize{30}{36}\selectfont
+  Does It Match Reality?}\\[9pt]
+{\color{Subtle}\sffamily\normalsize
+  A real accuracy gap, and tracing it to its source}
+\end{center}
+\end{dividerframe}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{30 \textperiodcentered\ REAL-DATA VALIDATION}{The real test: 45 materials with a measured $\kappa_L$}
+
+\begin{columns}[T]
+\column{0.52\linewidth}
+{\sffamily\small
+Everything so far compares predictions to \emph{other predictions} --- DFT
+labels, or the paper's own pretrained model. Table 1 of the paper is
+different: 46 real materials with $\kappa_L$ actually measured in a lab. 45
+have a Materials Project structure this project could fetch (GaP/mp-3490 is
+deprecated in MP's own database).}
+
+\column{0.44\linewidth}
+\Card{5.2cm}{AmberBg}{AmberRule}{%
+  \sffamily\footnotesize\color{SlideInk}
+  \textbf{Why this table is special:} the paper also tabulates \emph{its
+  own} predicted shear modulus, sound velocity, and Gr\"uneisen parameter
+  for every material --- enough to localise a disagreement, not just report
+  one.}
+\end{columns}
+
+\vspace{5pt}
+{\sffamily\small\color{Muted}
+Run the full pipeline --- CGCNN ensemble $\rightarrow$ Slack model, nothing
+special-cased --- on these 45 structures, and compare against both the
+experimental value and the paper's own prediction.}
+
+\Takeaway{Real, independent, lab-measured data is the strongest test
+available. It is also where this reproduction's story gets interesting.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{31 \textperiodcentered\ REAL-DATA VALIDATION}{First look: we seem to lose}
+
+\begin{columns}[T]
+\column{0.55\linewidth}
+\includegraphics[height=5.4cm]{table1_validation}
+\column{0.41\linewidth}
+{\sffamily\small
+Told plainly, not softened: against these 45 real measurements, our
+from-scratch pipeline looks noticeably \emph{worse} than the paper's own
+pretrained model.}
+
+\vspace{4pt}
+\Card{5.6cm}{RedBg}{RedRule}{%
+  \sffamily\footnotesize\color{SlideInk}
+  \textbf{MAE:} ours \textbf{\TOneMaeOurs} vs.\ paper's
+  \textbf{\TOneMaePaper} $\log_{10}$\\[4pt]
+  \textbf{Head-to-head:} paper closer on \TOnePaperCloser/\TOneN\ materials,
+  ours closer on only \TOneOursCloser/\TOneN}
+\end{columns}
+
+\Takeaway{Every earlier check in this talk said our moduli were fine. So
+where is this gap actually coming from?}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{32 \textperiodcentered\ REAL-DATA VALIDATION}{Two suspects, cleared}
+
+{\sffamily\small
+$\kappa_L$ is built from the ingredients in Part Six. Check each one against
+the paper's own tabulated value for these same 45 crystals, one at a time:}
+
+\vspace{4pt}
+\begin{columns}[T]
+\column{0.485\linewidth}
+\AccentCard{5.3cm}{SlideGreen}{%
+  \sffamily\small
+  {\bfseries\color{SlideGreen}Shear modulus $G$ --- cleared}\\[3pt]
+  Pearson $r=\TOneRG$ against the paper's own predicted $G$, on these exact
+  45 crystals. Excellent agreement.}
+\column{0.485\linewidth}
+\AccentCard{5.3cm}{SlideGreen}{%
+  \sffamily\small
+  {\bfseries\color{SlideGreen}Sound velocity --- cleared}\\[3pt]
+  Folds in our bulk modulus $K$ too. Pearson $r=\TOneRVs$ against the
+  paper's own value. Also excellent --- $K$ is fine.}
+\end{columns}
+
+\vspace{6pt}
+{\sffamily\small\color{Muted}
+Both moduli-derived quantities agree closely with the paper's own numbers.
+Whatever is causing the gap on the previous slide, it is not $K$ or $G$.}
+
+\Takeaway{Two suspects down, one ingredient left unchecked: the Gr\"uneisen
+parameter $\gamma$ --- the exact term Part Six flagged as ``remember this
+one.''}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{33 \textperiodcentered\ REAL-DATA VALIDATION}{Found it: the Gr\"uneisen parameter}
+
+{\sffamily\footnotesize
+Right panel below: our $\gamma$ against the paper's own tabulated $\gamma$,
+for the same 45 crystals.}
+
+\vspace{1pt}
+\begin{center}
+\includegraphics[height=3.4cm]{table1_gamma_diagnostic}
+\end{center}
+
+\vspace{1pt}
+\Card{11.9cm}{RedBg}{RedRule}{%
+  \sffamily\footnotesize\color{SlideInk}
+  Mean offset \textbf{+\TOneGammaOffset} --- our $\gamma$ runs systematically
+  \emph{too high}, worst for covalent semiconductors (GaAs, InSb, ZnTe).
+  Because $\kappa_L \propto e^{-\gamma}$, this alone explains the gap.}
+
+\Takeaway{Not a bug in the moduli, not a bug in the formula --- one specific
+input, systematically wrong.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{34 \textperiodcentered\ REAL-DATA VALIDATION}{Why: a number only a known material has}
+
+{\sffamily\small
+The paper's own Results text says it directly, for Table 1 specifically:
+\emph{Gr\"uneisen parameters were obtained from the AFLOW database and
+experimental data.} Real, looked-up values --- not derived from predicted
+$K$ and $G$ the way every other number in this pipeline is.}
+
+\vspace{3pt}
+\Card{11.9cm}{AmberBg}{AmberRule}{%
+  \sffamily\footnotesize\color{SlideInk}
+  \textbf{The catch:} an AFLOW/experimental lookup only exists for a
+  material someone has already synthesised and measured --- a brand-new,
+  never-synthesised GNoME candidate has no such number. Confirmed by
+  inspection: the paper's own released \texttt{pink\_predict.py} has no
+  AFLOW lookup either; like this reproduction, it derives $\gamma$ purely
+  from $K$ and $G$.}
+
+\vspace{3pt}
+{\sffamily\footnotesize\color{Muted}
+Table 1's headline accuracy, in other words, was quietly measured under
+conditions the paper's own actual use case can never provide.}
+
+\Takeaway{A weather forecaster graded as excellent on days they were allowed
+to peek at tomorrow's newspaper.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{35 \textperiodcentered\ REAL-DATA VALIDATION}{The fix: same $K$, $G$, structure --- only $\gamma$ swapped}
+
+{\sffamily\small
+Hold our predicted $K$, $G$, and structure exactly fixed. Replace only
+$\gamma$ with the paper's own tabulated value, for these 45 crystals only
+--- the one substitution a hypothetical GNoME candidate could never make.}
+
+\vspace{5pt}
+\begin{center}
+\begin{tikzpicture}
+  \pgfmathsetmacro{\scaley}{10}
+  \pgfmathsetmacro{\refy}{\TOneMaePaper*\scaley}
+  \draw[Muted, line width=0.6pt] (0,0) -- (10.4,0);
+  \draw[SlideAmber, dashed, line width=1pt] (0,\refy) -- (10.4,\refy);
+
+  \pgfmathsetmacro{\ha}{\TOneMaeOurs*\scaley}
+  \fill[SlideRed] (0.7,0) rectangle (2.9,\ha);
+  \node[above, font=\sffamily\bfseries] at (1.8,\ha+0.18) {\TOneMaeOurs};
+  \node[below, font=\sffamily\footnotesize, text width=2.6cm, align=center] at (1.8,-0.35) {Ours, our own $\gamma$};
+
+  \pgfmathsetmacro{\hb}{\TOneMaeCorrected*\scaley}
+  \fill[SlideGreen] (4.1,0) rectangle (6.3,\hb);
+  \node[above, font=\sffamily\bfseries] at (5.2,\hb+0.18) {\TOneMaeCorrected};
+  \node[below, font=\sffamily\footnotesize, text width=3.0cm, align=center] at (5.2,-0.35) {Ours + paper's $\gamma$};
+
+  \pgfmathsetmacro{\hc}{\TOneMaePaper*\scaley}
+  \fill[SlideAmber] (7.5,0) rectangle (9.7,\hc);
+  \node[above, font=\sffamily\bfseries] at (8.6,\hc+0.18) {\TOneMaePaper};
+  \node[below, font=\sffamily\footnotesize, text width=2.6cm, align=center] at (8.6,-0.35) {Paper's own model};
+\end{tikzpicture}
+\end{center}
+{\sffamily\footnotesize\color{Muted}\centering
+$\log_{10}$ MAE against real experimental $\kappa_L$ (45 materials) ---
+lower is better}
+
+\Takeaway{Once both pipelines are compared on equal footing, our
+from-scratch reproduction is fully competitive with the paper's own
+pretrained model.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{36 \textperiodcentered\ REAL-DATA VALIDATION}{Honest caveat: 43 of 45 already seen}
+
+{\sffamily\small
+One question the last four slides deliberately deferred: how many of these
+45 materials did the CGCNN ensemble already see during training?}
+
+\vspace{4pt}
+\begin{columns}[T]
+\column{0.32\linewidth}
+\Card{4.3cm}{AmberBg}{AmberRule}{%
+  \centering{\headingfont\bfseries\fontsize{22}{26}\selectfont\color{SlideAmber}\TOneNTrain}\\[2pt]
+  \sffamily\small\color{SlideInk} already in the matbench training set ---
+  recall, not generalisation}
+\column{0.32\linewidth}
+\Card{4.3cm}{GreenBg}{GreenRule}{%
+  \centering{\headingfont\bfseries\fontsize{22}{26}\selectfont\color{SlideGreen}\TOneNUnseen}\\[2pt]
+  \sffamily\small\color{SlideInk} genuinely unseen --- LiF and Bi$_2$Te$_3$}
+\column{0.32\linewidth}
+\Card{4.3cm}{CardBg}{CardRule}{%
+  \sffamily\footnotesize\color{SlideInk}
+  Both numbers reported separately throughout this section --- never
+  blended into one aggregate that overstates what 43-of-45 can prove.}
+\end{columns}
+
+\vspace{5pt}
+{\sffamily\small\color{Muted}
+On the 2 unseen materials specifically, ours and the paper's model are both
+within a factor of $\sim$2 of experiment --- too small a sample to draw a
+strong conclusion from alone, but directionally consistent with everything
+above.}
+
+\Takeaway{The $\gamma$-substitution result is a controlled comparison, not a
+generalisation claim --- it shows which ingredient explains the gap, not
+that this pipeline is proven on unseen chemistry.}
+\end{frame}
+
+% =============================================================================
+% PART EIGHT - THE ACTUAL SCREEN: GNOME AT SCALE
+% =============================================================================
+\begin{dividerframe}
+\begin{center}
+{\color{LightBlue}\bfseries\sffamily\large PART EIGHT}\\[8pt]
+{\color{white}\bfseries\headingfont\fontsize{30}{36}\selectfont
+  The Actual Screen}\\[9pt]
+{\color{Subtle}\sffamily\normalsize
+  554{,}054 candidate materials, and what came out the other end}
+\end{center}
+\end{dividerframe}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{37 \textperiodcentered\ THE SCREEN}{What GNoME is, and the funnel}
+
+{\sffamily\footnotesize
+Google DeepMind's GNoME is a public database of computationally-discovered
+stable materials --- the paper's actual screening target, and the reason
+this pipeline exists at all. This project's download has \textbf{554{,}054}
+stable materials; the paper's own screen used \textbf{377{,}221} --- GNoME's
+public data has grown since, so this is a current screen using the paper's
+stated criteria, not a bit-identical replay.}
+
+\vspace{4pt}
+\begin{center}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Stage} & \textbf{Ours (554{,}054)} & \textbf{Paper's (377{,}221)} \\
+\midrule
+Bandgap $[0.1,3.0]$ eV + stable & 37{,}889 & 30{,}199 \\
++ no radioactive elements & 33{,}323 & 26{,}305 \\
++ $\kappa_L \leq 1$ (own model) & \textbf{\GnCandidates} & \textbf{11{,}869} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\Takeaway{Every stage narrows by roughly the same proportion as the paper's
+own funnel --- despite a $\sim$1.5$\times$ larger starting corpus and a
+fully independently-trained model.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{38 \textperiodcentered\ THE SCREEN}{25 minutes, one ordinary laptop}
+
+\begin{columns}[T]
+\column{0.55\linewidth}
+\includegraphics[height=5.2cm]{gnome_kappa_distributions}
+\column{0.41\linewidth}
+{\sffamily\small
+The full 33{,}323-candidate screen --- CGCNN ensemble, Slack-model physics,
+Monte Carlo uncertainty, all of it --- ran end to end in about
+\textbf{25 minutes} on an ordinary, several-year-old laptop CPU. No cluster
+and no GPU required for inference at this scale.}
+
+\vspace{5pt}
+{\sffamily\small\color{Muted}
+Both candidate-list shapes are similar and span the same range --- ours
+somewhat more concentrated around 0.25--0.4~W~m$^{-1}$~K$^{-1}$.}
+\end{columns}
+
+\Takeaway{The bottleneck this whole project started from --- DFT being too
+slow to screen hundreds of thousands of materials --- is exactly what this
+number answers.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{39 \textperiodcentered\ THE SCREEN}{Do we agree with the paper's own discoveries?}
+
+{\sffamily\small
+The paper ships its actual published candidate list. Match by reduced
+chemical formula (verified: same pymatgen convention on both sides, zero
+mismatches in a 200-row spot check) and ask: how much overlap is there,
+really?}
+
+\vspace{5pt}
+\Card{11.9cm}{BlueBg}{SlideBlue}{%
+  \centering\headingfont\bfseries\fontsize{22}{26}\selectfont\color{SlideBlue}
+  \GnPctOfPaper\%\\[2pt]
+  \sffamily\normalsize\color{SlideInk}
+  of the paper's own \textbf{11{,}869} published candidates also appear in
+  our independently-derived list (\GnOverlap\ materials)}
+
+\vspace{5pt}
+{\sffamily\small
+The other direction: \GnPctOfOurs\% of our \GnCandidates\ candidates also
+appear in the paper's smaller, older list --- the remainder are, in large
+part, candidates that simply did not exist yet in the paper's
+377{,}221-material snapshot, not disagreement.}
+
+\Takeaway{Two models sharing nothing but architecture family and physics
+formula, screening overlapping but non-identical corpora, converging on
+most of the same real discoveries --- the strongest evidence in this whole
+reproduction that the approach is finding a physical signal, not
+model-specific noise.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{40 \textperiodcentered\ THE SCREEN}{New: which candidates do we actually trust?}
+
+\begin{columns}[T]
+\column{0.55\linewidth}
+\includegraphics[height=5.2cm]{gnome_overlap_confidence}
+\column{0.41\linewidth}
+{\sffamily\small
+Every one of the \GnOverlap\ shared candidates carries a Monte Carlo
+$\kappa_L$ interval from the ensemble's own $K$/$G$ spread --- something a
+point-estimate pipeline cannot produce at all.}
+
+\vspace{4pt}
+\Card{5.6cm}{CardBg}{CardRule}{%
+  \sffamily\footnotesize\color{SlideInk}
+  \textbf{\color{SlideGreen}\GnTight} confidently low-$\kappa$
+  ($<2\times$)\\
+  \textbf{\color{Muted}\GnModerate} moderate confidence (2--5$\times$)\\
+  \textbf{\color{SlideRed}\GnWide} wide interval --- worth a DFT check
+  before trusting ($>5\times$)}
+\end{columns}
+
+\Takeaway{The paper's own pipeline can name a candidate. It cannot say which
+ones it is actually sure about --- this can.}
+\end{frame}
+
+% =============================================================================
+% PART NINE - WRAPPING UP
+% =============================================================================
+\begin{dividerframe}
+\begin{center}
+{\color{LightBlue}\bfseries\sffamily\large PART NINE}\\[8pt]
 {\color{white}\bfseries\headingfont\fontsize{30}{36}\selectfont
   Wrapping Up}
 \end{center}
@@ -880,88 +1408,98 @@ about 15\%. We are at \KEnsMae.}
 
 % -----------------------------------------------------------------------------
 \begin{frame}
-\SlideHeader{26 \textperiodcentered\ CONTRIBUTION}{What we did differently from the paper}
+\SlideHeader{41 \textperiodcentered\ CONTRIBUTION}{What we did differently from the paper}
 
 \sffamily\footnotesize
 \begin{enumerate}
-\setlength\itemsep{4pt}
+\setlength\itemsep{3pt}
 \item \textbf{Written from scratch} --- graph construction, convolution,
-  pooling, training loop: our own implementation, not a fork. No
-  pre-trained weights are ever loaded.
-\item \textbf{Ensembles, not single models} --- three initialisations per
-  target, averaged in log space, worth \EnsembleGainPct\% of the error and
-  a per-crystal uncertainty the paper lacks.
-\item \textbf{Adam with cosine annealing}, not the original's SGD with
-  step decay --- a scheduled decay beats a reactive one on a fixed budget.
+  training loop, physics: our own implementation throughout, no
+  pre-trained weights ever loaded.
+\item \textbf{Ensembles with propagated uncertainty} --- three
+  initialisations per target, worth \EnsembleGainPct\% of the error, spread
+  carried through as a Monte Carlo $\kappa_L$ interval the paper lacks.
 \item \textbf{Provenance on every prediction} --- each row records whether
   the model trained on that crystal, so recall is never mistaken for
   generalisation.
-\item \textbf{A documented error floor} --- reporting both the
-  multiplicative and range-normalised errors, not whichever flatters more.
+\item \textbf{Diagnosed a real-data gap, then closed it} --- traced Table
+  1's accuracy gap to the Gr\"uneisen parameter's source and confirmed the
+  diagnosis by substitution, rather than stopping at a worse number.
+\item \textbf{Ran the actual screen} --- all 554{,}054 current GNoME
+  candidates, not a 1{,}213-crystal demonstration, converging on
+  \GnPctOfPaper\% of the paper's own published discoveries.
 \end{enumerate}
 
-\Takeaway{Deliberately identical: the architecture, the training data, the
-log target, the split ratio. In a reproduction, differences should be few
-and intentional.}
+\Takeaway{Deliberately identical where it should be: the architecture, the
+training data, the log target, the physics formula. In a reproduction,
+differences should be few and intentional.}
 \end{frame}
 
 % -----------------------------------------------------------------------------
 \begin{frame}
-\SlideHeader{27 \textperiodcentered\ CONTRIBUTION}{The deliverable}
+\SlideHeader{42 \textperiodcentered\ CONTRIBUTION}{The deliverables}
 
 \Card{11.9cm}{BlueBg}{SlideBlue}{%
-  {\headingfont\bfseries\large\color{SlideBlue}
-  results/pink\_moduli\_predictions.csv}\\[4pt]
-  \sffamily\small\color{SlideInk}
-  Bulk and shear modulus for all 1{,}213 crystals --- with Pugh ratio, DFT
-  reference where one exists, per-crystal ensemble uncertainty, and a
-  provenance tag. This is the input the $\kappa_L$ stage consumes.}
+  {\headingfont\bfseries\normalsize\color{SlideBlue}
+  results/pink\_moduli\_predictions.csv}\\[3pt]
+  \sffamily\footnotesize\color{SlideInk}
+  Bulk and shear modulus for all 1{,}213 crystals --- Pugh ratio, DFT
+  reference where one exists, ensemble uncertainty, and a provenance tag.}
 
-\vspace{5pt}
+\vspace{3pt}
 \begin{columns}[T]
 \column{0.32\linewidth}
-\Card{3.4cm}{GreenBg}{GreenRule}{%
-  \centering{\headingfont\bfseries\fontsize{22}{26}\selectfont\color{SlideGreen}935}\\[2pt]
-  \sffamily\small\color{SlideInk} crystals genuinely unseen}
+\Card{3.0cm}{GreenBg}{GreenRule}{%
+  \centering{\headingfont\bfseries\fontsize{18}{22}\selectfont\color{SlideGreen}935}\\[1pt]
+  \sffamily\footnotesize\color{SlideInk} unseen}
 \column{0.32\linewidth}
-\Card{3.4cm}{AmberBg}{AmberRule}{%
-  \centering{\headingfont\bfseries\fontsize{22}{26}\selectfont\color{SlideAmber}278}\\[2pt]
-  \sffamily\small\color{SlideInk} in matbench, tagged as recall}
+\Card{3.0cm}{AmberBg}{AmberRule}{%
+  \centering{\headingfont\bfseries\fontsize{18}{22}\selectfont\color{SlideAmber}278}\\[1pt]
+  \sffamily\footnotesize\color{SlideInk} matbench recall}
 \column{0.32\linewidth}
-\Card{3.4cm}{BlueBg}{SlideBlue}{%
-  \centering{\headingfont\bfseries\fontsize{22}{26}\selectfont\color{SlideBlue}42}\\[2pt]
-  \sffamily\small\color{SlideInk} in the held-out test split}
+\Card{3.0cm}{BlueBg}{SlideBlue}{%
+  \centering{\headingfont\bfseries\fontsize{18}{22}\selectfont\color{SlideBlue}42}\\[1pt]
+  \sffamily\footnotesize\color{SlideInk} held-out test}
 \end{columns}
 
-\Takeaway{A built-in correctness check: on those 42 test-provenance
-crystals the error matches the benchmark test error exactly --- the
-provenance mapping is doing its job.}
+\vspace{3pt}
+\Card{11.9cm}{CardBg}{CardRule}{%
+  {\headingfont\bfseries\normalsize\color{SlideInk}
+  results/gnome\_screen\_candidates.csv + gnome\_overlap.csv}\\[3pt]
+  \sffamily\footnotesize\color{SlideInk}
+  \GnCandidates\ scored GNoME candidates at $\kappa_L\leq1$ with a Monte
+  Carlo confidence interval each; \GnOverlap\ cross-referenced against the
+  paper's own published list.}
+
+\Takeaway{A built-in correctness check: on the 42 test-provenance crystals
+the error matches the benchmark test error exactly.}
 \end{frame}
 
 % -----------------------------------------------------------------------------
 \begin{frame}
-\SlideHeader{28 \textperiodcentered\ CLOSING}{Summary}
+\SlideHeader{43 \textperiodcentered\ CLOSING}{Summary}
 
 \sffamily\small
 \begin{itemize}
-\setlength\itemsep{8pt}
-\item A crystal is a \textbf{graph}: atoms as nodes, bonds within a cutoff
-  as edges --- shown concretely in real NaCl.
-\item A \textbf{gated convolution} lets each atom update its description
-  from its neighbours; stacked three times, information travels three
-  bonds.
-\item \textbf{Mean pooling} and a \textbf{log-scale target} are both
-  deliberate choices, not defaults --- one respects an intensive property,
-  the other prevents the model from ignoring soft materials.
-\item The scarce resource was \textbf{labels, not structures} --- training
-  on all 10{,}987 matbench crystals rather than the 278-crystal overlap
-  more than halved our error.
-\item \textbf{Ensembling} three models bought a further \EnsembleGainPct\%,
-  landing at \KEnsMae\ $\log_{10}$(GPa) for bulk modulus ---
-  matching, and slightly beating, the paper this work reproduces.
+\setlength\itemsep{4pt}
+\item A crystal is a \textbf{graph}, read by a \textbf{gated convolution}
+  stacked three times --- shown concretely in real NaCl.
+\item \textbf{Ensembling} three models on all 10{,}987 matbench crystals
+  landed at \KEnsMae\ $\log_{10}$(GPa) for bulk modulus, matching and
+  slightly beating the paper this work reproduces.
+\item \textbf{Physics, not more learning}, turns $(K,G)$ into $\kappa_L$
+  --- bit-identical to the paper's own code, extended with Monte Carlo
+  uncertainty it lacks.
+\item Real-data validation \textbf{looked worse at first}
+  (\TOneMaeOurs\ vs.\ \TOneMaePaper) --- traced to the Gr\"uneisen
+  parameter, and \textbf{closed} by substitution (\TOneMaeCorrected).
+\item The actual \textbf{554{,}054-material screen} independently recovers
+  \GnPctOfPaper\% of the paper's own published discoveries.
+\item Still open: a second architecture (\textbf{ALIGNN}) is training on
+  the identical split --- in progress, no results yet.
 \end{itemize}
 
-\vspace{7pt}
+\vspace{4pt}
 \begin{center}
 {\headingfont\bfseries\Large\color{SlideInk} Thank you.}
 \end{center}
