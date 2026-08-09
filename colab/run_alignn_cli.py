@@ -168,11 +168,20 @@ def launch(gpu, smoke_test=False):
     # persist.
     show(colab_cli("exec", "-s", SESSION_NAME, "--timeout", "60", input=unpack_code))
 
+    # Always set this explicitly, in both directions - os.environ changes
+    # DO persist across separate exec calls to the same session (unlike
+    # cwd, see above), so a session reused from an earlier --smoke-test
+    # launch would otherwise silently keep training with smoke-test-sized
+    # data forever. Caught live: a "real" launch right after a smoke-test
+    # one on the same session finished in 0.2 minutes instead of hours,
+    # because this exact leak was still unset at the time.
+    flag = "1" if smoke_test else "0"
     if smoke_test:
         print("\n--smoke-test: using scripts/12's small-scale flags (2 epochs, "
              "~200 train crystals) instead of the full production run.")
-        show(colab_cli("exec", "-s", SESSION_NAME, "--timeout", "30",
-                       input="import os\nos.environ['ALIGNN_SMOKE_TEST'] = '1'\nprint('smoke test mode set')\n"))
+    show(colab_cli("exec", "-s", SESSION_NAME, "--timeout", "30",
+                   input=f"import os\nos.environ['ALIGNN_SMOKE_TEST'] = '{flag}'\n"
+                         f"print('ALIGNN_SMOKE_TEST set to {flag}')\n"))
 
     print("\nRunning the driver: GPU check, data prep, then launching training "
          "in the background (this step can take a few minutes - matbench "
