@@ -81,6 +81,14 @@ SESSION_NAME = "pink-alignn"
 # rooted here explicitly instead of assuming chdir carries over.
 REMOTE_ROOT = "/content/pink_alignn"
 
+# Duplicated from alignn_gpu_driver.py's own TARGETS, deliberately not
+# imported: that module chdir()s and sys.exit()s at import time if
+# /content/pink_alignn doesn't exist (see its own docstring) - real side
+# effects meant for the Colab VM, which would break importing it from here,
+# on the laptop, just to read one constant. A fixed 2-element tuple of
+# property names is low-risk to keep in sync by hand.
+TARGETS = ("bulk_modulus_kv", "shear_modulus_gv")
+
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "colab"))
 from PINK_ALIGNN_colab import BUNDLE  # noqa: E402  (reuse the file list, don't re-list it)
 
@@ -115,6 +123,61 @@ def build_bundle_zip():
                 sys.exit(f"missing bundle file: {relative}")
             archive.write(path, relative)
     return dest
+
+
+# The three files scripts/12_train_alignn.py's --resume actually needs:
+# current_model.pt (weights, written every epoch), current_state.pt
+# (optimizer/scheduler/epoch/best_loss, also every epoch), config.json
+# (architecture, so the model can be rebuilt before loading weights into
+# it). See that script's own docstring for the full mechanism - added after
+# losing an entire in-progress run to a reclaimed session with no way to
+# pick it back up.
+CHECKPOINT_FILES = ["current_model.pt", "current_state.pt", "config.json"]
+
+
+def checkpoint_dir(target):
+    return os.path.join(OUTPUT_DIR, "checkpoints", f"alignn_{target}")
+
+
+def sync_checkpoints():
+    """Best-effort download of whichever target(s)' checkpoint currently
+    exist on the VM, into a local staging area that survives even if the
+    session is later lost. Call this periodically (from --wait's poll loop),
+    not just once at the end - the whole point is having a recent copy
+    BEFORE a loss, not after. A missing remote file (a target hasn't
+    started, or hasn't reached its first epoch yet) is expected, not an
+    error - colab download's own failure is swallowed via check=False.
+    """
+    for target in TARGETS:
+        local_dir = checkpoint_dir(target)
+        os.makedirs(local_dir, exist_ok=True)
+        for fname in CHECKPOINT_FILES:
+            remote = f"{REMOTE_ROOT}/results/alignn_{target}/{fname}"
+            colab_cli("download", "-s", SESSION_NAME, remote,
+                     os.path.join(local_dir, fname), check=False)
+
+
+def restore_checkpoints():
+    """The other half of sync_checkpoints(): before a fresh launch, re-upload
+    any locally-staged checkpoint so alignn_gpu_driver.py's own check
+    (does out_dir/current_model.pt exist?) finds it and passes --resume.
+    Needs the remote out_dir to exist first - the bundle only contains
+    source code, results/ is created by scripts/12 itself on its first run,
+    so this makes it explicitly rather than assuming it's there.
+    """
+    for target in TARGETS:
+        local_dir = checkpoint_dir(target)
+        model_path = os.path.join(local_dir, "current_model.pt")
+        if not os.path.exists(model_path):
+            continue
+        print(f"  Found a locally-staged checkpoint for {target} - restoring it.")
+        remote_dir = f"{REMOTE_ROOT}/results/alignn_{target}"
+        colab_cli("exec", "-s", SESSION_NAME, "--timeout", "20",
+                 input=f"import os\nos.makedirs('{remote_dir}', exist_ok=True)\n")
+        for fname in CHECKPOINT_FILES:
+            local = os.path.join(local_dir, fname)
+            if os.path.exists(local):
+                colab_cli("upload", "-s", SESSION_NAME, local, f"{remote_dir}/{fname}")
 
 
 def show(result):
@@ -167,6 +230,9 @@ def launch(gpu, smoke_test=False):
     # action. This call only needs to get the files onto disk, which does
     # persist.
     show(colab_cli("exec", "-s", SESSION_NAME, "--timeout", "60", input=unpack_code))
+
+    print("\nChecking for a locally-staged checkpoint to resume from...")
+    restore_checkpoints()
 
     # Always set this explicitly, in both directions - os.environ changes
     # DO persist across separate exec calls to the same session (unlike
@@ -243,7 +309,12 @@ def wait(poll_seconds, timeout_seconds):
             print_status(state)
             last_stage = stage
         if stage in TERMINAL_STAGES:
+            sync_checkpoints()  # one last sync of whatever finished/failed
             return state
+        # Sync every poll cycle, not just at the end - the entire point is
+        # having a recent local copy BEFORE a loss, exactly what was missing
+        # the first time this run got interrupted by a lost session.
+        sync_checkpoints()
         time.sleep(poll_seconds)
     sys.exit(f"Still running after {timeout_seconds / 3600:.1f}h - check with --status.")
 

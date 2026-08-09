@@ -201,6 +201,14 @@ def train_all_targets():
         out_dir = os.path.join(RESULTS_DIR, f"alignn_{target}")
         args = ([sys.executable, "-u", os.path.join("scripts", "12_train_alignn.py"),
                 "--target", target, "--out-dir", out_dir] + COMMON_ARGS)
+        # If run_alignn_cli.py re-uploaded a checkpoint from a previous,
+        # interrupted attempt at this target (see its sync_checkpoints()),
+        # it's sitting in out_dir already at this point - resume from it
+        # instead of burning epochs 0..N again. --resume is a harmless
+        # no-op if there's nothing there yet (first attempt at this target).
+        if os.path.exists(os.path.join(out_dir, "current_model.pt")):
+            args.append("--resume")
+            print(f"Found an existing checkpoint for {target} - resuming.", flush=True)
         print(f"$ {' '.join(args)}", flush=True)
         result = subprocess.run(args)
 

@@ -51,6 +51,27 @@ None rather than converting to one - and alignn_atomwise_pure.py's
 ALIGNNAtomWisePure model is the one written to consume TorchGraph natively.
 Both must be set together; either alone leaves a DGL-shaped object meeting a
 model (or vice versa) that does not expect it.
+
+--resume: RECOVERING FROM A LOST SESSION WITHOUT STARTING OVER AT EPOCH 0
+------------------------------------------------------------------------------
+Motivated by a real incident: a Colab session was lost mid-run (the VM got
+reclaimed - see colab/run_alignn_cli.py's own history), losing all progress
+on a 150-epoch run. ALIGNN already writes current_model.pt (weights) and
+current_state.pt (optimizer/scheduler/epoch/best_loss) after EVERY epoch -
+alignn/train.py's own train_dgl() already knows how to resume from
+current_state.pt when config.resume_checkpoint=True, it just was not wired
+up here. --resume rebuilds the model from out_dir/config.json +
+current_model.pt (the same two-step restore alignn's own train_alignn.py
+uses for --restart_model_path, reused rather than reimplemented differently)
+and sets resume_checkpoint=True so train_dgl() picks the optimizer/scheduler/
+epoch back up from current_state.pt on its own. If out_dir has no checkpoint
+yet (first-ever launch), --resume is a harmless no-op, not an error - there
+is nothing to resume from, so it just starts fresh.
+
+This only helps if current_model.pt/current_state.pt/config.json actually
+survive whatever interrupted the run - i.e. they need to have been copied
+somewhere OUTSIDE the lost VM before it was lost. That is
+colab/run_alignn_cli.py's job (periodic --wait downloads), not this script's.
 """
 
 import argparse
@@ -88,6 +109,34 @@ def load_split(cache_path, n_train_override, n_val_override, n_test_override):
     return subset, n_tr, n_va, n_te
 
 
+def load_resume_model(out_dir, device):
+    """Rebuild the model and restore its weights from a previous run's
+    checkpoint - the same two-step restore alignn's own train_alignn.py
+    uses for --restart_model_path (config.json for architecture,
+    current_model.pt for weights), reused rather than reimplemented
+    differently. Returns None (not an error) if no checkpoint is there yet.
+
+    Only restores WEIGHTS. Optimizer/scheduler/epoch are restored separately,
+    inside alignn's own train_dgl(), from current_state.pt, triggered by
+    config.resume_checkpoint=True - not duplicated here.
+    """
+    import json
+    model_path = os.path.join(out_dir, "current_model.pt")
+    config_path = os.path.join(out_dir, "config.json")
+    if not (os.path.exists(model_path) and os.path.exists(config_path)):
+        return None
+
+    from alignn.models.alignn_atomwise_pure import ALIGNNAtomWisePure, ALIGNNAtomWisePureConfig
+
+    with open(config_path) as fh:
+        saved = json.load(fh)
+    model = ALIGNNAtomWisePure(ALIGNNAtomWisePureConfig(**saved["model"]))
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model = model.to(device)
+    print(f"Resuming model weights from {model_path}")
+    return model
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -111,6 +160,9 @@ def main():
     parser.add_argument("--n-test", type=int, default=None)
     parser.add_argument("--n-early-stopping", type=int, default=None,
                         help="stop if val loss doesn't improve for this many epochs")
+    parser.add_argument("--resume", action="store_true",
+                        help="resume from --out-dir's current_model.pt/current_state.pt "
+                             "if present; harmless no-op if there's nothing to resume from")
     args = parser.parse_args()
 
     out_dir = args.out_dir or os.path.join(PROJECT_ROOT, "results", f"alignn_{args.target}")
@@ -169,7 +221,16 @@ def main():
             "stresswise_weight": 0.0,
             "atomwise_weight": 0.0,
         },
+        resume_checkpoint=args.resume,
     )
+
+    resume_model = None
+    if args.resume:
+        resume_model = load_resume_model(out_dir, device)
+        if resume_model is None:
+            print(f"--resume given but no checkpoint found in {out_dir} - "
+                 f"starting fresh (this is expected on a first-ever launch).")
+            config.resume_checkpoint = False
 
     print("\nBuilding dataloaders (line-graph construction - this is the slow part)...")
     # use_pure_torch=True picks the non-lmdb-C-library storage backend;
@@ -198,7 +259,8 @@ def main():
     )
 
     print(f"\nTraining for {args.epochs} epochs -> {out_dir}\n")
-    train_dgl(config, train_val_test_loaders=(train_loader, val_loader, test_loader, prepare_batch))
+    train_dgl(config, model=resume_model,
+             train_val_test_loaders=(train_loader, val_loader, test_loader, prepare_batch))
 
     print(f"\nDone. Checkpoint, config, and test-set predictions written to {out_dir}/")
 
