@@ -70,10 +70,18 @@ against 45 real experimentally-measured $\kappa_L$ values from the paper's own
 Table~1. On raw aggregate, the paper's Table~1 numbers win; tracing the gap
 localises it entirely to one input (a Gr\"uneisen parameter looked up from the
 AFLOW database, not predicted) rather than to our elastic-moduli model, and
-substituting it in closes nearly all of the gap. We describe the algorithm,
-the six points at which our approach departs from the paper, and the design
-decision that matters most: training on the labelled benchmark itself rather
-than on the subset of it that overlaps our own structure collection.
+substituting it in closes nearly all of the gap. Finally, we run the paper's
+actual headline experiment for the first time in this project: a
+high-throughput screen of the GNoME discovery database (a current 554k-material
+snapshot, versus the paper's own 377k) for candidates with
+$\kappa_L \leq 1$~W~m$^{-1}$~K$^{-1}$. 70.8\% of the paper's own 11,869
+published candidates also appear in our independently-derived 16,299 --- two
+models sharing nothing but architecture family and physics formula,
+screening non-identical corpora, converging on the majority of the same real
+discoveries. We describe the algorithm, the six points at which our approach
+departs from the paper, and the design decision that matters most: training
+on the labelled benchmark itself rather than on the subset of it that
+overlaps our own structure collection.
 \end{abstract}
 
 \tableofcontents
@@ -565,6 +573,106 @@ one aggregate number. \texttt{results/table1\_validation.png} is the parity
 plot against real $\kappa_{\text{exp}}$; \texttt{results/table1\_comparison.csv}
 the full merged table; \texttt{scripts/09\_fetch\_validation\_set.py} and
 \texttt{scripts/10\_validate\_table1.py} reproduce all of it end to end.
+
+% =====================================================================
+\section{The GNoME screen}
+
+Everything above runs inference on 1{,}213 or 45 crystals. The paper's actual
+headline result is a 377{,}221-material high-throughput screen of Google
+DeepMind's GNoME discovery database, filtered to candidates with
+$\kappa_L \leq 1$~W~m$^{-1}$~K$^{-1}$. This project had, until now, never run
+that screen --- only ever done inference on small, curated CIF sets.
+\texttt{scripts/13\_screen\_gnome.py} does it end to end: fetch, filter, run
+this project's own CGCNN ensemble and Slack-model physics (with Monte Carlo
+uncertainty, unchanged from Section~7), threshold, and compare against the
+paper's own published result.
+
+\keybox{The snapshot has grown since the paper screened it}{GNoME's public
+data is not a frozen 2023 snapshot. This project's download
+(\texttt{gnome\_data/stable\_materials\_summary.csv}, fetched 2026-08-09) has
+\textbf{554{,}054} stable materials; the paper's own screen used
+\textbf{377{,}221}. There is no way to pull the exact historical snapshot the
+paper screened, only today's --- so this is \emph{a current GNoME screen
+using the paper's stated criteria}, not a bit-identical replay. The funnel
+below is checked against the paper's own for plausibility only (same order of
+magnitude, scaled for the $\approx 1.47\times$ larger corpus), never claimed
+to match exactly.}
+
+\begin{table}[h]
+\centering
+\caption{Screening funnel: this project's current snapshot vs. the paper's own.}
+\begin{tabular}{lcc}
+\toprule
+Stage & Ours (554{,}054) & Paper's (377{,}221) \\
+\midrule
+Bandgap $[0.1,3.0]$ eV + decomposition energy $\leq 0$ & 37{,}889 & 30{,}199 \\
++ no radioactive elements & 33{,}323 & 26{,}305 \\
++ $\kappa_L \leq 1$ (own model) & \textbf{16{,}299} & \textbf{11{,}869} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Candidate structures are matched from GNoME's \texttt{by\_composition.zip}
+(554{,}054 CIFs) via the summary CSV's \texttt{Composition} column --- checked
+directly, not assumed: every one of the 554{,}054 zip filenames matches a
+\texttt{Composition} value in the CSV, one to one. All 33{,}323 candidate CIFs
+are read directly out of the zip and converted to graphs in memory, the same
+reasoning as \texttt{01b\_prepare\_full\_dataset.py}'s graph caching --- never
+written to disk individually.
+
+\subsection{Comparison against the paper's own published candidates}
+
+The paper's actual screening output ships in the cloned reference repository
+as \texttt{Nature-\allowbreak{}filtered-\allowbreak{}low-\allowbreak{}kappa.csv}
+--- real, checked data, not something taken on faith (the exact path is in the
+README). It carries no material ID, only a
+reduced formula, so overlap is necessarily checked by formula --- verified to
+be the \emph{same} pymatgen convention both sources use (zero formatting
+mismatches in a 200-row spot check), so this is not a stringification
+artefact deflating the count.
+
+\keybox{70.8\% of the paper's own published candidates also appear in our list}{An independently-trained CGCNN ensemble, run on a different (larger,
+newer) GNoME snapshot, through the exact same physics, agrees with more than
+two-thirds of what the paper's own model flagged. In the other direction,
+51.6\% of our 16{,}299 candidates also appear in the paper's smaller/older
+snapshot --- the remainder are, in large part, candidates that simply did not
+exist yet in the paper's snapshot, not disagreement. Two models that share
+nothing but architecture family and physics formula, screening overlapping
+but non-identical corpora, converging on the same majority of real published
+discoveries is the strongest evidence in this entire reproduction that the
+approach is finding a physical signal rather than model-specific noise.}
+
+\noindent
+\texttt{results/gnome\_kappa\_distributions.png} overlays both candidate
+lists' $\kappa_L$ distributions: similar overall shape, both spanning the full
+range, ours somewhat more concentrated around $0.25$--$0.4$~W~m$^{-1}$~K$^{-1}$.
+
+\textbf{What a point-estimate pipeline cannot do at all}: every candidate here
+carries a Monte Carlo $\kappa_L$ interval from the ensemble's own $K$/$G$
+spread. Of the 8{,}405 candidates both screens agree on:
+
+\begin{table}[h]
+\centering
+\caption{Confidence breakdown of the 8,405 overlapping candidates, by Monte Carlo interval width.}
+\begin{tabular}{lcl}
+\toprule
+Confidence ($p95/p05$ ratio) & Count & Meaning \\
+\midrule
+Tight ($< 2\times$) & 1{,}770 & confidently low-$\kappa$ \\
+Moderate ($2$--$5\times$) & 4{,}739 & reasonable confidence \\
+Wide ($> 5\times$) & 1{,}896 & worth a DFT check before trusting \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+The paper's own pipeline has no equivalent of this breakdown at all --- it can
+name candidates, but not say which ones it is actually sure about.
+\texttt{results/gnome\_screen\_all.csv} is the full 33{,}323-candidate scored
+pool (pre-threshold); \texttt{results/gnome\_screen\_candidates.csv} the
+16{,}299 that pass $\kappa_L \leq 1$; \texttt{results/gnome\_overlap.csv} the
+8{,}405 shared-formula rows above.
 
 % =====================================================================
 \section{What we did differently from the paper}

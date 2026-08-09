@@ -45,6 +45,10 @@ data_full/alignn_data.pkl
 # Cloned upstream repos (see README)
 external/
 
+# Downloaded GNoME discovery-database files (Phase 3) - large (100s of MB),
+# fetched fresh from the public GCS bucket by scripts/13_screen_gnome.py.
+gnome_data/
+
 # Kaggle: generated kernel bundle and downloaded run artifacts. The kernel is
 # rebuilt from source by kaggle/build_kernel.py, so committing it would just be
 # a copy that can go stale.

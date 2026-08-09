@@ -158,6 +158,9 @@ matching ours. The paper's text and its own model disagree with each other.
 | `scripts/11_prepare_alignn_data.py` | matbench → ALIGNN's format, same split as the CGCNN ensemble |
 | `scripts/12_train_alignn.py` | Trains ALIGNN (Phase 2, a second architecture) on one target |
 | `colab/PINK_ALIGNN_colab.py` | Generates `colab/PINK_ALIGNN.ipynb`, the GPU run for the above |
+| `scripts/13_screen_gnome.py` | **The actual GNoME screen** — 33,323 candidates, K/G/κ_L/uncertainty for each |
+| `scripts/14_compare_gnome_screen.py` | Compares our screen against the paper's own 11,869 published candidates |
+| `gnome_data/` | Downloaded GNoME summary CSV + structure zip (gitignored, ~620 MB) |
 | `run_pipeline.sh` | Stage 1, everything above, in order |
 | `results/` | Checkpoints, metrics, figures, predictions |
 | `results/archive/` | One superseded run, kept for comparison (see below) |
@@ -430,3 +433,73 @@ over:**
 None of these are exotic — they're exactly the class of doc-vs-code mismatch this project has run
 into before (the paper's own "two hidden layers" vs. its checkpoint's `n_h=1`), and exactly why every
 claim in this project gets checked by running something, not by reading about it.
+
+## The actual screen: GNoME, end to end
+
+Everything above runs on 1,213 or 45 crystals. The paper's real headline result is a 377,221-material
+high-throughput screen of Google DeepMind's [GNoME](https://github.com/google-deepmind/materials_discovery)
+discovery database, filtered down to candidates with κ_L ≤ 1 W/m/K. This project had never run that
+screen — only ever done inference on the same small, curated CIF sets. This section does it.
+
+```bash
+curl -o gnome_data/stable_materials_summary.csv https://storage.googleapis.com/gdm_materials_discovery/gnome_data/stable_materials_summary.csv
+curl -o gnome_data/by_composition.zip        https://storage.googleapis.com/gdm_materials_discovery/gnome_data/by_composition.zip
+python scripts/13_screen_gnome.py            # ~25 min on this laptop's CPU
+python scripts/14_compare_gnome_screen.py    # compares against the paper's own published candidates
+```
+
+Both files are fetched anonymously over plain HTTPS from GNoME's public GCS bucket — no `gcloud`/
+`gsutil` needed. `gnome_data/` is gitignored (620 MB combined, trivially re-downloadable).
+
+**The snapshot has grown since the paper screened it — stated once here, true everywhere this result
+is quoted.** This project's download (2026-08-09) has **554,054** stable materials; the paper's own
+screen used **377,221**. There is no way to pull the exact historical snapshot the paper used, only
+today's — so this is *a current GNoME screen using the paper's stated criteria*, not a bit-identical
+replay. The funnel below is checked against the paper's own for plausibility (same order of
+magnitude, scaled for the ~1.47× larger corpus), never claimed to match exactly.
+
+| Stage | Ours (554,054-material snapshot) | Paper's (377,221-material snapshot) |
+|---|---|---|
+| Bandgap [0.1, 3.0] eV + decomposition energy ≤ 0 | 37,889 | 30,199 |
+| + no radioactive elements | 33,323 | 26,305 |
+| + κ_L ≤ 1 W/m/K (our/their model) | **16,299** | **11,869** |
+
+Structures are matched from GNoME's `by_composition.zip` (554,054 CIFs, one per material) by the
+summary CSV's `Composition` column — checked directly, not assumed: every one of the 554,054 zip
+filenames matches a `Composition` value in the CSV, one-to-one. All 33,323 candidate CIFs are read
+straight out of the zip and converted to graphs in memory — never written to disk individually, same
+reasoning as `01b_prepare_full_dataset.py`'s graph caching.
+
+### Comparison against the paper's own 11,869 published candidates
+
+The paper's actual screening output ships in the cloned reference repo
+(`external/AI4Kappa/JMI_Supporting_Information/Nature-filtered-low-kappa.csv`) — real, checked data,
+not something taken on faith. It carries no material ID, only a reduced formula, so overlap is
+necessarily checked by formula (verified to be the *same* pymatgen convention both sources use — zero
+formatting mismatches in a 200-row spot check — so this isn't a stringification artifact deflating
+the count).
+
+**70.8% of the paper's own published candidates also appear in our independently-derived list** — an
+independently-trained CGCNN ensemble, run on a different (larger, newer) GNoME snapshot, using the
+exact same physics, agrees with more than two-thirds of what the paper's own model flagged. (51.6% in
+the other direction — of *our* 16,299, just over half also appear in the paper's smaller/older
+snapshot; the rest are, in large part, candidates that simply didn't exist yet in the paper's
+snapshot, not disagreement.)
+
+`results/gnome_kappa_distributions.png` overlays both candidate lists' κ_L distributions — similar
+overall shape, both spanning the full 0–1 W/m/K range, ours somewhat more concentrated around
+0.25–0.4. `results/gnome_overlap.csv` is the full set of 8,405 shared-formula rows.
+
+**The part a point-estimate pipeline cannot do at all**: every one of our candidates carries a Monte
+Carlo κ_L interval from the ensemble's own K/G spread (`results/gnome_overlap_confidence.png`). Of the
+8,405 candidates both screens agree on:
+
+| Confidence (p95/p05 ratio) | Count | Meaning |
+|---|---|---|
+| Tight (< 2×) | 1,770 | confidently low-κ |
+| Moderate (2–5×) | 4,739 | reasonable confidence |
+| Wide (> 5×) | 1,896 | worth a DFT check before trusting |
+
+The paper's own pipeline has no equivalent of this list at all — it can name candidates, but not say
+which ones it's actually sure about. `results/gnome_screen_all.csv` is the full 33,323-candidate
+scored pool (pre-threshold); `results/gnome_screen_candidates.csv` is the 16,299 that pass κ_L ≤ 1.
