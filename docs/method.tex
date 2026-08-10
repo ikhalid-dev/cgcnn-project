@@ -756,10 +756,50 @@ correct when it was made.}
 \texttt{results/alignn\_bulk\_modulus\_kv/} and
 \texttt{results/alignn\_shear\_modulus\_gv/} each hold \texttt{best\_model.pt},
 \texttt{config.json}, and \texttt{prediction\_results\_test\_set.csv} ---
-enough to reproduce the table above independently, and enough for a future
-adapter script to run ALIGNN's own moduli through
-Section~7's \texttt{slack\_physics()} the way the CGCNN ensemble's are, which
-this document does not yet do.
+enough to reproduce the table above independently.
+
+\subsection{Closing the loop: ALIGNN's own \texorpdfstring{$\kappa_L$}{kappa\_L}}
+
+\texttt{scripts/15\_alignn\_predict\_moduli.py} runs ALIGNN (both targets) on
+the same 1{,}213-crystal PINK prediction set Section~6 used, reusing
+\texttt{alignn.pretrained}'s own pure-torch inference utilities rather than a
+hand-built graph-construction path; \texttt{scripts/16\_alignn\_predict\_kappa.py}
+then pushes those moduli through the identical, unchanged
+\texttt{slack\_physics()} from Section~7 --- no Monte Carlo interval this
+time, since ALIGNN here is one trained model, not a 3-member ensemble, so
+there is no spread to propagate honestly.
+
+\begin{table}[h]
+\centering
+\caption{ALIGNN's $\kappa_L$ vs.\ our own CGCNN-ensemble $\kappa_L$, identical
+physics, all 1{,}213 crystals.}
+\begin{tabular}{lc}
+\toprule
+Pearson $r$ ($\log_{10}\kappa_L$) & 0.940 \\
+Spearman rank correlation & 0.947 \\
+MAE & 0.141 $\log_{10}$ ($\approx$38\% typical error) \\
+Overlap, 20 lowest-$\kappa_L$ candidates & 12/20 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\keybox{A second, independent architecture agrees with the first, through
+the same physics}{Two models sharing nothing but the training data, the
+train/val/test split, and the Slack-model formula --- one three-model CGCNN
+ensemble, one single ALIGNN run, no shared weights, no shared
+initialisation --- correlate at $r=0.94$ on final $\kappa_L$. That is, if
+anything, \emph{tighter} agreement than Section~6's CGCNN-vs-the-paper's-own-
+pretrained-model check ($r=0.932$), consistent with ALIGNN's better
+per-modulus accuracy (Table~7) propagating through unchanged physics into a
+more consistent downstream number, not just noise correlating with noise.}
+
+\noindent
+\texttt{results/alignn\_moduli\_predictions.csv} and
+\texttt{results/alignn\_kappa\_predictions.csv} carry the full 1{,}213-row
+output --- provenance-tagged the same way as
+\texttt{pink\_moduli\_predictions.csv} (Section~4), reusing that file's own
+provenance column directly rather than re-deriving it, since both models
+share the identical split by construction.
 
 % =====================================================================
 \section{What we did differently from the paper}
