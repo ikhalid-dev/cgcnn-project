@@ -78,7 +78,11 @@ $\kappa_L \leq 1$~W~m$^{-1}$~K$^{-1}$. 70.8\% of the paper's own 11,869
 published candidates also appear in our independently-derived 16,299 --- two
 models sharing nothing but architecture family and physics formula,
 screening non-identical corpora, converging on the majority of the same real
-discoveries. We describe the algorithm, the six points at which our approach
+discoveries. As an architecture check, ALIGNN --- which sees bond angles as
+well as bond lengths --- trained on the identical split beats the CGCNN
+ensemble on both moduli (bulk: $0.0539$ vs.\ $0.0630$ $\log_{10}$ MAE; shear:
+$0.0725$ vs.\ $0.0781$), evidence the findings above are a property of the
+task rather than one architecture's blind spot. We describe the algorithm, the six points at which our approach
 departs from the paper, and the design decision that matters most: training
 on the labelled benchmark itself rather than on the subset of it that
 overlaps our own structure collection.
@@ -673,6 +677,89 @@ name candidates, but not say which ones it is actually sure about.
 pool (pre-threshold); \texttt{results/gnome\_screen\_candidates.csv} the
 16{,}299 that pass $\kappa_L \leq 1$; \texttt{results/gnome\_overlap.csv} the
 8{,}405 shared-formula rows above.
+
+% =====================================================================
+\section{A second architecture: ALIGNN}
+
+Every result above uses CGCNN, whose convolution reads bond \emph{lengths}
+only --- the edges of the crystal graph. ALIGNN (Choudhary \& DeCost, 2021)
+adds a second, ``line'' graph over bond \emph{angles}, geometric information
+a plain bond graph cannot represent at all. Testing whether that extra
+information helps on this exact task, on this exact data, is the obvious
+next check on whether Sections~2--6's findings are a property of the
+modelling problem or an artefact of one architecture's blind spots.
+
+\texttt{scripts/12\_train\_alignn.py} trains ALIGNN on the identical
+train/val/test split the CGCNN ensemble used --- computed once with this
+project's own \texttt{split\_indices()} and handed to ALIGNN via
+\texttt{keep\_data\_order=True}, not re-derived from ALIGNN's own
+differently-seeded split logic (its \texttt{split\_seed} shuffles with
+Python's \texttt{random}, not numpy's \texttt{RandomState}, so ``the same
+seed number'' would silently produce a different partition). Both targets
+trained for the full 150 epochs at the same production hyperparameters used
+throughout this project (4 ALIGNN layers, 4 GCN layers, 256 hidden features),
+with no early stop triggered.
+
+\begin{table}[h]
+\centering
+\caption{ALIGNN vs.\ the CGCNN ensemble, identical 1{,}648-crystal test
+split.}
+\begin{tabular}{lccccc}
+\toprule
+Target & Model & MAE $\log_{10}$ & $R^2$ & MAE (GPa) & Rel.\ error \\
+\midrule
+Bulk   & CGCNN ensemble & 0.0630 & 0.901 & 10.20 & 15.6\% \\
+Bulk   & \textbf{ALIGNN} & \textbf{0.0539} & \textbf{0.920} & 8.45 & 13.2\% \\
+Shear  & CGCNN ensemble & 0.0781 & 0.899 & 7.27 & 19.7\% \\
+Shear  & \textbf{ALIGNN} & \textbf{0.0725} & \textbf{0.901} & 6.36 & 18.2\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\keybox{ALIGNN wins on both targets}{The gap is consistent with the
+architectural motivation, not just noise: bulk and shear modulus both depend
+on how bond angles --- not only lengths --- deform under stress, and that is
+exactly the information CGCNN's convolution structurally cannot see. This is
+a single run, not an ensemble, so the comparison is a single ALIGNN model
+against a 3-model CGCNN ensemble --- if anything an unfavourable comparison
+for ALIGNN, which still comes out ahead on both targets.}
+
+\subsection{Where this ran, and a second infrastructure lesson}
+
+The first attempt trained this on a Colab GPU, orchestrated by
+\texttt{colab/run\_alignn\_cli.py} (a CLI-driven session over
+\texttt{google-colab-cli}, built after manual notebook uploads proved too
+slow to iterate on). That session was lost to Colab's idle-VM pruning three
+times in one evening, which is what motivated the checkpoint/resume system
+documented in that script's own module docstring. Training was ultimately
+moved to Kaggle instead: a Kaggle kernel runs unattended on Kaggle's own
+infrastructure once pushed, with no keep-alive ping required, which removes
+the failure mode entirely rather than working around it.
+
+\keybox{A GPU tier that quietly stopped working}{\texttt{kaggle/build\_kernel.py}
+(the CGCNN kernel, built earlier in this project) requests an NVIDIA P100,
+chosen for its FP32 throughput over a T4. Reusing that same choice for
+ALIGNN's kernel, the first two pushes silently landed on a CPU image (a
+known, separately-documented Kaggle quirk: a kernel's first push can pin to
+whatever image it happens to get, regardless of the requested
+\texttt{machine\_shape}). The third push did get a real P100 --- and crashed
+immediately with \texttt{CUDA error: no kernel image is available for
+execution on the device}. Confirmed live: Kaggle's current default PyTorch
+build (\texttt{2.10.0+cu128}) only ships compiled kernels for CUDA
+capability 7.0--12.0; the P100 is capability 6.0 (Pascal). Switching
+\texttt{machine\_shape} to \texttt{NvidiaTeslaT4} (Turing, capability 7.5)
+fixed it on the next push. Recorded here for the same reason every other bug
+in this document is: the platform moved out from under a choice that was
+correct when it was made.}
+
+\noindent
+\texttt{results/alignn\_bulk\_modulus\_kv/} and
+\texttt{results/alignn\_shear\_modulus\_gv/} each hold \texttt{best\_model.pt},
+\texttt{config.json}, and \texttt{prediction\_results\_test\_set.csv} ---
+enough to reproduce the table above independently, and enough for a future
+adapter script to run ALIGNN's own moduli through
+Section~7's \texttt{slack\_physics()} the way the CGCNN ensemble's are, which
+this document does not yet do.
 
 % =====================================================================
 \section{What we did differently from the paper}

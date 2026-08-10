@@ -56,6 +56,12 @@ kaggle/build/
 kaggle/output/
 kaggle/pulled/
 
+# Same idea for the ALIGNN Kaggle kernel (kaggle/build_alignn_kernel.py /
+# run_alignn_kernel.py) - separate directories so pushing/fetching it never
+# touches the CGCNN kernel's own build state.
+kaggle/build_alignn/
+kaggle/output_alignn/
+
 # Same idea for the ALIGNN Colab-CLI runner: the uploaded bundle zip is
 # rebuilt from BUNDLE by run_alignn_cli.py, and alignn_output/ is where
 # downloaded status/log/results files land before being merged into results/.
@@ -84,6 +90,22 @@ presentation/build.log
 # already embeds their rendered output.
 presentation/figures/
 presentation/metrics.tex
+
+# ALIGNN results (Phase 2): keep the actual deliverable, drop what's either
+# huge cache or redundant with it. best_model.pt is the one exception to the
+# blanket *.pt rule above - the CGCNN checkpoints' same "fresh clone
+# reproduces every figure without retraining" reasoning applies, just at
+# ALIGNN's larger (~15 MB vs. 120-380 KB) scale. current_model.pt/
+# last_model.pt duplicate best_model.pt's job at a worse checkpoint, and
+# current_state.pt is optimizer/scheduler state only needed mid-training -
+# both already caught by the *.pt rule above, no exception needed.
+!results/alignn_*/best_model.pt
+# The LMDB line-graph caches: ~400 MB per target, rebuilt automatically by
+# scripts/12_train_alignn.py's own get_train_val_loaders() call.
+results/alignn_*/train_data/
+results/alignn_*/val_data/
+results/alignn_*/test_data/
+results/alignn_*/*_data_range
 
 # The published paper - not ours to redistribute. Get it from the DOI in
 # README.md; the pipeline never reads it.

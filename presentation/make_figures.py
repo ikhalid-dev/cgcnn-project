@@ -44,6 +44,7 @@ projected crystallographic positions - the picture a reader already has of
 table salt - so nothing crosses that shouldn't.
 """
 
+import json
 import math
 import os
 import sys
@@ -411,6 +412,32 @@ def table1_metrics():
     }
 
 
+def alignn_metrics():
+    """log10 MAE/R2/raw-GPa MAE from ALIGNN's own Test_results.json, same
+    metric definitions scripts/03_evaluate.py's metrics() uses for CGCNN -
+    not reused directly since ALIGNN's {target_out, pred_out} JSON shape
+    doesn't match that function's expected DataFrame columns, but the
+    formulas themselves (log10 MAE, log-space R^2) are the same ones already
+    used throughout this file for the CGCNN ensemble and Table 1, not a new
+    or risky computation.
+    """
+    out = {}
+    for target, key in (("bulk_modulus_kv", "K"), ("shear_modulus_gv", "G")):
+        with open(os.path.join(RESULTS, f"alignn_{target}", "Test_results.json")) as fh:
+            rows = json.load(fh)
+        true = np.array([r["target_out"][0] for r in rows])
+        pred = np.clip(np.array([r["pred_out"][0] for r in rows]), 1e-3, None)
+        log_true, log_pred = np.log10(true), np.log10(pred)
+        mae_log = np.mean(np.abs(log_true - log_pred))
+        ss_res = np.sum((log_true - log_pred) ** 2)
+        ss_tot = np.sum((log_true - log_true.mean()) ** 2)
+        out[f"{key}Mae"] = mae_log
+        out[f"{key}R2"] = 1 - ss_res / ss_tot
+        out[f"{key}Gpa"] = np.mean(np.abs(true - pred))
+        out[f"{key}Rel"] = (10 ** mae_log - 1) * 100
+    return out
+
+
 def gnome_metrics():
     """Counts and confidence tiers straight from the already-screened CSVs -
     scripts/13/14 take ~25 min end to end, so this reads their output rather
@@ -439,7 +466,7 @@ def tex_num(x, digits=4):
     return f"{x:.{digits}f}"
 
 
-def write_metrics_tex(allrows, test, t1, gn, s2, path):
+def write_metrics_tex(allrows, test, t1, gn, s2, an, path):
     """Write \\def macros for every number the deck quotes.
 
     Macro names are CamelCase and start with a letter (TeX control sequences
@@ -510,6 +537,15 @@ def write_metrics_tex(allrows, test, t1, gn, s2, path):
     define("STwoRel", tex_num(s2["rel_pct"], 1))
     define("STwoOverlap", s2["overlap20"])
 
+    define("AlignnKMae", tex_num(an["KMae"], 4))
+    define("AlignnKR2", tex_num(an["KR2"], 3))
+    define("AlignnKGpa", tex_num(an["KGpa"], 2))
+    define("AlignnKRel", tex_num(an["KRel"], 1))
+    define("AlignnGMae", tex_num(an["GMae"], 4))
+    define("AlignnGR2", tex_num(an["GR2"], 3))
+    define("AlignnGGpa", tex_num(an["GGpa"], 2))
+    define("AlignnGRel", tex_num(an["GRel"], 1))
+
     with open(path, "w") as fh:
         fh.write("\n".join(lines) + "\n")
 
@@ -520,11 +556,14 @@ def main():
         raise SystemExit(f"No {metrics_path} - run scripts/06_summarise.py first.")
     for needed in ("pink_kappa_predictions.csv", "pink_reference_kappa.csv",
                   "table1_kappa_predictions.csv", "table1_reference.csv",
-                  "gnome_screen_candidates.csv", "gnome_overlap.csv"):
+                  "gnome_screen_candidates.csv", "gnome_overlap.csv",
+                  "alignn_bulk_modulus_kv/Test_results.json",
+                  "alignn_shear_modulus_gv/Test_results.json"):
         if not os.path.exists(os.path.join(RESULTS, needed)):
             raise SystemExit(f"No results/{needed} - run scripts/08_compare_kappa.py, "
-                            f"scripts/10_validate_table1.py and scripts/13/14_*gnome*.py "
-                            f"first (see docs/method.tex).")
+                            f"scripts/10_validate_table1.py, scripts/13/14_*gnome*.py, "
+                            f"and kaggle/run_alignn_kernel.py --fetch first "
+                            f"(see docs/method.tex).")
 
     allrows = pd.read_csv(metrics_path)
     test = allrows[allrows.split == "test"].set_index("tag")
@@ -541,7 +580,8 @@ def main():
     s2 = stage2_metrics()
     t1 = table1_metrics()
     gn = gnome_metrics()
-    write_metrics_tex(allrows, test, t1, gn, s2, os.path.join(HERE, "metrics.tex"))
+    an = alignn_metrics()
+    write_metrics_tex(allrows, test, t1, gn, s2, an, os.path.join(HERE, "metrics.tex"))
     print("wrote metrics.tex")
 
 

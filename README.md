@@ -400,13 +400,33 @@ python scripts/12_train_alignn.py --target bulk_modulus_kv
 python scripts/12_train_alignn.py --target shear_modulus_gv
 ```
 
-**Status: infrastructure built and verified, full training run not yet done.** Both scripts ran
-successfully end-to-end in a local smoke test (2–3 epochs on 60–90 crystals) — but ALIGNN builds a
-line graph on top of the bond graph, real extra work per crystal per epoch that CGCNN never does, so
-a full ~150-epoch run on all 7,691 training crystals needs a GPU. `colab/PINK_ALIGNN_colab.py`
-generates `colab/PINK_ALIGNN.ipynb`, mirroring the CGCNN notebook's pattern (source embedded as a
-zip so it can't drift from what's actually committed) — running it top to bottom is the next step,
-not yet done in this session.
+**Result: ALIGNN beats the CGCNN ensemble on both targets, same split, same held-out 1,648 crystals.**
+
+| Target | Model | MAE log₁₀(GPa) | R² | MAE (GPa) | Rel. error |
+|---|---|---|---|---|---|
+| Bulk modulus | CGCNN ensemble | 0.0630 | 0.901 | 10.20 | 15.6% |
+| Bulk modulus | **ALIGNN** | **0.0539** | **0.920** | 8.45 | 13.2% |
+| Shear modulus | CGCNN ensemble | 0.0781 | 0.899 | 7.27 | 19.7% |
+| Shear modulus | **ALIGNN** | **0.0725** | **0.901** | 6.36 | 18.2% |
+
+Both targets trained the full 150 epochs (no early stop), 158 minutes total. The gap is consistent
+with the architectural motivation above: ALIGNN's line graph gives it bond *angles*, information
+CGCNN's convolution structurally cannot see, and both moduli depend on more than bond lengths alone.
+
+**Where this actually ran: Kaggle, not Colab, and not on the GPU tier `kaggle/build_kernel.py`
+originally picked.** The Colab session training this in parallel was lost to VM pruning three times
+in one evening (see `colab/run_alignn_cli.py`'s own docstring for the checkpoint/resume system that
+grew out of the first two losses); Kaggle kernels run unattended on Kaggle's own infrastructure with
+no keep-alive needed, which sidesteps that failure mode entirely — `kaggle/build_alignn_kernel.py`
+and `kaggle/run_alignn_kernel.py` mirror the CGCNN kernel's own build/push/poll/fetch pattern. The
+first two pushes silently landed on a CPU image; the third got a real P100 and crashed immediately
+with `CUDA error: no kernel image is available for execution on the device` — confirmed live
+(2026-08-10) that Kaggle's current default PyTorch build (`2.10.0+cu128`) only ships compiled kernels
+for CUDA capability 7.0–12.0, and the P100 is capability 6.0 (Pascal), a card `build_kernel.py`'s own
+comment chose specifically for its FP32 throughput back when it worked. Switching `machine_shape` to
+`NvidiaTeslaT4` (Turing, capability 7.5) fixed it on the next push. Recorded here because it is
+exactly the kind of platform-drifts-out-from-under-you failure this project keeps running into and
+keeps writing down rather than re-discovering next time.
 
 **Getting to a working smoke test surfaced three real bugs, worth recording rather than glossing
 over:**

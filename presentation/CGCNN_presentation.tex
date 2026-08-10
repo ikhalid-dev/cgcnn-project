@@ -1477,7 +1477,42 @@ the error matches the benchmark test error exactly.}
 
 % -----------------------------------------------------------------------------
 \begin{frame}
-\SlideHeader{43 \textperiodcentered\ CLOSING}{Summary}
+\SlideHeader{43 \textperiodcentered\ CONTRIBUTION}{A second architecture: ALIGNN}
+
+{\sffamily\footnotesize
+CGCNN's convolution reads bond \emph{lengths} only. ALIGNN adds a second
+graph over bond \emph{angles} --- geometry a plain bond graph cannot see.
+Same identical split, same 1{,}648-crystal test set:}
+
+\vspace{2pt}
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Target} & \textbf{Model} & \textbf{MAE $\log_{10}$(GPa)} & \textbf{$R^2$} \\
+\midrule
+Bulk & CGCNN ensemble & \KEnsMae & \KEnsRtwo \\
+Bulk & \textbf{ALIGNN} & \textbf{\AlignnKMae} & \textbf{\AlignnKR2} \\
+Shear & CGCNN ensemble & \GEnsMae & \GEnsRtwo \\
+Shear & \textbf{ALIGNN} & \textbf{\AlignnGMae} & \textbf{\AlignnGR2} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{2pt}
+\Card{11.9cm}{GreenBg}{GreenRule}{%
+  \sffamily\footnotesize\color{SlideInk}
+  \textbf{ALIGNN wins on both targets} --- both moduli depend on bond
+  angles, information CGCNN structurally cannot see. One ALIGNN model beats
+  a 3-model CGCNN ensemble --- an unfavourable comparison, if anything.}
+
+\Takeaway{Trained on Kaggle after Colab lost the session three times in one
+evening --- an unattended kernel sidesteps that failure mode.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{44 \textperiodcentered\ CLOSING}{Summary}
 
 \sffamily\small
 \begin{itemize}
@@ -1495,8 +1530,9 @@ the error matches the benchmark test error exactly.}
   parameter, and \textbf{closed} by substitution (\TOneMaeCorrected).
 \item The actual \textbf{554{,}054-material screen} independently recovers
   \GnPctOfPaper\% of the paper's own published discoveries.
-\item Still open: a second architecture (\textbf{ALIGNN}) is training on
-  the identical split --- in progress, no results yet.
+\item A second architecture, \textbf{ALIGNN}, trained on the identical
+  split \textbf{beats the CGCNN ensemble on both moduli} ---
+  \AlignnKMae\ vs.\ \KEnsMae\ $\log_{10}$ MAE for bulk.
 \end{itemize}
 
 \vspace{4pt}
