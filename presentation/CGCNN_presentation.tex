@@ -1512,7 +1512,42 @@ evening --- an unattended kernel sidesteps that failure mode.}
 
 % -----------------------------------------------------------------------------
 \begin{frame}
-\SlideHeader{44 \textperiodcentered\ CLOSING}{Summary}
+\SlideHeader{44 \textperiodcentered\ CONTRIBUTION}{Closing the loop: ALIGNN's own $\kappa_L$}
+
+{\sffamily\footnotesize
+Same 1{,}213-crystal prediction set, same unchanged Slack-model physics ---
+swap CGCNN's moduli for ALIGNN's and see if the final $\kappa_L$ still
+agrees.}
+
+\vspace{3pt}
+\Card{11.9cm}{BlueBg}{SlideBlue}{%
+  \centering\headingfont\bfseries\fontsize{18}{22}\selectfont\color{SlideBlue}
+  $r = \AlignnKappaR$\\[1pt]
+  \sffamily\footnotesize\color{SlideInk}
+  Pearson correlation between ALIGNN's $\kappa_L$ and our own CGCNN-ensemble
+  $\kappa_L$}
+
+\vspace{3pt}
+\begin{columns}[T]
+\column{0.48\linewidth}
+\Card{3.4cm}{CardBg}{CardRule}{%
+  \sffamily\footnotesize\color{SlideInk}
+  Spearman $\rho=\AlignnKappaRho$, MAE $=\AlignnKappaMae$ $\log_{10}$.
+  \AlignnKappaOverlap/20 lowest-$\kappa_L$ overlap.}
+\column{0.48\linewidth}
+\Card{3.4cm}{GreenBg}{GreenRule}{%
+  \sffamily\footnotesize\color{SlideInk}
+  Tighter than CGCNN's own agreement with the paper's pretrained model
+  ($r=\STwoR$).}
+\end{columns}
+
+\Takeaway{Two architectures sharing only data, split, and physics converge
+this closely --- more evidence for a real signal, not architecture noise.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}
+\SlideHeader{45 \textperiodcentered\ CLOSING}{Summary}
 
 \sffamily\small
 \begin{itemize}

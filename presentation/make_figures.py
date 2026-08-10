@@ -438,6 +438,28 @@ def alignn_metrics():
     return out
 
 
+def alignn_kappa_metrics():
+    """ALIGNN's kappa_L vs. our own CGCNN-ensemble kappa_L, identical physics.
+
+    Reuses scripts/08_compare_kappa.py's summarise()/screening_overlap() via
+    importlib - the exact same functions scripts/16_alignn_predict_kappa.py
+    already calls for this comparison, so the deck's numbers can never drift
+    from what that script's own printed report says.
+    """
+    s2 = import_module("08_compare_kappa")
+    alignn = pd.read_csv(os.path.join(RESULTS, "alignn_kappa_predictions.csv"))
+    cgcnn = pd.read_csv(os.path.join(RESULTS, "pink_kappa_predictions.csv"))
+    merged = (alignn.rename(columns={"Kappa_cal (W m-1 K-1)": "Kappa_cal (W m-1 K-1)_ours"})
+             .merge(cgcnn[["material_id", "Kappa_cal (W m-1 K-1)"]]
+                   .rename(columns={"Kappa_cal (W m-1 K-1)": "Kappa_cal (W m-1 K-1)_ref"}),
+                   on="material_id", how="inner"))
+    summary = s2.summarise(merged)
+    overlap = s2.screening_overlap(merged, top_n=20)
+    return {"n": summary["n"], "r": summary["pearson_r_log"],
+           "rho": summary["spearman_r"], "mae": summary["mae_log10"],
+           "rel_pct": summary["rel_error_pct"], "overlap20": overlap}
+
+
 def gnome_metrics():
     """Counts and confidence tiers straight from the already-screened CSVs -
     scripts/13/14 take ~25 min end to end, so this reads their output rather
@@ -466,7 +488,7 @@ def tex_num(x, digits=4):
     return f"{x:.{digits}f}"
 
 
-def write_metrics_tex(allrows, test, t1, gn, s2, an, path):
+def write_metrics_tex(allrows, test, t1, gn, s2, an, ak, path):
     """Write \\def macros for every number the deck quotes.
 
     Macro names are CamelCase and start with a letter (TeX control sequences
@@ -546,6 +568,13 @@ def write_metrics_tex(allrows, test, t1, gn, s2, an, path):
     define("AlignnGGpa", tex_num(an["GGpa"], 2))
     define("AlignnGRel", tex_num(an["GRel"], 1))
 
+    define("AlignnKappaN", ak["n"])
+    define("AlignnKappaR", tex_num(ak["r"], 3))
+    define("AlignnKappaRho", tex_num(ak["rho"], 3))
+    define("AlignnKappaMae", tex_num(ak["mae"], 3))
+    define("AlignnKappaRel", tex_num(ak["rel_pct"], 1))
+    define("AlignnKappaOverlap", ak["overlap20"])
+
     with open(path, "w") as fh:
         fh.write("\n".join(lines) + "\n")
 
@@ -558,7 +587,8 @@ def main():
                   "table1_kappa_predictions.csv", "table1_reference.csv",
                   "gnome_screen_candidates.csv", "gnome_overlap.csv",
                   "alignn_bulk_modulus_kv/Test_results.json",
-                  "alignn_shear_modulus_gv/Test_results.json"):
+                  "alignn_shear_modulus_gv/Test_results.json",
+                  "alignn_kappa_predictions.csv"):
         if not os.path.exists(os.path.join(RESULTS, needed)):
             raise SystemExit(f"No results/{needed} - run scripts/08_compare_kappa.py, "
                             f"scripts/10_validate_table1.py, scripts/13/14_*gnome*.py, "
@@ -581,7 +611,8 @@ def main():
     t1 = table1_metrics()
     gn = gnome_metrics()
     an = alignn_metrics()
-    write_metrics_tex(allrows, test, t1, gn, s2, an, os.path.join(HERE, "metrics.tex"))
+    ak = alignn_kappa_metrics()
+    write_metrics_tex(allrows, test, t1, gn, s2, an, ak, os.path.join(HERE, "metrics.tex"))
     print("wrote metrics.tex")
 
 
