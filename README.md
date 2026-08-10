@@ -161,6 +161,7 @@ matching ours. The paper's text and its own model disagree with each other.
 | `kaggle/build_alignn_kernel.py` | Alternative to the above: a Kaggle kernel (used to actually train it) |
 | `scripts/alignn/15_alignn_predict_moduli.py` | ALIGNN's own K and G for the 1,213 PINK crystals |
 | `scripts/alignn/16_alignn_predict_kappa.py` | ALIGNN's moduli → κ_L, and a comparison against our CGCNN's κ_L |
+| `scripts/alignn/17_alignn_diagnostics.py` | Parity/training/residual figures for ALIGNN, matching `03_evaluate.py`'s CGCNN ones |
 | `scripts/cgcnn/13_screen_gnome.py` | **The actual GNoME screen** — 33,323 candidates, K/G/κ_L/uncertainty for each |
 | `scripts/cgcnn/14_compare_gnome_screen.py` | Compares our screen against the paper's own 11,869 published candidates |
 | `gnome_data/` | Downloaded GNoME summary CSV + structure zip (gitignored, ~620 MB) |

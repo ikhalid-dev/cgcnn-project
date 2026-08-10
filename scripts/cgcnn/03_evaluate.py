@@ -225,8 +225,15 @@ def add_relative_columns(scores, df):
     return scores
 
 
-def plot_parity(df, target, path):
-    """Predicted vs true, test split highlighted against the training cloud."""
+def plot_parity(df, target, path, model_name="CGCNN"):
+    """Predicted vs true, test split highlighted against the training cloud.
+
+    model_name only changes the y-axis label - kept a parameter (default
+    CGCNN, this file's own subject) rather than hardcoded so
+    scripts/alignn/17_alignn_diagnostics.py can call this same function for
+    ALIGNN's predictions and get an identically-styled figure that still
+    correctly says which model made the prediction.
+    """
     fig, ax = plt.subplots(figsize=(6, 6))
 
     train_val = df[df.split != "test"]
@@ -267,7 +274,7 @@ def plot_parity(df, target, path):
 
     test_metrics = metrics(df).query("split == 'test'").iloc[0]
     ax.set_xlabel(f"DFT {target} (GPa)")
-    ax.set_ylabel(f"CGCNN predicted {target} (GPa)")
+    ax.set_ylabel(f"{model_name} predicted {target} (GPa)")
     ax.set_title(f"{target}: predicted vs DFT reference", fontsize=12, pad=12)
 
     # Metrics as a text block rather than a subtitle - keeps the title short
@@ -441,7 +448,7 @@ def main():
     for name in [f"predictions_{tag}.csv", f"metrics_{tag}.csv",
                  f"parity_{tag}.png", f"training_{tag}.png",
                  f"residuals_{tag}.png"]:
-        print(f"  results/{name}")
+        print(f"  {os.path.join(args.results_dir, name)}")
 
     # Worst predictions are worth eyeballing - they often reveal a systematic
     # weakness (a whole chemistry the model has never seen) rather than noise.
