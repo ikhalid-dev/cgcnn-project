@@ -1,0 +1,291 @@
+PREDICTING K, G, AND KAPPA_L FOR YOUR OWN CIF FILES
+====================================================
+
+What this is: the same CIF -> (bulk modulus K, shear modulus G) -> kappa_L
+pipeline this whole project is built around, pointed at whatever CIF files
+you hand it instead of the project's own 1,213-crystal PINK set. Nothing
+below trains anything; every command loads an already-trained model and
+predicts in seconds to minutes.
+
+Every command in this guide was actually run, end to end, on two test CIFs
+before this file was written - the commands are copy-pasteable as they
+stand, not hypothetical.
+
+THE HONEST HEADLINE: there is no ground truth for a genuinely new crystal.
+No DFT reference exists for a structure nobody has computed before, so
+nothing here can print "your prediction is correct" the way a test-set
+script can. What you get instead is three roughly-independent models
+(two of ours, one the published paper's own) - if they agree, that is the
+strongest evidence you can actually get; if they disagree a lot, treat the
+prediction with suspicion. Section 5 below explains this properly.
+
+
+0. ONE-TIME SETUP, EVERY TERMINAL SESSION
+------------------------------------------
+    cd "/Users/mac/Desktop/Cgcnn project"
+    conda activate ml_env
+
+All commands below assume you're running from the project root and ml_env
+is active. If you see "ModuleNotFoundError: No module named 'torch'" (or
+'pymatgen', 'alignn', ...), you forgot to activate ml_env - the system
+python3 does not have these packages.
+
+
+1. PUT YOUR CIFs IN A FOLDER
+------------------------------
+Any folder, anywhere. Example used throughout this guide:
+
+    mkdir my_cifs
+    cp /path/to/your/*.cif my_cifs/
+
+The filename (minus ".cif") becomes the "material_id" in every output
+table - it can be anything. Two things worth knowing:
+
+  - If you happen to name a file after an existing Materials Project id
+    that's already in this project's own 1,213-crystal set (e.g.
+    mp-1002133.cif) AND it really is that crystal, the provenance/DFT
+    columns below will fill in from the existing lookup table - free
+    ground truth, if that's genuinely what you intended. If it's a
+    different structure that just happens to share that filename, this
+    will silently attach the WRONG reference to it - so only reuse an
+    "mp-#######" name if the CIF actually is that material.
+  - Anything else (which is almost certainly your case) will correctly
+    come back "unseen" - see Section 5.
+
+
+2. STEP 1 - PREDICT BULK (K) AND SHEAR (G) MODULUS  [CGCNN]
+--------------------------------------------------------------
+    python3 scripts/cgcnn/04_predict_moduli.py \
+      --cif-dir my_cifs \
+      --k-tag K_VRH_full,K_VRH_s1,K_VRH_s2 \
+      --g-tag G_VRH_full,G_VRH_s1,G_VRH_s2 \
+      --out my_predictions/moduli.csv
+
+Flags that matter:
+  --cif-dir   your folder from Section 1.
+  --k-tag / --g-tag   MUST be the comma-separated 3-model form shown above
+      (the project's own 3-seed ensemble). A single tag like "K_VRH_full"
+      alone also works for THIS script, but Step 2 below will crash
+      (KeyError) without the ensemble, because it needs the spread across
+      the 3 models to compute an uncertainty interval. Always use the
+      3-tag form unless you specifically only want Step 1's output.
+  --out       write outside results/cgcnn/ - that directory holds this
+      project's own reproducible pipeline output (what the presentation
+      and RESULTS.md are built from). Don't overwrite it with your own
+      runs; my_predictions/ (or any new folder) keeps them separate.
+
+Output columns you'll actually read:
+  K_VRH_pred, G_VRH_pred      predicted moduli, GPa
+  K_VRH_spread_log10, ...     disagreement across the 3 ensemble members,
+                               in log10 space. Small = the 3 models agree;
+                               large = they don't, and the prediction is
+                               correspondingly less trustworthy.
+  provenance                  unseen / train / val / test - see Section 5
+  pugh_ratio                  G/K; below ~0.57 typically ductile, above
+                               typically brittle (a cheap sanity signal)
+
+
+3. STEP 2 - PREDICT LATTICE THERMAL CONDUCTIVITY (KAPPA_L)  [Slack model]
+------------------------------------------------------------------------------
+    python3 scripts/cgcnn/07_predict_kappa.py \
+      --predictions my_predictions/moduli.csv \
+      --cif-dir my_cifs \
+      --out my_predictions/kappa.csv
+
+--cif-dir must be the SAME folder as Step 1 - this script re-reads the CIFs
+directly (for volume, density, atomic mass), matched to Step 1's output by
+material_id.
+
+Output columns you'll actually read:
+  Kappa_cal (W m-1 K-1)        the paper's headline number (Eq. 2) - this
+                                 is the one to quote.
+  Kappa_Slack (W m-1 K-1)      an older/simpler Slack-model estimate,
+                                 written alongside for reference only.
+  Kappa_cal_p05 / p50 / p95    a 90% Monte Carlo interval built by
+                                 propagating the ensemble's K/G spread
+                                 through the same physics. A wide interval
+                                 means the 3 CGCNN models disagreed enough
+                                 about K or G that kappa_L is genuinely
+                                 uncertain, not just imprecisely reported.
+  Gruneisen parameter          intermediate physical quantity; typically
+                                 ~1-2.5 for ordinary inorganic solids -
+                                 a wildly different value is a red flag
+                                 that something upstream went wrong.
+
+Typical whole-solid range for sanity-checking: Kappa_cal usually lands
+somewhere in the 0.1-100 W/m/K range for ordinary inorganic crystals
+(ultralow-kappa candidates - what PINK is actually screening for - sit at
+the low single digits or below). A value orders of magnitude outside that
+is worth double-checking the input CIF for, not trusting outright.
+
+
+4. OPTIONAL BUT RECOMMENDED - CROSS-CHECK WITH ALIGNN
+---------------------------------------------------------
+A second, architecturally-different model trained on the same task. Where
+it agrees with CGCNN, that's real evidence; this project's own validation
+found the two agree at r=0.940 across the full 1,213-crystal set (see
+results/alignn/, docs/method.tex Section 9).
+
+    python3 scripts/alignn/15_alignn_predict_moduli.py \
+      --cif-dir my_cifs \
+      --cgcnn-predictions my_predictions/moduli.csv \
+      --out my_predictions/alignn_moduli.csv
+
+    python3 scripts/alignn/16_alignn_predict_kappa.py \
+      --predictions my_predictions/alignn_moduli.csv \
+      --cif-dir my_cifs \
+      --out my_predictions/alignn_kappa.csv \
+      --compare-against my_predictions/kappa.csv
+
+The second command prints a Pearson r, Spearman correlation, and MAE
+between ALIGNN's and CGCNN's kappa_L directly to the terminal - no need to
+open the CSVs by hand for that part. (Its "overlap in the 20 lowest-kappa_L
+candidates" line is designed for screening a large batch of candidates at
+once; with only a handful of CIFs it won't be a meaningful number - ignore
+it unless you're running this over dozens of structures or more.)
+
+--cgcnn-predictions and --compare-against are optional (each script still
+runs and writes its own output without them) but strongly recommended -
+without them you lose the provenance merge and the agreement statistics,
+which are most of the point of running this cross-check at all.
+
+
+5. HOW TO ACTUALLY JUDGE WHETHER A PREDICTION IS TRUSTWORTHY
+-------------------------------------------------------------------
+There is no DFT calculation behind a genuinely new CIF, so nothing here
+can print "correct." What you have instead, in order of how much it
+actually tells you:
+
+  a) AGREEMENT BETWEEN INDEPENDENT MODELS is the real substitute for
+     ground truth. Run Section 4 (ALIGNN) and, if you want a third
+     opinion, Section 6 below (the published paper's own pretrained
+     model). If CGCNN, ALIGNN, and the paper's model all land within
+     roughly 10-20% of each other on K, G, and kappa_L, that agreement
+     - not any single number - is your evidence the pipeline is working
+     as intended on that structure.
+
+  b) THE ACCURACY CEILING IS ABOUT 15% RELATIVE ERROR, EVEN IN THE BEST
+     CASE. This isn't a bug to fix - see results/cgcnn/RESULTS.md: the
+     bulk-modulus ensemble's own test-set error is 15.6%, matching the
+     PINK paper (~17%) and close to the best published result on this
+     exact benchmark (coGN, ~13%). The blocker is that the training
+     labels are themselves DFT-computed elastic moduli, and DFT elastic
+     constants disagree with real experiment by ~5-15% - no model can be
+     more accurate than the data it was fitted to. So don't expect (or
+     chase) the 3 cross-checked numbers in (a) to match to within a
+     percent or two; landing within ~15-20% of each other IS the
+     pipeline behaving correctly, not a sign of imprecision.
+
+  c) THE provenance COLUMN (Step 1's output) - if it comes back anything
+     other than "unseen" for one of your crystals, this project already
+     has a real DFT reference for it (K_VRH_dft / G_VRH_dft columns,
+     filled in automatically) - free, genuine ground truth for that one
+     row. Worth checking before assuming you have to rely on (a).
+
+  d) STAY INSIDE WHAT THE MODEL HAS ACTUALLY SEEN. Both models were
+     trained on the matbench elastic-tensor dataset: ordinary,
+     fully-ordered inorganic crystals, K roughly 1-575 GPa. Predictions
+     will be least reliable, and hardest to trust even if the models
+     happen to agree, for:
+       - organic / molecular / hybrid organic-inorganic structures
+       - structures with partial site occupancies or heavy disorder
+       - elements beyond atomic number 100 (atom_init.json covers 1-100,
+         hydrogen through fermium - anything past that will fail to
+         featurise, not silently mispredict; see Section 7)
+       - extreme unit cells (either a handful of atoms with a huge cell,
+         or very large asymmetric-unit structures) - possible, but
+         further from anything in the training distribution
+     None of these will necessarily crash - CGCNN and ALIGNN will both
+     happily produce a number for almost anything that parses as a valid
+     structure. A number coming out is not the same as that number being
+     trustworthy.
+
+
+6. OPTIONAL THIRD OPINION - THE PUBLISHED PAPER'S OWN PRETRAINED MODEL
+---------------------------------------------------------------------------
+Separate from everything above: external/AI4Kappa/ (if present - it's
+gitignored, so it may not exist after a fresh clone) has the actual
+pretrained model from the PINK paper itself, wrapped by this project's own
+pink_predict.py as a one-line CLI:
+
+    python3 pink_predict.py my_cifs -o my_predictions/paper_kappa.csv
+
+This is the same physics as Steps 2/4 above but the paper's own model
+weights, not ours - the closest thing to an independent published result
+you can compare against without access to real DFT or experiment. Its
+output column names differ slightly from ours (Material / Bulk modulus
+(GPa) / Shear modulus (GPa), instead of material_id / K_VRH_pred /
+G_VRH_pred) - scripts/cgcnn/08_compare_kappa.py already handles this
+rename if you want to script the comparison; for a handful of crystals,
+opening the two CSVs side by side is simpler.
+
+
+7. TROUBLESHOOTING
+----------------------
+"ModuleNotFoundError: No module named 'torch'" (or pymatgen/alignn)
+    ml_env isn't active. `conda activate ml_env` and retry.
+
+"No CIF files found in <dir>"
+    --cif-dir is wrong, or the folder has no *.cif files. Check the path
+    and the file extension (must be exactly ".cif", lowercase).
+
+Step 2 crashes with a KeyError mentioning "K_VRH_spread_log10"
+    Step 1 was run with a single tag (e.g. --k-tag K_VRH_full alone)
+    instead of the 3-tag ensemble form. Re-run Step 1 with the comma-
+    separated form shown in Section 2.
+
+A crystal you expected in the output is missing, with a line like
+"N failed to parse" or "N failed, e.g. [...]" printed to the terminal
+    The CIF didn't parse (malformed file, unsupported partial occupancy,
+    or an element outside atom_init.json's 1-100 range). The failure
+    reason is printed and truncated to ~70 characters - that's the
+    fastest way to see why a specific file was dropped rather than
+    predicted incorrectly.
+
+Predictions look wildly different between CGCNN and ALIGNN for one
+specific crystal but agree fine on the rest
+    Check that crystal's spread columns (Section 2) and the Monte Carlo
+    interval (Section 3) first - if they're also unusually wide, the
+    model itself is telling you it's unsure, consistent with the
+    cross-model disagreement rather than contradicting it.
+
+
+FULL WORKED EXAMPLE, START TO FINISH
+========================================
+    cd "/Users/mac/Desktop/Cgcnn project"
+    conda activate ml_env
+
+    mkdir -p my_cifs my_predictions
+    cp /path/to/your/*.cif my_cifs/
+
+    python3 scripts/cgcnn/04_predict_moduli.py \
+      --cif-dir my_cifs \
+      --k-tag K_VRH_full,K_VRH_s1,K_VRH_s2 \
+      --g-tag G_VRH_full,G_VRH_s1,G_VRH_s2 \
+      --out my_predictions/moduli.csv
+
+    python3 scripts/cgcnn/07_predict_kappa.py \
+      --predictions my_predictions/moduli.csv \
+      --cif-dir my_cifs \
+      --out my_predictions/kappa.csv
+
+    python3 scripts/alignn/15_alignn_predict_moduli.py \
+      --cif-dir my_cifs \
+      --cgcnn-predictions my_predictions/moduli.csv \
+      --out my_predictions/alignn_moduli.csv
+
+    python3 scripts/alignn/16_alignn_predict_kappa.py \
+      --predictions my_predictions/alignn_moduli.csv \
+      --cif-dir my_cifs \
+      --out my_predictions/alignn_kappa.csv \
+      --compare-against my_predictions/kappa.csv
+
+    python3 pink_predict.py my_cifs -o my_predictions/paper_kappa.csv
+
+Then open my_predictions/kappa.csv, alignn_kappa.csv, and paper_kappa.csv
+and compare Kappa_cal (W m-1 K-1) for the same material_id across all
+three - see Section 5 for how to read what you find.
+
+my_cifs/ and my_predictions/ are not tracked by git (nothing in this
+project's own pipeline reads from or writes to those names) - add them to
+.gitignore yourself if you don't want `git status` to keep listing them.
