@@ -52,7 +52,7 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, PROJECT_ROOT)
 
 from cgcnn_scratch.data import Normalizer, collate_pool, load_dataset_for  # noqa: E402
@@ -112,7 +112,7 @@ def main():
     parser.add_argument("--tags", required=True,
                         help="comma-separated checkpoint tags to combine")
     parser.add_argument("--data-dir", default=os.path.join(PROJECT_ROOT, "data_full"))
-    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results"))
+    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results", "cgcnn"))
     parser.add_argument("--out-tag", default=None,
                         help="tag for the ensemble outputs. Defaults to <target>_ens")
     args = parser.parse_args()

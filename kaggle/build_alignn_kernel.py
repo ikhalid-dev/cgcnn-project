@@ -63,15 +63,19 @@ KERNEL_SLUG = KERNEL_TITLE.lower().replace(" ", "-")
 # own `from cgcnn_scratch.data import ...` - confirmed the hard way once
 # already on the Colab notebook (ModuleNotFoundError) before this comment
 # existed there; bundled here from the start rather than rediscovering it.
+# (local_path, archive_path) pairs - local follows this project's own
+# scripts/cgcnn|alignn/ split, archive stays flat (what KERNEL_TEMPLATE's own
+# run() calls below refer to it as), so the remotely-executed template needed
+# zero changes for the cgcnn/alignn reorganisation.
 BUNDLE = [
-    "cgcnn_scratch/__init__.py",
-    "cgcnn_scratch/data.py",
-    "cgcnn_scratch/model.py",
-    "cgcnn_scratch/atom_init.json",
-    "scripts/01b_prepare_full_dataset.py",
-    "scripts/02_train.py",
-    "scripts/11_prepare_alignn_data.py",
-    "scripts/12_train_alignn.py",
+    ("cgcnn_scratch/__init__.py", "cgcnn_scratch/__init__.py"),
+    ("cgcnn_scratch/data.py", "cgcnn_scratch/data.py"),
+    ("cgcnn_scratch/model.py", "cgcnn_scratch/model.py"),
+    ("cgcnn_scratch/atom_init.json", "cgcnn_scratch/atom_init.json"),
+    ("scripts/cgcnn/01b_prepare_full_dataset.py", "scripts/01b_prepare_full_dataset.py"),
+    ("scripts/cgcnn/02_train.py", "scripts/02_train.py"),
+    ("scripts/alignn/11_prepare_alignn_data.py", "scripts/11_prepare_alignn_data.py"),
+    ("scripts/alignn/12_train_alignn.py", "scripts/12_train_alignn.py"),
 ]
 
 
@@ -79,11 +83,11 @@ def build_bundle_b64():
     """Zip the source files and base64 them so the kernel is self-contained."""
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for relative in BUNDLE:
-            path = os.path.join(PROJECT_ROOT, relative)
+        for local, arcname in BUNDLE:
+            path = os.path.join(PROJECT_ROOT, local)
             if not os.path.exists(path):
-                raise SystemExit(f"missing bundle file: {relative}")
-            archive.write(path, relative)
+                raise SystemExit(f"missing bundle file: {local}")
+            archive.write(path, arcname)
     return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 

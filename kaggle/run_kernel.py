@@ -19,7 +19,7 @@ distinct (`K_VRH_full`, `K_VRH_s1`, ...) and nothing is overwritten by accident.
 
 After fetching, finish the pipeline on this machine:
 
-    python scripts/04_predict_moduli.py \\
+    python scripts/cgcnn/04_predict_moduli.py \\
         --k-tag K_VRH_full,K_VRH_s1,K_VRH_s2 \\
         --g-tag G_VRH_full,G_VRH_s1,G_VRH_s2
 
@@ -83,20 +83,22 @@ def push(kid):
 
 
 def fetch(kid):
-    """Download the kernel's output into results/."""
+    """Download the kernel's output into results/cgcnn/."""
     staging = os.path.join(PROJECT_ROOT, "kaggle", "output")
     os.makedirs(staging, exist_ok=True)
     print(f"Downloading output of {kid} -> {staging}")
     print(kaggle("kernels", "output", kid, "-p", staging))
 
     # The kernel writes results/ inside its output; merge that into the
-    # project's results/ so GPU-trained checkpoints sit beside local ones.
+    # project's results/cgcnn/ so GPU-trained checkpoints sit beside local ones.
     produced = os.path.join(staging, "results")
     if not os.path.isdir(produced):
         print(f"No results/ in the output. Contents: {sorted(os.listdir(staging))}")
         return
 
-    destination = os.path.join(PROJECT_ROOT, "results")
+    # results/cgcnn/, not results/ - this project's own scripts/results split
+    # by architecture (this kernel only ever trains CGCNN).
+    destination = os.path.join(PROJECT_ROOT, "results", "cgcnn")
     os.makedirs(destination, exist_ok=True)
     copied = 0
     for name in sorted(os.listdir(produced)):
@@ -154,7 +156,7 @@ def main():
 
     fetch(kid)
     print("\nNow finish the pipeline locally:")
-    print("  python scripts/04_predict_moduli.py \\")
+    print("  python scripts/cgcnn/04_predict_moduli.py \\")
     print("      --k-tag K_VRH_full,K_VRH_s1,K_VRH_s2 \\")
     print("      --g-tag G_VRH_full,G_VRH_s1,G_VRH_s2")
 

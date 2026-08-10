@@ -66,21 +66,26 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ...`. Without cgcnn_scratch/ physically present, that import fails with
 # ModuleNotFoundError before either helper function is ever reached - caught
 # by actually running this notebook on Colab, not predicted in advance.
+# (local_path, archive_path) pairs - local follows this project's own
+# scripts/cgcnn|alignn/ split, archive stays flat (what the code embedded
+# below, which runs unpacked on Colab, refers to it as). See
+# PINK_CGCNN_colab.py's identical note for why this means zero changes to
+# any remotely-executed code.
 BUNDLE = [
-    "cgcnn_scratch/__init__.py",
-    "cgcnn_scratch/data.py",
-    "cgcnn_scratch/model.py",
-    "cgcnn_scratch/atom_init.json",
-    "scripts/01b_prepare_full_dataset.py",
-    "scripts/02_train.py",
-    "scripts/11_prepare_alignn_data.py",
-    "scripts/12_train_alignn.py",
+    ("cgcnn_scratch/__init__.py", "cgcnn_scratch/__init__.py"),
+    ("cgcnn_scratch/data.py", "cgcnn_scratch/data.py"),
+    ("cgcnn_scratch/model.py", "cgcnn_scratch/model.py"),
+    ("cgcnn_scratch/atom_init.json", "cgcnn_scratch/atom_init.json"),
+    ("scripts/cgcnn/01b_prepare_full_dataset.py", "scripts/01b_prepare_full_dataset.py"),
+    ("scripts/cgcnn/02_train.py", "scripts/02_train.py"),
+    ("scripts/alignn/11_prepare_alignn_data.py", "scripts/11_prepare_alignn_data.py"),
+    ("scripts/alignn/12_train_alignn.py", "scripts/12_train_alignn.py"),
     # alignn_gpu_driver.py needs to exist as a real file on disk too, not
     # just live in this notebook's embedded cell - its own worker mode
     # re-launches itself via a fixed on-disk path (colab/alignn_gpu_driver.py),
     # since colab exec -f / a notebook cell has no reliable __file__ to
     # re-derive that path from. See that script's own docstring.
-    "colab/alignn_gpu_driver.py",
+    ("colab/alignn_gpu_driver.py", "colab/alignn_gpu_driver.py"),
 ]
 
 DRIVER_PATH = os.path.join(PROJECT_ROOT, "colab", "alignn_gpu_driver.py")
@@ -89,11 +94,11 @@ DRIVER_PATH = os.path.join(PROJECT_ROOT, "colab", "alignn_gpu_driver.py")
 def build_bundle_b64():
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for relative in BUNDLE:
-            path = os.path.join(PROJECT_ROOT, relative)
+        for local, arcname in BUNDLE:
+            path = os.path.join(PROJECT_ROOT, local)
             if not os.path.exists(path):
-                raise SystemExit(f"missing bundle file: {relative}")
-            archive.write(path, relative)
+                raise SystemExit(f"missing bundle file: {local}")
+            archive.write(path, arcname)
     return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
@@ -238,18 +243,19 @@ files.download("colab/alignn_results.zip")
 unzip -o ~/Downloads/alignn_results.zip -d "/Users/mac/Desktop/Cgcnn project"
 ```
 
-`results/alignn_bulk_modulus_kv/` and `results/alignn_shear_modulus_gv/` each
-hold `best_model.pt`, `config.json`, and `prediction_results_test_set.csv` -
+`results/alignn/alignn_bulk_modulus_kv/` and `results/alignn/alignn_shear_modulus_gv/`
+each hold `best_model.pt`, `config.json`, and `prediction_results_test_set.csv` -
 the last of these is enough on its own to add ALIGNN's row to the metrics
 comparison table (it already has both predicted and true values for the held-
 out test set, in the same units).
 
-Feeding ALIGNN's moduli through `slack_physics()` (scripts/07_predict_kappa.py)
-the way the CGCNN ensemble's are is a natural follow-up, not done by this
-notebook - it needs a small adapter script to run the downloaded ALIGNN
-checkpoint on complete-data/'s 1,213 CIFs the way scripts/04_predict_moduli.py
-does for CGCNN, since ALIGNN's checkpoint format and inference call are
-different from CGCNN's.
+Feeding ALIGNN's moduli through `slack_physics()` the way the CGCNN
+ensemble's are: `python scripts/alignn/15_alignn_predict_moduli.py` then
+`python scripts/alignn/16_alignn_predict_kappa.py` - both already built (they
+were the natural follow-up mentioned in an earlier version of this notebook,
+not hypothetical anymore), producing
+`results/alignn/alignn_kappa_predictions.csv` and a comparison against the
+CGCNN ensemble's own kappa_L.
 """),
     ]
 

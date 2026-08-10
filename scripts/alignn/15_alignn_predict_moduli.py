@@ -81,7 +81,7 @@ from pymatgen.core import Structure
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def load_alignn_target(model_dir, device):
@@ -193,9 +193,9 @@ def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--cif-dir", default=os.path.join(PROJECT_ROOT, "complete-data"))
-    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results"))
+    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results", "alignn"))
     parser.add_argument("--cgcnn-predictions",
-                        default=os.path.join(PROJECT_ROOT, "results",
+                        default=os.path.join(PROJECT_ROOT, "results", "cgcnn",
                                              "pink_moduli_predictions.csv"),
                         help="source of the provenance/DFT-reference columns "
                              "(identical split, computed once for CGCNN)")
@@ -206,9 +206,10 @@ def main():
     out_path = args.out or os.path.join(args.results_dir,
                                         "alignn_moduli_predictions.csv")
 
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    # scripts/cgcnn/, not this file's own scripts/alignn/ - see 11's identical note.
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts", "cgcnn"))
     from importlib import import_module
-    _train = import_module("02_train")  # reuse pick_device(), same as scripts/05/12
+    _train = import_module("02_train")  # reuse pick_device(), same as scripts/cgcnn/05/12
     device = _train.pick_device(args.device)
     print(f"=== Predicting bulk and shear moduli for the PINK crystal set (ALIGNN) ===")
     print(f"Device: {device}\n")

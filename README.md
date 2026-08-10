@@ -51,7 +51,7 @@ benchmark — almost certainly close to what PINK's model scores, since both are
 data, but never verified to be PINK's own stated number, because PINK doesn't report one in these
 units. On the metric the paper *does* state, we also come out ahead: our ensemble's raw-GPa MAE is
 10.2 (bulk) / 7.3 (shear), both under its stated "< 13." Full breakdown in
-[`results/RESULTS.md`](results/RESULTS.md).
+[`results/cgcnn/RESULTS.md`](results/cgcnn/RESULTS.md).
 
 ### Reading the error
 
@@ -91,7 +91,7 @@ in ~45 minutes and hands back the checkpoints. Upload that one file; the code tr
 
 ## The main output
 
-**`results/pink_moduli_predictions.csv`** — bulk and shear modulus for all 1,213 crystals, the
+**`results/cgcnn/pink_moduli_predictions.csv`** — bulk and shear modulus for all 1,213 crystals, the
 input for the κ_L stage:
 
 | column | meaning |
@@ -145,25 +145,29 @@ matching ours. The paper's text and its own model disagree with each other.
 | Path | What it is |
 |---|---|
 | `cgcnn_scratch/` | The network. `model.py` (conv, pooling), `data.py` (CIF → graph) |
-| `scripts/01b_prepare_full_dataset.py` | **The training set**: all 10,987 matbench crystals |
-| `scripts/02_train.py` | Train one model |
-| `scripts/03_evaluate.py` | Metrics, parity/residual/training figures |
-| `scripts/04_predict_moduli.py` | **K and G for the 1,213 PINK crystals** |
-| `scripts/05_ensemble.py` | Combine members, score the ensemble |
-| `scripts/06_summarise.py` | Collapse all runs into one table + `RESULTS.md` |
-| `scripts/07_predict_kappa.py` | **Stage 2**: our moduli → κ_L, with Monte Carlo uncertainty |
-| `scripts/08_compare_kappa.py` | Validates stage 2 against the paper's own pipeline |
-| `scripts/09_fetch_validation_set.py` | Fetches the paper's Table 1 (45 real materials) and runs our pipeline on them |
-| `scripts/10_validate_table1.py` | Validates stage 2 against **real experimental κ_L** (Table 1) |
-| `scripts/11_prepare_alignn_data.py` | matbench → ALIGNN's format, same split as the CGCNN ensemble |
-| `scripts/12_train_alignn.py` | Trains ALIGNN (Phase 2, a second architecture) on one target |
+| `scripts/cgcnn/01b_prepare_full_dataset.py` | **The training set**: all 10,987 matbench crystals |
+| `scripts/cgcnn/02_train.py` | Train one model |
+| `scripts/cgcnn/03_evaluate.py` | Metrics, parity/residual/training figures |
+| `scripts/cgcnn/04_predict_moduli.py` | **K and G for the 1,213 PINK crystals** |
+| `scripts/cgcnn/05_ensemble.py` | Combine members, score the ensemble |
+| `scripts/cgcnn/06_summarise.py` | Collapse all runs into one table + `RESULTS.md` |
+| `scripts/cgcnn/07_predict_kappa.py` | **Stage 2**: our moduli → κ_L, with Monte Carlo uncertainty |
+| `scripts/cgcnn/08_compare_kappa.py` | Validates stage 2 against the paper's own pipeline |
+| `scripts/cgcnn/09_fetch_validation_set.py` | Fetches the paper's Table 1 (45 real materials) and runs our pipeline on them |
+| `scripts/cgcnn/10_validate_table1.py` | Validates stage 2 against **real experimental κ_L** (Table 1) |
+| `scripts/alignn/11_prepare_alignn_data.py` | matbench → ALIGNN's format, same split as the CGCNN ensemble |
+| `scripts/alignn/12_train_alignn.py` | Trains ALIGNN (Phase 2, a second architecture) on one target |
 | `colab/PINK_ALIGNN_colab.py` | Generates `colab/PINK_ALIGNN.ipynb`, the GPU run for the above |
-| `scripts/13_screen_gnome.py` | **The actual GNoME screen** — 33,323 candidates, K/G/κ_L/uncertainty for each |
-| `scripts/14_compare_gnome_screen.py` | Compares our screen against the paper's own 11,869 published candidates |
+| `kaggle/build_alignn_kernel.py` | Alternative to the above: a Kaggle kernel (used to actually train it) |
+| `scripts/alignn/15_alignn_predict_moduli.py` | ALIGNN's own K and G for the 1,213 PINK crystals |
+| `scripts/alignn/16_alignn_predict_kappa.py` | ALIGNN's moduli → κ_L, and a comparison against our CGCNN's κ_L |
+| `scripts/cgcnn/13_screen_gnome.py` | **The actual GNoME screen** — 33,323 candidates, K/G/κ_L/uncertainty for each |
+| `scripts/cgcnn/14_compare_gnome_screen.py` | Compares our screen against the paper's own 11,869 published candidates |
 | `gnome_data/` | Downloaded GNoME summary CSV + structure zip (gitignored, ~620 MB) |
 | `run_pipeline.sh` | Stage 1, everything above, in order |
-| `results/` | Checkpoints, metrics, figures, predictions |
-| `results/archive/` | One superseded run, kept for comparison (see below) |
+| `results/cgcnn/` | Checkpoints, metrics, figures, predictions for the CGCNN pipeline |
+| `results/cgcnn/archive/` | One superseded run, kept for comparison (see below) |
+| `results/alignn/` | ALIGNN's checkpoints and predictions (Phase 2) |
 | `complete-data/` | The 1,213 Materials Project CIFs (prediction set) |
 | `data/table1_validation/` | The 45 fetched Table 1 CIFs used for real-data validation |
 | `data_full/` | Labels + provenance mapping for the 10,987 training crystals |
@@ -183,7 +187,7 @@ results — the same performance table, literature comparison, parity plots, res
 figures as above.
 
 Like the method PDF, nothing is hand-typed: `presentation/make_figures.py` regenerates every figure
-and a `metrics.tex` macro file straight from `results/metrics_summary.csv`, so the talk can never go
+and a `metrics.tex` macro file straight from `results/cgcnn/metrics_summary.csv`, so the talk can never go
 stale relative to the pipeline's actual output.
 
 ```bash
@@ -193,7 +197,7 @@ cd presentation && ./build.sh    # regenerates figures + metrics.tex, then compi
 Requires `xelatex` (for the Georgia/Avenir Next system fonts via `fontspec` — `pdflatex` will not
 work) and Python with `networkx`/`pymatgen`/`matplotlib` for the figure generator.
 
-`results/archive/cpu-150epoch/` holds one superseded run: 150 epochs with a plateau LR schedule
+`results/cgcnn/archive/cpu-150epoch/` holds one superseded run: 150 epochs with a plateau LR schedule
 instead of 200 with cosine annealing. It shares `--split-seed 42` with the current models, so it
 remains directly comparable — it is the evidence for what the schedule change bought.
 
@@ -246,12 +250,12 @@ Two things that will bite otherwise:
 
 ## Stage 2: from moduli to κ_L
 
-`scripts/07_predict_kappa.py` runs the second half of PINK — a closed-form Slack-model physics
+`scripts/cgcnn/07_predict_kappa.py` runs the second half of PINK — a closed-form Slack-model physics
 formula, not machine-learned — on our own predicted moduli:
 
 ```bash
-python scripts/07_predict_kappa.py          # → results/pink_kappa_predictions.csv
-python scripts/08_compare_kappa.py          # validates it against the paper's own pipeline
+python scripts/cgcnn/07_predict_kappa.py          # → results/cgcnn/pink_kappa_predictions.csv
+python scripts/cgcnn/08_compare_kappa.py          # validates it against the paper's own pipeline
 ```
 
 **The physics is not new — it's the same formula `pink_predict.py` already implements** (sound
@@ -295,8 +299,8 @@ getting the ordering right matters as much as matching the paper's absolute numb
 counts, from two models that share nothing but architecture and the physics formula, is strong
 agreement. The 47% MAE is larger than stage 1's own bulk/shear error because κ_L is a **product of
 several quantities each carrying their own error** — it is not a new weakness so much as the
-compounding of stage 1's already-documented one. `results/kappa_validation.png` is the parity plot;
-`results/kappa_comparison.csv` the full merged table.
+compounding of stage 1's already-documented one. `results/cgcnn/kappa_validation.png` is the parity plot;
+`results/cgcnn/kappa_comparison.csv` the full merged table.
 
 The uncertainty-calibration check is honestly weak (Spearman r = 0.20 between predicted interval
 width and disagreement with the reference) — expected, since "disagreement with an independently
@@ -320,8 +324,8 @@ the same `04_predict_moduli.py` and `slack_physics()` used everywhere else, not 
 implementation that could quietly diverge.
 
 ```bash
-python scripts/09_fetch_validation_set.py   # fetches the 45 CIFs, runs our pipeline on them
-python scripts/10_validate_table1.py        # the comparison below
+python scripts/cgcnn/09_fetch_validation_set.py   # fetches the 45 CIFs, runs our pipeline on them
+python scripts/cgcnn/10_validate_table1.py        # the comparison below
 ```
 
 **Provenance, checked before anything else.** 43 of these 45 materials turned out to already be
@@ -373,9 +377,9 @@ run the way they'd actually be run for screening, land in the same place. This i
 different conclusion from "the paper's model beats ours," and it was only found by checking each
 intermediate quantity rather than accepting one aggregate number.
 
-`results/table1_validation.png` is the parity plot against real κ_exp; `results/table1_gamma_diagnostic.png`
+`results/cgcnn/table1_validation.png` is the parity plot against real κ_exp; `results/cgcnn/table1_gamma_diagnostic.png`
 shows the two diagnostic panels (shear modulus agreement vs. Grüneisen disagreement) side by side;
-`results/table1_comparison.csv` is the full merged table.
+`results/cgcnn/table1_comparison.csv` is the full merged table.
 
 ## Trying a second architecture: ALIGNN
 
@@ -395,9 +399,9 @@ one the CGCNN ensemble trained on. So the split is computed exactly once, with t
 RNGs agree.
 
 ```bash
-python scripts/11_prepare_alignn_data.py     # matbench -> ALIGNN's format, same split as CGCNN
-python scripts/12_train_alignn.py --target bulk_modulus_kv
-python scripts/12_train_alignn.py --target shear_modulus_gv
+python scripts/alignn/11_prepare_alignn_data.py     # matbench -> ALIGNN's format, same split as CGCNN
+python scripts/alignn/12_train_alignn.py --target bulk_modulus_kv
+python scripts/alignn/12_train_alignn.py --target shear_modulus_gv
 ```
 
 **Result: ALIGNN beats the CGCNN ensemble on both targets, same split, same held-out 1,648 crystals.**
@@ -464,8 +468,8 @@ screen — only ever done inference on the same small, curated CIF sets. This se
 ```bash
 curl -o gnome_data/stable_materials_summary.csv https://storage.googleapis.com/gdm_materials_discovery/gnome_data/stable_materials_summary.csv
 curl -o gnome_data/by_composition.zip        https://storage.googleapis.com/gdm_materials_discovery/gnome_data/by_composition.zip
-python scripts/13_screen_gnome.py            # ~25 min on this laptop's CPU
-python scripts/14_compare_gnome_screen.py    # compares against the paper's own published candidates
+python scripts/cgcnn/13_screen_gnome.py            # ~25 min on this laptop's CPU
+python scripts/cgcnn/14_compare_gnome_screen.py    # compares against the paper's own published candidates
 ```
 
 Both files are fetched anonymously over plain HTTPS from GNoME's public GCS bucket — no `gcloud`/
@@ -506,12 +510,12 @@ the other direction — of *our* 16,299, just over half also appear in the paper
 snapshot; the rest are, in large part, candidates that simply didn't exist yet in the paper's
 snapshot, not disagreement.)
 
-`results/gnome_kappa_distributions.png` overlays both candidate lists' κ_L distributions — similar
+`results/cgcnn/gnome_kappa_distributions.png` overlays both candidate lists' κ_L distributions — similar
 overall shape, both spanning the full 0–1 W/m/K range, ours somewhat more concentrated around
-0.25–0.4. `results/gnome_overlap.csv` is the full set of 8,405 shared-formula rows.
+0.25–0.4. `results/cgcnn/gnome_overlap.csv` is the full set of 8,405 shared-formula rows.
 
 **The part a point-estimate pipeline cannot do at all**: every one of our candidates carries a Monte
-Carlo κ_L interval from the ensemble's own K/G spread (`results/gnome_overlap_confidence.png`). Of the
+Carlo κ_L interval from the ensemble's own K/G spread (`results/cgcnn/gnome_overlap_confidence.png`). Of the
 8,405 candidates both screens agree on:
 
 | Confidence (p95/p05 ratio) | Count | Meaning |
@@ -521,5 +525,5 @@ Carlo κ_L interval from the ensemble's own K/G spread (`results/gnome_overlap_c
 | Wide (> 5×) | 1,896 | worth a DFT check before trusting |
 
 The paper's own pipeline has no equivalent of this list at all — it can name candidates, but not say
-which ones it's actually sure about. `results/gnome_screen_all.csv` is the full 33,323-candidate
-scored pool (pre-threshold); `results/gnome_screen_candidates.csv` is the 16,299 that pass κ_L ≤ 1.
+which ones it's actually sure about. `results/cgcnn/gnome_screen_all.csv` is the full 33,323-candidate
+scored pool (pre-threshold); `results/cgcnn/gnome_screen_candidates.csv` is the 16,299 that pass κ_L ≤ 1.

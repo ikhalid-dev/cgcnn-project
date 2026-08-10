@@ -29,7 +29,10 @@
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\graphicspath{{figures/}{../results/}}
+% Both results/ subdirectories are searched in order - every existing
+% \includegraphics{parity_K_VRH_ens} etc. call (bare filename, no path
+% prefix) keeps resolving with no per-call edits after the cgcnn/alignn split.
+\graphicspath{{figures/}{../results/cgcnn/}{../results/alignn/}}
 
 % --- Palette ----------------------------------------------------------------
 \definecolor{Navy}{HTML}{0F1B33}

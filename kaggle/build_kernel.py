@@ -43,16 +43,20 @@ BUILD_DIR = os.path.join(PROJECT_ROOT, "kaggle", "build")
 KERNEL_TITLE = "PINK CGCNN GPU run"
 KERNEL_SLUG = KERNEL_TITLE.lower().replace(" ", "-")
 
+# (local_path, archive_path) pairs - local follows this project's own
+# scripts/cgcnn/ split, archive stays flat (what KERNEL_TEMPLATE's own run()
+# calls below refer to it as), so the remotely-executed template needed zero
+# changes for the cgcnn/alignn reorganisation.
 BUNDLE = [
-    "cgcnn_scratch/__init__.py",
-    "cgcnn_scratch/data.py",
-    "cgcnn_scratch/model.py",
-    "scripts/01b_prepare_full_dataset.py",
-    "scripts/02_train.py",
-    "scripts/03_evaluate.py",
-    "scripts/04_predict_moduli.py",
-    "scripts/05_ensemble.py",
-    "cgcnn_scratch/atom_init.json",
+    ("cgcnn_scratch/__init__.py", "cgcnn_scratch/__init__.py"),
+    ("cgcnn_scratch/data.py", "cgcnn_scratch/data.py"),
+    ("cgcnn_scratch/model.py", "cgcnn_scratch/model.py"),
+    ("scripts/cgcnn/01b_prepare_full_dataset.py", "scripts/01b_prepare_full_dataset.py"),
+    ("scripts/cgcnn/02_train.py", "scripts/02_train.py"),
+    ("scripts/cgcnn/03_evaluate.py", "scripts/03_evaluate.py"),
+    ("scripts/cgcnn/04_predict_moduli.py", "scripts/04_predict_moduli.py"),
+    ("scripts/cgcnn/05_ensemble.py", "scripts/05_ensemble.py"),
+    ("cgcnn_scratch/atom_init.json", "cgcnn_scratch/atom_init.json"),
 ]
 
 
@@ -60,11 +64,11 @@ def build_bundle_b64():
     """Zip the source files and base64 them so the kernel is self-contained."""
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for relative in BUNDLE:
-            path = os.path.join(PROJECT_ROOT, relative)
+        for local, arcname in BUNDLE:
+            path = os.path.join(PROJECT_ROOT, local)
             if not os.path.exists(path):
-                raise SystemExit(f"missing bundle file: {relative}")
-            archive.write(path, relative)
+                raise SystemExit(f"missing bundle file: {local}")
+            archive.write(path, arcname)
     return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 

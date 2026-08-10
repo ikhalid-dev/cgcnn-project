@@ -74,7 +74,7 @@ from scipy.constants import h, k
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def slack_physics(k_gpa, g_gpa, volume_a3, density, mass_amu, n_atoms):
@@ -226,10 +226,10 @@ def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--predictions",
-                        default=os.path.join(PROJECT_ROOT, "results",
+                        default=os.path.join(PROJECT_ROOT, "results", "cgcnn",
                                              "pink_moduli_predictions.csv"))
     parser.add_argument("--cif-dir", default=os.path.join(PROJECT_ROOT, "complete-data"))
-    parser.add_argument("--out", default=os.path.join(PROJECT_ROOT, "results",
+    parser.add_argument("--out", default=os.path.join(PROJECT_ROOT, "results", "cgcnn",
                                                       "pink_kappa_predictions.csv"))
     parser.add_argument("--mc-samples", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=0)

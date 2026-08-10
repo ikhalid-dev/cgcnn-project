@@ -82,8 +82,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS = os.path.join(PROJECT_ROOT, "results")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+RESULTS = os.path.join(PROJECT_ROOT, "results", "cgcnn")
 
 # Same house palette as scripts/03_evaluate.py and scripts/08_compare_kappa.py.
 BLUE = "#2a78d6"

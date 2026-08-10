@@ -76,7 +76,7 @@ from pymatgen.core import Structure
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # (mp_id, formula, kappa_exp, kappa_pink, G_paper, vs_paper, gamma_paper), all
 # in SI units matching Table 1's own columns (kappa in W/m/K, G in GPa, vs in
@@ -246,7 +246,7 @@ def main():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--cif-dir", default=os.path.join(PROJECT_ROOT, "data", "table1_validation"))
     parser.add_argument("--complete-data", default=os.path.join(PROJECT_ROOT, "complete-data"))
-    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results"))
+    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results", "cgcnn"))
     parser.add_argument("--skip-fetch", action="store_true",
                         help="CIFs already fetched; just (re)run provenance + pipeline")
     args = parser.parse_args()

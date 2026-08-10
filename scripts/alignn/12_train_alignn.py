@@ -86,9 +86,10 @@ import pickle
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-_train = import_module("02_train")  # reuse pick_device(), same as scripts/05
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# scripts/cgcnn/, not this file's own scripts/alignn/ - see 11's identical note.
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts", "cgcnn"))
+_train = import_module("02_train")  # reuse pick_device(), same as scripts/cgcnn/05
 
 
 def load_split(cache_path, n_train_override, n_val_override, n_test_override):
@@ -165,7 +166,7 @@ def main():
                              "if present; harmless no-op if there's nothing to resume from")
     args = parser.parse_args()
 
-    out_dir = args.out_dir or os.path.join(PROJECT_ROOT, "results", f"alignn_{args.target}")
+    out_dir = args.out_dir or os.path.join(PROJECT_ROOT, "results", "alignn", f"alignn_{args.target}")
     os.makedirs(out_dir, exist_ok=True)
 
     print(f"=== Training ALIGNN on {args.target} ===\n")

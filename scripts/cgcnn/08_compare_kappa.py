@@ -37,8 +37,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS = os.path.join(PROJECT_ROOT, "results")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+RESULTS = os.path.join(PROJECT_ROOT, "results", "cgcnn")
 
 # Same palette as scripts/03_evaluate.py, so this figure sits comfortably next
 # to the parity_*.png plots already in results/.

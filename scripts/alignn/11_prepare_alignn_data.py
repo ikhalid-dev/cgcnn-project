@@ -72,11 +72,12 @@ import pickle
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-# Both have a leading digit, so import_module (not `import`) is required -
-# same workaround scripts/05_ensemble.py already uses for 03_evaluate.
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Reaching across to scripts/cgcnn/, not this file's own directory
+# (scripts/alignn/) - both imported modules live there, per the cgcnn/alignn
+# split. Both have a leading digit, so import_module (not `import`) is
+# required - same workaround scripts/cgcnn/05_ensemble.py uses for 03_evaluate.
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts", "cgcnn"))
 _prep = import_module("01b_prepare_full_dataset")
 _train = import_module("02_train")
 

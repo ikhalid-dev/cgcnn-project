@@ -72,7 +72,7 @@ from pymatgen.core import Structure
 # None of it is actionable here, so keep the log readable.
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, PROJECT_ROOT)
 
 from cgcnn_scratch.data import (AtomFeaturiser, GaussianDistance,  # noqa: E402

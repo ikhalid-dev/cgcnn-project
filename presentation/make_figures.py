@@ -14,19 +14,19 @@ Produces, all under presentation/:
     figures/ensemble.png        single model vs ensemble, both targets
     metrics.tex                 \\def macros for every number the deck quotes,
                                  including Table 1 and GNoME-screen figures
-                                 (requires scripts/10 and scripts/13/14's
-                                 output to already exist in results/ - see
-                                 main()'s own check)
+                                 (requires scripts/cgcnn/10 and
+                                 scripts/cgcnn/13/14's output to already exist
+                                 in results/cgcnn/ - see main()'s own check)
 
 Table 1 and GNoME-screen slides reuse the already-generated PNGs directly
-from results/ (table1_validation.png, table1_gamma_diagnostic.png,
+from results/cgcnn/ (table1_validation.png, table1_gamma_diagnostic.png,
 gnome_kappa_distributions.png, gnome_overlap_confidence.png) rather than
 redrawing them here - same precedent as parity_K_VRH_ens.png etc., already
-pulled straight from results/ by the original version of this deck.
+pulled straight from results/cgcnn/ by the original version of this deck.
 
 WHY NUMBERS ARE MACROS, NEVER TYPED INTO THE SLIDES
 ----------------------------------------------------
-metrics.tex is generated from results/metrics_summary.csv, the same file the
+metrics.tex is generated from results/cgcnn/metrics_summary.csv, the same file the
 training pipeline writes. The deck \\input{}s it and refers to \\MetricKEnsMAE
 etc. If a model is retrained and the numbers move, rerunning this script is the
 only thing required to bring the talk back in sync - there is no hand-copied
@@ -60,14 +60,21 @@ from pymatgen.core import Structure
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(HERE)
-RESULTS = os.path.join(PROJECT_ROOT, "results")
+# Two results roots since the cgcnn/alignn split: RESULTS is CGCNN's own
+# (moduli/kappa/table1/gnome outputs - everything except ALIGNN's), RESULTS_ALIGNN
+# is ALIGNN's. Each function below uses whichever is actually correct for what
+# it reads, not just whichever was in scope first.
+RESULTS = os.path.join(PROJECT_ROOT, "results", "cgcnn")
+RESULTS_ALIGNN = os.path.join(PROJECT_ROOT, "results", "alignn")
 FIGS = os.path.join(HERE, "figures")
 os.makedirs(FIGS, exist_ok=True)
 
 # Digit-prefixed module, so a string import via importlib rather than a plain
-# `import` statement - same pattern scripts/05, 11 and 12 already use to reuse
-# each other's helper functions instead of duplicating them.
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts"))
+# `import` statement - same pattern scripts/cgcnn/05 and scripts/alignn/11,12
+# already use to reuse each other's helper functions instead of duplicating
+# them. scripts/cgcnn specifically: both 08_compare_kappa and 10_validate_table1
+# (the only two modules imported below) live there, not in scripts/alignn.
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts", "cgcnn"))
 
 # --- Palette - the beamer theme uses the same values (see theme.tex) -------
 NAVY = "#0F1B33"
@@ -356,7 +363,7 @@ def figure_ensemble_gain(test, path):
 # ===========================================================================
 
 def stage2_metrics():
-    """Reuse scripts/08_compare_kappa.py's own functions for the
+    """Reuse scripts/cgcnn/08_compare_kappa.py's own functions for the
     model-vs-model kappa_L sanity check, on the paper's own 1,213-crystal
     prediction set, through identical (bit-verified) physics."""
     s2 = import_module("08_compare_kappa")
@@ -371,7 +378,7 @@ def stage2_metrics():
 
 
 def table1_metrics():
-    """Reuse scripts/10_validate_table1.py's own verified functions rather
+    """Reuse scripts/cgcnn/10_validate_table1.py's own verified functions rather
     than recompute the gamma-substitution test by hand. Its sign is easy to
     get backwards (kappa_cal ~ exp(-gamma), not exp(+gamma) - confirmed the
     hard way once already while drafting the extended talk, which is exactly
@@ -414,7 +421,7 @@ def table1_metrics():
 
 def alignn_metrics():
     """log10 MAE/R2/raw-GPa MAE from ALIGNN's own Test_results.json, same
-    metric definitions scripts/03_evaluate.py's metrics() uses for CGCNN -
+    metric definitions scripts/cgcnn/03_evaluate.py's metrics() uses for CGCNN -
     not reused directly since ALIGNN's {target_out, pred_out} JSON shape
     doesn't match that function's expected DataFrame columns, but the
     formulas themselves (log10 MAE, log-space R^2) are the same ones already
@@ -423,7 +430,7 @@ def alignn_metrics():
     """
     out = {}
     for target, key in (("bulk_modulus_kv", "K"), ("shear_modulus_gv", "G")):
-        with open(os.path.join(RESULTS, f"alignn_{target}", "Test_results.json")) as fh:
+        with open(os.path.join(RESULTS_ALIGNN, f"alignn_{target}", "Test_results.json")) as fh:
             rows = json.load(fh)
         true = np.array([r["target_out"][0] for r in rows])
         pred = np.clip(np.array([r["pred_out"][0] for r in rows]), 1e-3, None)
@@ -441,13 +448,13 @@ def alignn_metrics():
 def alignn_kappa_metrics():
     """ALIGNN's kappa_L vs. our own CGCNN-ensemble kappa_L, identical physics.
 
-    Reuses scripts/08_compare_kappa.py's summarise()/screening_overlap() via
-    importlib - the exact same functions scripts/16_alignn_predict_kappa.py
+    Reuses scripts/cgcnn/08_compare_kappa.py's summarise()/screening_overlap() via
+    importlib - the exact same functions scripts/alignn/16_alignn_predict_kappa.py
     already calls for this comparison, so the deck's numbers can never drift
     from what that script's own printed report says.
     """
     s2 = import_module("08_compare_kappa")
-    alignn = pd.read_csv(os.path.join(RESULTS, "alignn_kappa_predictions.csv"))
+    alignn = pd.read_csv(os.path.join(RESULTS_ALIGNN, "alignn_kappa_predictions.csv"))
     cgcnn = pd.read_csv(os.path.join(RESULTS, "pink_kappa_predictions.csv"))
     merged = (alignn.rename(columns={"Kappa_cal (W m-1 K-1)": "Kappa_cal (W m-1 K-1)_ours"})
              .merge(cgcnn[["material_id", "Kappa_cal (W m-1 K-1)"]]
@@ -582,17 +589,21 @@ def write_metrics_tex(allrows, test, t1, gn, s2, an, ak, path):
 def main():
     metrics_path = os.path.join(RESULTS, "metrics_summary.csv")
     if not os.path.exists(metrics_path):
-        raise SystemExit(f"No {metrics_path} - run scripts/06_summarise.py first.")
+        raise SystemExit(f"No {metrics_path} - run scripts/cgcnn/06_summarise.py first.")
     for needed in ("pink_kappa_predictions.csv", "pink_reference_kappa.csv",
                   "table1_kappa_predictions.csv", "table1_reference.csv",
-                  "gnome_screen_candidates.csv", "gnome_overlap.csv",
-                  "alignn_bulk_modulus_kv/Test_results.json",
+                  "gnome_screen_candidates.csv", "gnome_overlap.csv"):
+        if not os.path.exists(os.path.join(RESULTS, needed)):
+            raise SystemExit(f"No results/cgcnn/{needed} - run scripts/cgcnn/08_compare_kappa.py, "
+                            f"scripts/cgcnn/10_validate_table1.py, or "
+                            f"scripts/cgcnn/13/14_*gnome*.py first (see docs/method.tex).")
+    for needed in ("alignn_bulk_modulus_kv/Test_results.json",
                   "alignn_shear_modulus_gv/Test_results.json",
                   "alignn_kappa_predictions.csv"):
-        if not os.path.exists(os.path.join(RESULTS, needed)):
-            raise SystemExit(f"No results/{needed} - run scripts/08_compare_kappa.py, "
-                            f"scripts/10_validate_table1.py, scripts/13/14_*gnome*.py, "
-                            f"and kaggle/run_alignn_kernel.py --fetch first "
+        if not os.path.exists(os.path.join(RESULTS_ALIGNN, needed)):
+            raise SystemExit(f"No results/alignn/{needed} - run "
+                            f"kaggle/run_alignn_kernel.py --fetch and "
+                            f"scripts/alignn/16_alignn_predict_kappa.py first "
                             f"(see docs/method.tex).")
 
     allrows = pd.read_csv(metrics_path)

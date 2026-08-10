@@ -19,7 +19,7 @@ WHY GRAPHS ARE CACHED
 Turning a crystal into a graph means a periodic neighbour search for every
 atom, which is the slowest step in the whole pipeline. Doing it lazily would
 cost the better part of an hour for 11,000 crystals, and it would have to be
-paid again in every new process. So `scripts/01b_prepare_full_dataset.py` runs
+paid again in every new process. So `scripts/cgcnn/01b_prepare_full_dataset.py` runs
 the conversion ONCE and pickles the tensors; GraphCacheData just loads them.
 
 Training and prediction both go through `structure_to_graph`, which matters
@@ -182,7 +182,7 @@ def structure_to_graph(crystal, ari, gdf, max_num_nbr=12, radius=8):
 class GraphCacheData(Dataset):
     """Serve graphs that were already built and pickled to disk.
 
-    The cache file is whatever `scripts/01b_prepare_full_dataset.py` wrote: a
+    The cache file is whatever `scripts/cgcnn/01b_prepare_full_dataset.py` wrote: a
     dict with a list of (atom_fea, nbr_fea, nbr_fea_idx) tuples and the ids that
     go with them. Targets are supplied separately, because the same cache is
     reused for both the bulk and the shear run - only the label column changes.
@@ -298,7 +298,7 @@ def load_dataset_for(data_dir, target):
     if not os.path.exists(cache_path):
         raise FileNotFoundError(
             f'No graph cache at {cache_path}. Build it first with:\n'
-            f'    python scripts/01b_prepare_full_dataset.py')
+            f'    python scripts/cgcnn/01b_prepare_full_dataset.py')
 
     print(f'Using pre-built graph cache: {cache_path}')
     targets = dict(zip(labels.mb_id, np.log10(labels[target])))

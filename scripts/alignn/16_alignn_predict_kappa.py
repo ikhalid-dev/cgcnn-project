@@ -67,8 +67,9 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# scripts/cgcnn/, not this file's own scripts/alignn/ - see 11's identical note.
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "scripts", "cgcnn"))
 
 _kappa = import_module("07_predict_kappa")
 _compare = import_module("08_compare_kappa")
@@ -78,13 +79,13 @@ def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--predictions",
-                        default=os.path.join(PROJECT_ROOT, "results",
+                        default=os.path.join(PROJECT_ROOT, "results", "alignn",
                                              "alignn_moduli_predictions.csv"))
     parser.add_argument("--cif-dir", default=os.path.join(PROJECT_ROOT, "complete-data"))
-    parser.add_argument("--out", default=os.path.join(PROJECT_ROOT, "results",
+    parser.add_argument("--out", default=os.path.join(PROJECT_ROOT, "results", "alignn",
                                                       "alignn_kappa_predictions.csv"))
     parser.add_argument("--compare-against",
-                        default=os.path.join(PROJECT_ROOT, "results",
+                        default=os.path.join(PROJECT_ROOT, "results", "cgcnn",
                                              "pink_kappa_predictions.csv"),
                         help="our own CGCNN-derived kappa_L, for the "
                              "model-vs-model comparison at the end")

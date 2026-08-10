@@ -46,8 +46,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESULTS = os.path.join(PROJECT_ROOT, "results")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+RESULTS = os.path.join(PROJECT_ROOT, "results", "cgcnn")
 PAPER_CSV = os.path.join(PROJECT_ROOT, "external", "AI4Kappa",
                         "JMI_Supporting_Information", "Nature-filtered-low-kappa.csv")
 

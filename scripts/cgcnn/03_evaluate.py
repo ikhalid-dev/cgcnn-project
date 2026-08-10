@@ -60,7 +60,7 @@ import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, PROJECT_ROOT)
 
 from cgcnn_scratch.data import Normalizer, collate_pool, load_dataset_for  # noqa: E402
@@ -407,7 +407,7 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--target", choices=["K_VRH", "G_VRH"], default="K_VRH")
     parser.add_argument("--data-dir", default=os.path.join(PROJECT_ROOT, "data_full"))
-    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results"))
+    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results", "cgcnn"))
     parser.add_argument("--tag", default=None,
                         help="which run to evaluate; must match 02_train.py's "
                              "--tag. Defaults to --target.")

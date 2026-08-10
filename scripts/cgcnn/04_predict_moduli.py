@@ -60,7 +60,7 @@ from pymatgen.core import Structure
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, PROJECT_ROOT)
 
 from cgcnn_scratch.data import (AtomFeaturiser, GaussianDistance,  # noqa: E402
@@ -238,7 +238,7 @@ def main():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--cif-dir", default=os.path.join(PROJECT_ROOT, "complete-data"))
     parser.add_argument("--data-full", default=os.path.join(PROJECT_ROOT, "data_full"))
-    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results"))
+    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results", "cgcnn"))
     parser.add_argument("--atom-init",
                         default=os.path.join(PROJECT_ROOT, "cgcnn_scratch", "atom_init.json"))
     parser.add_argument("--k-tag", default="K_VRH_full",

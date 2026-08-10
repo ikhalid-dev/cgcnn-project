@@ -28,16 +28,23 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # The files Colab needs. Deliberately code only - no data. The 240 MB graph
 # cache is NOT uploaded; the notebook rebuilds it from matbench in about a
 # minute, which is far quicker than pushing it over a network.
+#
+# (local_path, archive_path) pairs, not a flat list: local paths follow this
+# project's own scripts/cgcnn/ split, but the archive path - what the path is
+# CALLED inside the zip, and therefore what the code embedded below (which
+# runs unpacked on Colab) refers to it as - stays flat, exactly as it always
+# has. That means the remote-side run() calls two cells down needed zero
+# changes for the cgcnn/alignn reorganisation; only this list did.
 BUNDLE = [
-    "cgcnn_scratch/__init__.py",
-    "cgcnn_scratch/data.py",
-    "cgcnn_scratch/model.py",
-    "scripts/01b_prepare_full_dataset.py",
-    "scripts/02_train.py",
-    "scripts/03_evaluate.py",
-    "scripts/04_predict_moduli.py",
-    "scripts/05_ensemble.py",
-    "cgcnn_scratch/atom_init.json",
+    ("cgcnn_scratch/__init__.py", "cgcnn_scratch/__init__.py"),
+    ("cgcnn_scratch/data.py", "cgcnn_scratch/data.py"),
+    ("cgcnn_scratch/model.py", "cgcnn_scratch/model.py"),
+    ("scripts/cgcnn/01b_prepare_full_dataset.py", "scripts/01b_prepare_full_dataset.py"),
+    ("scripts/cgcnn/02_train.py", "scripts/02_train.py"),
+    ("scripts/cgcnn/03_evaluate.py", "scripts/03_evaluate.py"),
+    ("scripts/cgcnn/04_predict_moduli.py", "scripts/04_predict_moduli.py"),
+    ("scripts/cgcnn/05_ensemble.py", "scripts/05_ensemble.py"),
+    ("cgcnn_scratch/atom_init.json", "cgcnn_scratch/atom_init.json"),
 ]
 
 
@@ -49,11 +56,11 @@ def build_bundle_b64():
     """
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for relative in BUNDLE:
-            path = os.path.join(PROJECT_ROOT, relative)
+        for local, arcname in BUNDLE:
+            path = os.path.join(PROJECT_ROOT, local)
             if not os.path.exists(path):
-                raise SystemExit(f"missing bundle file: {relative}")
-            archive.write(path, relative)
+                raise SystemExit(f"missing bundle file: {local}")
+            archive.write(path, arcname)
     return base64.b64encode(buffer.getvalue()).decode("ascii")
 
 
@@ -198,7 +205,7 @@ for target in ("K_VRH", "G_VRH"):
 ## 7. Download the results
 
 Brings back the six checkpoints, the metrics and the figures. Unzip this into
-the project root on the laptop, then run **`scripts/04_predict_moduli.py`**
+the project root on the laptop, then run **`scripts/cgcnn/04_predict_moduli.py`**
 there to produce `pink_moduli_predictions.csv` — that step needs the 1,213
 local CIFs, which never left the laptop.
 """),
@@ -212,7 +219,7 @@ files.download("/content/pink_results.zip")
 
 ```bash
 unzip -o ~/Downloads/pink_results.zip -d "/Users/mac/Desktop/Cgcnn project"
-python scripts/04_predict_moduli.py \\
+python scripts/cgcnn/04_predict_moduli.py \\
     --k-tag K_VRH_full,K_VRH_s1,K_VRH_s2 \\
     --g-tag G_VRH_full,G_VRH_s1,G_VRH_s2
 ```

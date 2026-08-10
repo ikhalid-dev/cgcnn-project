@@ -350,7 +350,10 @@ def fetch_results():
         sys.exit(f"No alignn_<target> directories inside the downloaded zip. "
                  f"Contents: {sorted(entries)}")
 
-    destination = os.path.join(PROJECT_ROOT, "results")
+    # results/alignn/, not results/ - this project's own scripts/results split
+    # by architecture (see .claude plan history if this needs re-deriving);
+    # the zip's own internal layout above is unaffected, still flat.
+    destination = os.path.join(PROJECT_ROOT, "results", "alignn")
     copied = 0
     for root, _, files in os.walk(extract_dir):
         for name in files:
@@ -360,11 +363,11 @@ def fetch_results():
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copy2(src, dst)
             copied += 1
-    print(f"Copied {copied} files into results/")
+    print(f"Copied {copied} files into results/alignn/")
     for target in ("bulk_modulus_kv", "shear_modulus_gv"):
         marker = os.path.join(destination, f"alignn_{target}", "Test_results.json")
         print(f"  {'OK' if os.path.exists(marker) else 'MISSING'}: "
-             f"results/alignn_{target}/Test_results.json")
+             f"results/alignn/alignn_{target}/Test_results.json")
 
 
 def show_log():

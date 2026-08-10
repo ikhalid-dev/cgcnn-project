@@ -93,7 +93,7 @@ from pymatgen.core import Structure
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, PROJECT_ROOT)
 
 from cgcnn_scratch.data import AtomFeaturiser, GaussianDistance, structure_to_graph  # noqa: E402
@@ -198,7 +198,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--gnome-dir", default=os.path.join(PROJECT_ROOT, "gnome_data"))
-    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results"))
+    parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results", "cgcnn"))
     parser.add_argument("--bandgap-lo", type=float, default=0.1)
     parser.add_argument("--bandgap-hi", type=float, default=3.0)
     parser.add_argument("--kappa-threshold", type=float, default=1.0)

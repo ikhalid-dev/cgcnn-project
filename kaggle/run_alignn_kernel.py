@@ -15,11 +15,11 @@ this kernel never touches the CGCNN kernel's own state.
 
 WHAT LANDS WHERE
 ----------------
-Both results/alignn_bulk_modulus_kv/ and results/alignn_shear_modulus_gv/
-land directly under results/ on fetch - same layout colab/run_alignn_cli.py's
---fetch already produces, so whichever platform actually finishes the run,
-the rest of the project (docs, the presentation, a future adapter script
-through slack_physics()) reads the same paths either way.
+Both results/alignn/alignn_bulk_modulus_kv/ and
+results/alignn/alignn_shear_modulus_gv/ land directly under results/alignn/
+on fetch - same layout colab/run_alignn_cli.py's --fetch already produces, so
+whichever platform actually finishes the run, the rest of the project (docs,
+the presentation, scripts/alignn/15/16) reads the same paths either way.
 """
 
 import argparse
@@ -72,7 +72,7 @@ def push(kid):
 
 
 def fetch(kid):
-    """Download the kernel's output into results/."""
+    """Download the kernel's output into results/alignn/."""
     os.makedirs(STAGING_DIR, exist_ok=True)
     print(f"Downloading output of {kid} -> {STAGING_DIR}")
     print(kaggle("kernels", "output", kid, "-p", STAGING_DIR))
@@ -82,7 +82,10 @@ def fetch(kid):
         print(f"No results/ in the output. Contents: {sorted(os.listdir(STAGING_DIR))}")
         return
 
-    destination = os.path.join(PROJECT_ROOT, "results")
+    # results/alignn/, not results/ - this project's own scripts/results
+    # split by architecture. The downloaded kernel's own "results/" output
+    # structure above is unaffected, still flat.
+    destination = os.path.join(PROJECT_ROOT, "results", "alignn")
     copied = 0
     for root, _, files in os.walk(produced):
         rel = os.path.relpath(root, produced)
@@ -91,7 +94,7 @@ def fetch(kid):
         for name in files:
             shutil.copy2(os.path.join(root, name), os.path.join(dest_root, name))
             copied += 1
-    print(f"Copied {copied} files into results/")
+    print(f"Copied {copied} files into results/alignn/")
 
 
 def main():
@@ -145,9 +148,9 @@ def main():
                  f"  https://www.kaggle.com/code/{kid}")
 
     fetch(kid)
-    print("\nresults/alignn_bulk_modulus_kv/ and results/alignn_shear_modulus_gv/ "
-         "are ready - each has best_model.pt, config.json, and "
-         "prediction_results_test_set.csv.")
+    print("\nresults/alignn/alignn_bulk_modulus_kv/ and "
+         "results/alignn/alignn_shear_modulus_gv/ are ready - each has "
+         "best_model.pt, config.json, and prediction_results_test_set.csv.")
 
 
 if __name__ == "__main__":

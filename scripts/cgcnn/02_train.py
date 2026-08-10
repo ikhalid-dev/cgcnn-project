@@ -76,7 +76,7 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, PROJECT_ROOT)
 
 from cgcnn_scratch.data import Normalizer, collate_pool, load_dataset_for  # noqa: E402
@@ -186,7 +186,7 @@ def main():
     parser.add_argument("--target", choices=["K_VRH", "G_VRH"], default="K_VRH",
                         help="which modulus to predict")
     parser.add_argument("--data-dir", default=os.path.join(PROJECT_ROOT, "data_full"))
-    parser.add_argument("--out-dir", default=os.path.join(PROJECT_ROOT, "results"))
+    parser.add_argument("--out-dir", default=os.path.join(PROJECT_ROOT, "results", "cgcnn"))
     parser.add_argument("--tag", default=None,
                         help="suffix for the output files. Defaults to --target. "
                              "Ensemble members need distinct tags, e.g. "
