@@ -1,3 +1,7 @@
 *.ipynb filter=nbstripout
 *.zpln filter=nbstripout
 *.ipynb diff=ipynb
+
+# Teaching notebook meant to be read on GitHub with its outputs visible -
+# exempt it from the nbstripout filter every other notebook here gets.
+cgcnn_scratch/tutorial/Crystal_graphs.ipynb -filter
