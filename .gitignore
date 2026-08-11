@@ -111,3 +111,8 @@ results/alignn/alignn_*/*_data_range
 # README.md; the pipeline never reads it.
 PINK.pdf
 
+# predict.py's default output location: one-off real-world predictions from
+# whatever CIFs someone hands it, not part of the reproducible pipeline -
+# same reasoning PREDICT_NEW_CIFS.txt already gives for my_cifs/my_predictions/.
+predictions/
+
