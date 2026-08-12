@@ -1,0 +1,196 @@
+% Column reference for the GNoME oxide-screen CSVs. Build with:
+%   cd docs && pdflatex oxide_screen_columns.tex && pdflatex oxide_screen_columns.tex
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[colorlinks=true,linkcolor=linknavy,urlcolor=linknavy]{hyperref}
+
+\emergencystretch=3em
+
+\definecolor{linknavy}{HTML}{2A78D6}
+\definecolor{inkSoft}{HTML}{52514E}
+\definecolor{boxbg}{HTML}{F4F6FA}
+\definecolor{boxrule}{HTML}{C9D6EA}
+
+\newcommand{\keybox}[2]{%
+  \begin{center}
+  \begin{tikzpicture}
+    \node[draw=boxrule,fill=boxbg,rounded corners=3pt,line width=0.8pt,
+          inner sep=10pt,text width=0.92\textwidth,align=left]
+      {\textbf{#1}\\[3pt]\small #2};
+  \end{tikzpicture}
+  \end{center}}
+
+\title{\vspace{-1.5cm}\textbf{Reading the GNoME Oxide Screen}\\[4pt]
+\large A column-by-column reference for the two oxide CSVs}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.3cm}
+
+\noindent
+\texttt{15\_filter\_oxides.py} reads the full GNoME screen output ---
+\texttt{gnome\_screen\_all.csv}, 33{,}323 candidates scored by
+\texttt{13\_screen\_gnome.py} --- and pulls out every row whose formula
+contains oxygen, writing two files (both in \texttt{results/cgcnn/}):
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+File & Rows \\
+\midrule
+\texttt{gnome\_oxide\_candidates.csv} & 11{,}612 --- every scored oxide \\
+\texttt{gnome\_oxide\_low\_kappa\_candidates.csv} & 1{,}545 --- oxides with $\kappa_L \leq 1$ W~m$^{-1}$~K$^{-1}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+Both share the same columns (the low-$\kappa$ file drops
+\texttt{is\_low\_kappa\_candidate}, since every row there is one by
+definition). This document explains what each column means.
+
+% -----------------------------------------------------------------------
+\subsection*{Identity}
+
+\begin{center}
+\begin{tabular}{lp{10.3cm}}
+\toprule
+Column & Meaning \\
+\midrule
+\texttt{material\_id} & GNoME's own identifier for the material. \\
+\texttt{formula} & Reduced chemical formula, e.g.\ \texttt{SbWO4}. \\
+\texttt{stoichiometry\_pattern} & A rough structural family, read off the
+  \emph{reduced} cation:oxygen ratio --- see the box below. \\
+\texttt{is\_low\_kappa\_candidate} & (\texttt{gnome\_oxide\_candidates.csv}
+  only) \texttt{True} if this row also appears in the low-$\kappa$ file. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\keybox{What \texttt{stoichiometry\_pattern} means}{A pattern-match on the
+\emph{ratio} of cations to oxygen after reducing to lowest integers --- not a
+verified crystal structure, which would need atomic positions this column
+does not look at. \textbf{ABO3-type}: two cations in 1:1 ratio, three oxygens
+(perovskite-like). \textbf{AB2O4-type}: cations in 1:2, four oxygens
+(spinel-like). \textbf{A2B2O7-type}: cations in 1:1 (reduces from 2:2), seven
+oxygens (pyrochlore-like). Anything else with two cations is labelled a
+generic ternary oxide; three or more cations become \textit{complex oxide
+($n$ elements)}. In this particular screen no exact ABO3 or simple binary
+(single-cation) oxide survived the paper's own bandgap/stability/
+non-radioactive filters --- GNoME's discovered materials skew toward more
+complex, previously-uncatalogued compositions, and simple perovskites are
+mostly already well known.}
+
+% -----------------------------------------------------------------------
+\subsection*{Structural quantities}
+
+\noindent Read directly from the primitive cell of the parsed structure ---
+not predicted, not uncertain.
+
+\begin{center}
+\begin{tabular}{lp{10.3cm}}
+\toprule
+Column & Meaning \\
+\midrule
+\texttt{Number of Atoms} & Atom count in the \emph{primitive} cell (not
+  whatever supercell GNoME's CIF happened to use). \\
+\texttt{Volume (A3)} & Primitive-cell volume, \AA$^3$. \\
+\texttt{Density (g cm-3)} & Mass $\div$ volume. \\
+\texttt{Atomic mass (amu)} & Total composition weight of the primitive cell. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% -----------------------------------------------------------------------
+\subsection*{Model predictions}
+
+\noindent The actual machine-learning output --- the mean of the 3-model
+CGCNN ensemble, in linear GPa (converted back from the $\log_{10}$ space the
+network is trained in).
+
+\begin{center}
+\begin{tabular}{lp{10.3cm}}
+\toprule
+Column & Meaning \\
+\midrule
+\texttt{K\_VRH\_pred} & Predicted bulk modulus $K$ (GPa). \\
+\texttt{G\_VRH\_pred} & Predicted shear modulus $G$ (GPa). \\
+\texttt{K\_VRH\_spread\_log10} & How much the 3 ensemble members
+  \emph{disagree} on $K$, in $\log_{10}$(GPa) --- a per-crystal uncertainty
+  estimate, not a physical property. \\
+\texttt{G\_VRH\_spread\_log10} & Same disagreement measure for $G$. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% -----------------------------------------------------------------------
+\subsection*{Derived physics (the Slack model)}
+
+\noindent Everything below is computed from $K$ and $G$ above via the
+paper's unchanged Slack-model formulas
+(\texttt{scripts/cgcnn/07\_predict\_kappa.py}, \texttt{slack\_physics()}).
+
+\begin{center}
+\begin{tabular}{lp{10.3cm}}
+\toprule
+Column & Meaning \\
+\midrule
+\texttt{Poisson ratio} & From the ratio of longitudinal to transverse sound
+  velocity, $v_{\mathrm{long}} = \sqrt{(K + \tfrac{4}{3}G)/\rho}$,
+  $v_{\mathrm{trans}} = \sqrt{G/\rho}$. \\
+\texttt{Gruneisen parameter} & How anharmonic the lattice vibrations are,
+  derived from the Poisson ratio. Larger $\Rightarrow$ phonons scatter off
+  each other more strongly $\Rightarrow$ generally lower $\kappa_L$. \\
+\texttt{Kappa\_cal (W m-1 K-1)} & \textbf{The predicted lattice thermal
+  conductivity} --- the number this whole screen thresholds on. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+$\kappa_L = \dfrac{G \cdot v_{\mathrm{sound}} \cdot V^{1/3}}
+{N_{\mathrm{atoms}} \cdot 300} \cdot e^{-\gamma}$
+\quad (Eq.\ 2 of the PINK paper; $\delta=1$)
+\end{center}
+
+% -----------------------------------------------------------------------
+\subsection*{Uncertainty interval (Monte Carlo)}
+
+\begin{center}
+\begin{tabular}{lp{10.3cm}}
+\toprule
+Column & Meaning \\
+\midrule
+\texttt{Kappa\_cal\_p05} & 5th percentile of $\kappa_L$ across 2{,}000 Monte
+  Carlo draws. \\
+\texttt{Kappa\_cal\_p50} & Median of the same 2{,}000 draws --- sits close to
+  \texttt{Kappa\_cal} above. \\
+\texttt{Kappa\_cal\_p95} & 95th percentile. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\keybox{How the interval is built, and how to read it}{$K$ and $G$ are each
+redrawn 2{,}000 times from a normal distribution centred on the ensemble
+prediction, with width equal to \texttt{K\_VRH\_spread\_log10} /
+\texttt{G\_VRH\_spread\_log10} --- i.e.\ how much the 3 ensemble members
+disagreed. Structural quantities stay fixed; only the \emph{predicted} moduli
+are uncertain. Every draw goes through the identical Slack-model formula used
+for the point estimate, so p05/p50/p95 are just percentiles of the resulting
+2{,}000 $\kappa_L$ values --- consistent with \texttt{Kappa\_cal} by
+construction, not a separate approximation. \textbf{A tight p05--p95 range
+means the ensemble agreed and the prediction is trustworthy; a wide range
+means the 3 models disagreed and the candidate is worth a real DFT check
+before believing it.} This is something a single point-estimate model (like
+the paper's own released checkpoint) cannot report at all.}
+
+\end{document}
