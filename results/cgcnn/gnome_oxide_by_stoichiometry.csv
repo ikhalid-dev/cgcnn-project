@@ -1,0 +1,36 @@
+stoichiometry_pattern,crystal_system,n_total,n_low_kappa
+complex oxide (4 elements),triclinic,1778,315
+complex oxide (4 elements),monoclinic,2341,418
+complex oxide (4 elements),orthorhombic,1086,141
+complex oxide (4 elements),tetragonal,300,80
+complex oxide (4 elements),trigonal,1185,130
+complex oxide (4 elements),hexagonal,111,15
+complex oxide (4 elements),cubic,73,15
+complex oxide (5 elements),triclinic,1447,145
+complex oxide (5 elements),monoclinic,1766,63
+complex oxide (5 elements),orthorhombic,216,4
+complex oxide (5 elements),tetragonal,91,4
+complex oxide (5 elements),trigonal,495,14
+complex oxide (5 elements),hexagonal,50,0
+complex oxide (5 elements),cubic,2,0
+"ternary oxide (A-B-O, other ratio)",triclinic,142,39
+"ternary oxide (A-B-O, other ratio)",monoclinic,170,78
+"ternary oxide (A-B-O, other ratio)",orthorhombic,110,38
+"ternary oxide (A-B-O, other ratio)",tetragonal,24,9
+"ternary oxide (A-B-O, other ratio)",trigonal,67,11
+"ternary oxide (A-B-O, other ratio)",hexagonal,14,3
+"ternary oxide (A-B-O, other ratio)",cubic,13,7
+A2B2O7-type (pyrochlore-like),triclinic,6,1
+A2B2O7-type (pyrochlore-like),monoclinic,1,1
+A2B2O7-type (pyrochlore-like),orthorhombic,0,0
+A2B2O7-type (pyrochlore-like),tetragonal,2,0
+A2B2O7-type (pyrochlore-like),trigonal,0,0
+A2B2O7-type (pyrochlore-like),hexagonal,0,0
+A2B2O7-type (pyrochlore-like),cubic,12,0
+AB2O4-type (spinel-like),triclinic,0,0
+AB2O4-type (spinel-like),monoclinic,2,1
+AB2O4-type (spinel-like),orthorhombic,3,1
+AB2O4-type (spinel-like),tetragonal,2,1
+AB2O4-type (spinel-like),trigonal,0,0
+AB2O4-type (spinel-like),hexagonal,1,0
+AB2O4-type (spinel-like),cubic,0,0

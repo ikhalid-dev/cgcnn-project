@@ -1,15 +1,21 @@
-% Column reference for the GNoME oxide-screen CSVs. Build with:
+% The GNoME low-kappa_L screen: architecture, physics, and crystallographic
+% results. Build with:
 %   cd docs && pdflatex oxide_screen_columns.tex && pdflatex oxide_screen_columns.tex
+% (twice, so the table of contents resolves)
 \documentclass[11pt,a4paper]{article}
 
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
 \usepackage{xcolor}
 \usepackage{tikz}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
-\usepackage[colorlinks=true,linkcolor=linknavy,urlcolor=linknavy]{hyperref}
+\usepackage[colorlinks=true,linkcolor=linknavy,urlcolor=linknavy,
+            citecolor=linknavy]{hyperref}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds}
 
 \emergencystretch=3em
 
@@ -17,6 +23,12 @@
 \definecolor{inkSoft}{HTML}{52514E}
 \definecolor{boxbg}{HTML}{F4F6FA}
 \definecolor{boxrule}{HTML}{C9D6EA}
+\definecolor{accent}{HTML}{2A78D6}
+\definecolor{accent2}{HTML}{EB6834}
+
+\newcommand{\KV}{$K_{\mathrm{VRH}}$}
+\newcommand{\GV}{$G_{\mathrm{VRH}}$}
+\newcommand{\KL}{$\kappa_L$}
 
 \newcommand{\keybox}[2]{%
   \begin{center}
@@ -27,82 +39,477 @@
   \end{tikzpicture}
   \end{center}}
 
-\title{\vspace{-1.5cm}\textbf{Reading the GNoME Oxide Screen}\\[4pt]
-\large A column-by-column reference for the two oxide CSVs}
-\author{}
-\date{}
+\title{\vspace{-1.5cm}\textbf{The GNoME Low-\texorpdfstring{$\kappa_L$}{kappa\_L} Screen}\\[4pt]
+\large Architecture, physics, and the crystallographic structure of 33{,}323 candidates}
+\author{Aizaz Khalid}
+\date{August 2026}
 
 \begin{document}
 \maketitle
-\vspace{-1.3cm}
+\vspace{-0.8cm}
 
+\begin{abstract}
 \noindent
-\texttt{15\_filter\_oxides.py} reads the full GNoME screen output ---
-\texttt{gnome\_screen\_all.csv}, 33{,}323 candidates scored by
-\texttt{13\_screen\_gnome.py} --- and pulls out every row whose formula
-contains oxygen, writing two files (both in \texttt{results/cgcnn/}):
+A three-model CGCNN ensemble predicts bulk and shear modulus for every
+material in a 554{,}054-entry snapshot of Google DeepMind's GNoME discovery
+database; the paper's own Slack-model physics turns those moduli into a
+predicted lattice thermal conductivity \KL{}; and 16{,}299 candidates clear
+the screening threshold of \KL{} $\leq 1$~W~m$^{-1}$~K$^{-1}$. That screen,
+and the model behind it, are described in full in \texttt{docs/method.tex}.
+This document is the follow-on: having a candidate list is not the same as
+understanding it, so every one of those 33{,}323 scored candidates is here
+tagged with its crystallographic space group (read directly from GNoME's own
+structure metadata) and its constituent elements, then broken down two ways
+--- across the full screen, and across the 11{,}612 oxide-containing
+candidates specifically --- to ask what the low-\KL{} region of chemical
+space actually looks like. Two findings stand out. First, low-\KL{}
+candidates are not uniformly distributed across chemistry: halogens (Br, I,
+Cl, F) are markedly \emph{enriched} among low-\KL{} hits (up to $1.9\times$
+their background rate) while oxygen is markedly \emph{depleted}
+($0.27\times$), consistent with soft, heavy-halide lattices having lower
+sound velocities and Debye temperatures than tightly-bonded oxides. Second,
+both the general screen and the oxide subset skew heavily toward
+low-symmetry space groups (triclinic and monoclinic account for two-thirds
+of all candidates), a pattern this document quantifies precisely rather than
+leaves as an impression. Finally, we identify the single strongest candidate
+in every crystal system and every space group, for both populations ---
+ranked not by the raw point-estimate \KL{}, but by its 95th-percentile Monte
+Carlo value, since ranking $>30$k candidates by the point estimate alone
+turns out to be a textbook winner's-curse setup: the top point-estimate
+oxide and the runner-up general candidate both carry $19$--$22\times$
+p95/p05 uncertainty ratios, indistinguishable from noise rather than a
+confident low-\KL{} prediction. Re-ranked this way,
+\textbf{CrSi\textsubscript{3}Cl\textsubscript{16}} (triclinic, $P1$) holds
+its \#1 spot in the general screen (p95 $=0.0094$~W~m$^{-1}$~K$^{-1}$,
+$7.6\times$ ratio); the oxide leaderboard reorders, with
+\textbf{COF\textsubscript{14}} (monoclinic, $P2_1$) taking the top spot at a
+much tighter $2.3\times$ ratio.
+\end{abstract}
+
+\tableofcontents
+\vspace{0.4cm}
+
+% =====================================================================
+\section{Background and pipeline}
+
+The full pipeline, trained model, and validation are described in
+\texttt{docs/method.tex}; this section recaps only what is needed to read
+the results below.
 
 \begin{center}
-\begin{tabular}{ll}
-\toprule
-File & Rows \\
-\midrule
-\texttt{gnome\_oxide\_candidates.csv} & 11{,}612 --- every scored oxide \\
-\texttt{gnome\_oxide\_low\_kappa\_candidates.csv} & 1{,}545 --- oxides with $\kappa_L \leq 1$ W~m$^{-1}$~K$^{-1}$ \\
-\bottomrule
-\end{tabular}
+\begin{tikzpicture}[
+  node distance=8mm,
+  box/.style={draw=boxrule,fill=boxbg,rounded corners=3pt,line width=0.7pt,
+              inner sep=6pt,align=center,font=\small},
+  net/.style={draw=accent,fill=accent!8,rounded corners=3pt,line width=1pt,
+              inner sep=6pt,align=center,font=\small\bfseries},
+  arr/.style={-{Stealth[length=2.5mm]},line width=0.7pt,draw=inkSoft}]
+  \node[box] (cif) {CIF};
+  \node[net,right=of cif] (cgcnn) {CGCNN};
+  \node[box,right=of cgcnn] (kg) {$K$, $G$};
+  \node[box,right=of kg] (slack) {Slack\\model};
+  \node[box,right=of slack] (kl) {$\kappa_L$};
+  \node[box,right=of kl,font=\scriptsize] (sg) {+ space group\\(this doc)};
+  \draw[arr] (cif) -- (cgcnn);
+  \draw[arr] (cgcnn) -- (kg);
+  \draw[arr] (kg) -- (slack);
+  \draw[arr] (slack) -- (kl);
+  \draw[arr] (kl) -- (sg);
+\end{tikzpicture}
 \end{center}
 
 \noindent
-Both share the same columns (the low-$\kappa$ file drops
-\texttt{is\_low\_kappa\_candidate}, since every row there is one by
-definition). This document explains what each column means.
+Every material in this document already passed the paper's own three-stage
+funnel (bandgap, thermodynamic stability, no radioactive elements) before
+being scored:
 
-% -----------------------------------------------------------------------
+\begin{table}[H]
+\centering
+\caption{The screening funnel, this project's current 554{,}054-material
+GNoME snapshot.}
+\begin{tabular}{p{9.6cm}p{4.7cm}}
+\toprule
+Stage & Candidates remaining \\
+\midrule
+GNoME snapshot & 554{,}054 \\
+Bandgap $[0.1,3.0]$~eV, decomposition energy $\leq 0$ & 37{,}889 \\
++ no radioactive elements & \textbf{33{,}323} (scored by CGCNN) \\
++ \KL{} $\leq 1$~W~m$^{-1}$~K$^{-1}$ (own model) & \textbf{16{,}299} (``low-\KL{}'' below) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================================
+\section{Model and physics summary}
+
+\subsection{The network: CGCNN}
+
+Each crystal becomes a graph --- atoms as nodes, bonds as edges --- and the
+network predicts \KV{} and \GV{} (Voigt--Reuss--Hill bulk and shear modulus)
+from it directly, with no DFT calculation involved.
+
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Nodes.} Each atom is a 92-dimensional vector of tabulated
+  element properties (group, period, electronegativity, radius, \ldots),
+  looked up by atomic number, not learned.
+\item \textbf{Edges.} Every atom's 12 nearest neighbours within 8~\AA{},
+  respecting periodic boundary conditions, with the bond distance expanded
+  onto 41 Gaussian basis functions rather than used as a single raw number.
+\item \textbf{Convolution (gated message passing), three layers.} For atom
+  $i$ with neighbours $j$ and bond feature $\mathbf{e}_{ij}$:
+  \begin{equation}
+    \mathbf{v}_i^{(t+1)} = \mathbf{v}_i^{(t)} + \sum_{j}
+      \underbrace{\sigma(\mathbf{z}_{ij}^{(t)}\mathbf{W}_f + \mathbf{b}_f)}_{\text{gate}}
+      \odot
+      \underbrace{g(\mathbf{z}_{ij}^{(t)}\mathbf{W}_s + \mathbf{b}_s)}_{\text{message}},
+    \qquad \mathbf{z}_{ij}^{(t)} = \mathbf{v}_i^{(t)} \oplus \mathbf{v}_j^{(t)} \oplus \mathbf{e}_{ij}
+  \end{equation}
+  with $\sigma$ a sigmoid (how much of a neighbour's message to admit) and
+  $g$ a softplus (what that message says). Shared weights across every edge
+  are what make this a \emph{convolution}; the residual term lets gradients
+  reach every layer.
+\item \textbf{Pooling.} The crystal-level vector is the \emph{mean} over its
+  atoms (not the sum), so the prediction does not change if the unit cell is
+  doubled --- essential for an intensive property like a modulus.
+\item \textbf{Ensembling.} Three independently-initialised models per
+  target, averaged in log space; their spread is a free per-crystal
+  uncertainty estimate with no equivalent in a single pre-trained model.
+\end{itemize}
+
+\subsection{The physics: Slack model}
+
+Everything from $(K, G)$ to \KL{} is closed-form physics, unchanged from the
+paper, driven by our own predicted moduli:
+\begin{align}
+  v_{\text{long}} &= \sqrt{(K + \tfrac{4}{3}G)/\rho}, \qquad
+  v_{\text{trans}} = \sqrt{G/\rho} \\
+  \gamma &= \frac{3(1+\nu)}{2(2-3\nu)}, \qquad
+  \nu = \frac{(v_{\text{long}}/v_{\text{trans}})^2 - 2}{2(v_{\text{long}}/v_{\text{trans}})^2 - 2} \\
+  \kappa_L &= \frac{G \cdot v_{\text{sound}} \cdot V^{1/3}}{N_{\text{atoms}} \cdot 300}\, e^{-\gamma}
+  \qquad \text{(Eq.~2 of the PINK paper, } \delta=1\text{)}
+\end{align}
+where $\nu$ is Poisson's ratio and $\gamma$ the Gr\"uneisen parameter ---
+\textbf{both derived entirely from the predicted $K$ and $G$}, the same
+formula the paper's own released \texttt{pink\_predict.py} uses for real
+screening (its Table~1 validation numbers use a different, literature-looked-up
+$\gamma$ instead; see \texttt{docs/method.tex}, Section~7.4, for why that
+distinction matters and is not a bug in this pipeline).
+
+\keybox{Where the space-group data in this document comes from}{Every
+Space Group / Space Group Number / Crystal System value below is read
+directly from GNoME's own \texttt{stable\_materials\_summary.csv} --- it is
+part of the structure metadata GNoME itself computed when the material was
+generated, joined onto our scored candidates by \texttt{MaterialId}. No new
+structure analysis was run for this document; 0.8--0.9\% of candidates have
+no matching summary row (a small gap in the upstream file, not something
+this project introduces) and are reported, not silently dropped.}
+
+% =====================================================================
+\section{Crystallographic structure of the full screen}
+
+\begin{table}[H]
+\centering
+\caption{Crystal system distribution, all 33{,}323 scored candidates
+(\texttt{scripts/cgcnn/17\_spacegroups\_general.py}). 264 candidates
+(0.8\%) have no matching space-group row.}
+\begin{tabular}{lrrr}
+\toprule
+Crystal system & Total candidates & Low-\KL{} candidates & \% low-\KL{} \\
+\midrule
+Monoclinic    & 11{,}026 & 4{,}726 & 42.9\% \\
+Triclinic     & 10{,}761 & 6{,}802 & 63.2\% \\
+Orthorhombic  &  4{,}394 & 1{,}885 & 42.9\% \\
+Trigonal      &  4{,}151 & 1{,}632 & 39.3\% \\
+Tetragonal    &  1{,}352 &   575   & 42.5\% \\
+Hexagonal     &    749   &   298   & 39.8\% \\
+Cubic         &    626   &   254   & 40.6\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Triclinic candidates clear the threshold at nearly $1.5\times$ the rate of
+every other crystal system (63.2\% vs.\ 39--43\%) --- the lowest-symmetry
+structures are disproportionately likely to be good \KL{} candidates, which
+is physically sensible: low symmetry usually means a more complex, less
+uniform bonding environment, which scatters phonons more effectively.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../results/cgcnn/gnome_screen_spacegroups.png}
+\caption{Space-group-number histogram, full screen. All candidates (blue)
+vs.\ the 16{,}299 low-\KL{} candidates (orange), with the seven
+crystal-system windows marked along the top axis.}
+\end{figure}
+
+\subsection{Element composition and enrichment}
+
+For every element appearing anywhere in the screen, we compute how many
+candidates contain it and define an \emph{enrichment ratio}: the fraction of
+low-\KL{} candidates containing that element, divided by its fraction of the
+whole screen. Enrichment $>1$ means that element's compounds skew toward low
+\KL{} more than average; $<1$ means the opposite.
+
+\begin{table}[H]
+\centering
+\caption{Most enriched and most depleted elements among low-\KL{} candidates
+(elements with $\geq 30$ total candidates, to avoid noisy small counts;
+\texttt{scripts/cgcnn/18\_element\_frequency.py}).}
+\begin{tabular}{lrr @{\hspace{1.2cm}} lrr}
+\toprule
+\multicolumn{3}{c}{Most enriched} & \multicolumn{3}{c}{Most depleted} \\
+Element & Total & Enrichment & Element & Total & Enrichment \\
+\midrule
+Br & 3{,}319 & 1.88$\times$ & Gd &   776 & 0.17$\times$ \\
+I  & 3{,}221 & 1.86$\times$ & O  & 11{,}612 & 0.27$\times$ \\
+Cl & 1{,}378 & 1.78$\times$ & W  & 1{,}357 & 0.29$\times$ \\
+Cs & 3{,}628 & 1.73$\times$ & Mo & 1{,}809 & 0.35$\times$ \\
+Rb & 3{,}863 & 1.66$\times$ & B  &   858 & 0.37$\times$ \\
+C  &   711   & 1.64$\times$ & N  & 1{,}239 & 0.40$\times$ \\
+F  & 2{,}579 & 1.62$\times$ & Ca & 1{,}455 & 0.42$\times$ \\
+K  & 3{,}144 & 1.50$\times$ & Sr & 2{,}280 & 0.50$\times$ \\
+Zr & 1{,}240 & 1.43$\times$ & Rh &   998 & 0.56$\times$ \\
+Se & 3{,}815 & 1.40$\times$ & Mg &   757 & 0.57$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\keybox{Halogens up, oxygen down}{The four halogens present in appreciable
+numbers (Br, I, Cl, F) are all among the top seven most-enriched elements,
+alongside the large alkali cations they typically pair with (Cs, Rb, K).
+Oxygen, despite being the single most common element in the whole screen
+(11{,}612 of 33{,}323 candidates, 34.8\%), is the second most \emph{depleted}
+among low-\KL{} candidates at $0.27\times$. This is physically consistent:
+heavy, soft, highly polarizable halide lattices have lower sound velocities
+and Debye temperatures than the stiff, tightly-bonded lattices oxygen tends
+to form, and lower Debye temperature drives \KL{} down directly through
+Eq.~3.}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\textwidth]{../results/cgcnn/gnome_screen_elements.png}
+\caption{The 30 most common elements in the screen, all candidates (blue)
+vs.\ low-\KL{} candidates (orange).}
+\end{figure}
+
+\clearpage
+% =====================================================================
+\section{The oxide subset}
+
+11{,}612 of the 33{,}323 candidates (34.8\%) contain oxygen
+(\texttt{scripts/cgcnn/15\_filter\_oxides.py}), identified via pymatgen's
+composition parser rather than a substring search (which would wrongly flag
+Os and Og). Only 1{,}545 of those 11{,}612 (13.3\%) clear the low-\KL{}
+threshold --- versus 48.9\% for the screen as a whole --- consistent with
+Section~3.1's finding that oxygen is the second most depleted element.
+
+\begin{table}[H]
+\centering
+\caption{Crystal system distribution, oxide candidates only
+(\texttt{scripts/cgcnn/16\_spacegroups\_oxides.py}). 102 candidates (0.9\%)
+have no matching space-group row.}
+\begin{tabular}{lrrr}
+\toprule
+Crystal system & Total oxide candidates & Low-\KL{} candidates & \% low-\KL{} \\
+\midrule
+Monoclinic    & 4{,}280 & 561 & 13.1\% \\
+Triclinic     & 3{,}373 & 500 & 14.8\% \\
+Trigonal      & 1{,}747 & 155 &  8.9\% \\
+Orthorhombic  & 1{,}415 & 184 & 13.0\% \\
+Tetragonal    &   419   &  94 & 22.4\% \\
+Hexagonal     &   176   &  18 & 10.2\% \\
+Cubic         &   100   &  22 & 22.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Stoichiometry pattern (reduced cation:oxygen ratio;
+\texttt{15\_filter\_oxides.py}'s own classification, a formula-ratio tag,
+not a DFT-verified structure). No exact ABO3 (perovskite) or simple binary
+oxide survived the funnel --- GNoME's discovered materials skew toward
+complex, previously-uncatalogued compositions.}
+\begin{tabular}{lrr}
+\toprule
+Pattern & Total candidates & Low-\KL{} candidates \\
+\midrule
+Complex oxide (4 elements)          & 6{,}925 & 1{,}114 \\
+Complex oxide (5 elements)          & 4{,}110 & 230 \\
+Ternary oxide (A--B--O, other ratio) &   548  & 185 \\
+A\textsubscript{2}B\textsubscript{2}O\textsubscript{7}-type (pyrochlore-like) &  21  & 2 \\
+AB\textsubscript{2}O\textsubscript{4}-type (spinel-like)     &   8    & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../results/cgcnn/gnome_oxide_spacegroups.png}
+\caption{Space-group-number histogram, oxide candidates only. Same
+overlay/axis convention as Figure~1.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{../results/cgcnn/gnome_oxide_by_stoichiometry.png}
+\caption{Crystal-system distribution within each stoichiometry pattern.
+Each panel has its own $y$-scale so the 8-row AB\textsubscript{2}O\textsubscript{4}
+pattern is not crushed flat next to the $>4{,}000$-row complex-oxide
+patterns. The 21 pyrochlore-like candidates are notably cubic-dominated
+(12/21) --- the canonical pyrochlore space group is cubic $Fd\bar{3}m$
+--- but none of those 12 cubic pyrochlores clear the low-\KL{} threshold.}
+\end{figure}
+
+% =====================================================================
+\section{The strongest candidates}
+
+``Best'' below means lowest \KL{} \emph{p95} --- the 95th-percentile Monte
+Carlo value from Section~2.2 --- not the raw point estimate. Every row is
+shown regardless of whether it actually clears the
+$\leq 1$~W~m$^{-1}$~K$^{-1}$ threshold, so a weak group is shown honestly
+rather than omitted.
+
+\keybox{Why rank by p95, not the point estimate}{Ranking 33{,}323 candidates
+by lowest point-estimate \KL{} and taking the minimum is a textbook
+winner's-curse setup: a candidate needs either a genuinely low \KL{} or just
+a wide, noisy ensemble disagreement to land at the top, and the two look
+identical in a point estimate alone. Checked directly on this data: ranking
+by the point estimate instead of p95, the top oxide (ReAsOF\textsubscript{10})
+and the second-best general candidate (HgWCl\textsubscript{10}) both carry
+p95/p05 ratios of 19--22$\times$ --- solidly in the ``worth a DFT check''
+range by this document's own convention (Section~3), not the confident end
+of it. Ranking by p95 instead asks a more conservative question --- \emph{is
+this candidate still predicted low-\KL{} even in the model's own pessimistic
+scenario} --- and rewards confident, tightly-bounded predictions over lucky,
+noisy ones. The ratio column below makes that confidence visible rather than
+hiding it behind a single number.}
+
+\begin{table}[H]
+\centering
+\caption{Best candidate per crystal system by \KL{} p95, oxide vs.\ general
+screen. Ratio $=$ p95/p05, this candidate's own Monte Carlo spread --- lower
+is more confident.}
+\footnotesize
+\begin{tabular}{l ll r @{\hspace{0.5cm}} ll r}
+\toprule
+& \multicolumn{3}{c}{Oxide subset} & \multicolumn{3}{c}{Full screen} \\
+Crys.\ sys.\ & Formula & Sp.\ grp.\ & p95 (ratio) & Formula & Sp.\ grp.\ & p95 (ratio) \\
+\midrule
+Triclinic    & CuSCl6O        & $P\bar{1}$ & 0.0756 (4.3$\times$) & CrSi3Cl16 & $P1$   & \textbf{0.0094} (7.6$\times$) \\
+Monoclinic   & COF14          & $P2_1$     & \textbf{0.0663 (2.3$\times$)} & TaSb(As2Cl13)2 & $Cm$ & 0.0191 (\textbf{2.0$\times$}) \\
+Orthorhombic & ReOF5          & $Pnma$     & 0.0636 (6.2$\times$) & SbP2Cl13 & $Cmc2_1$ & 0.0125 (2.4$\times$) \\
+Tetragonal   & AgN5O14        & $I\bar{4}$ & 0.1119 (7.5$\times$) & POsCl10 & $P4/n$   & 0.0163 (4.2$\times$) \\
+Trigonal     & S24ClO3        & $R3m$      & 0.0684 (3.8$\times$) & FeSeBr18 & $R\bar{3}$ & 0.0264 (2.2$\times$) \\
+Hexagonal    & Rb6BaO4        & $P6_3mc$   & 0.4867 (3.7$\times$) & Rb3Co2Br9 & $P6_3/mmc$ & 0.1046 (4.8$\times$) \\
+Cubic        & Fe3Br4O        & $P2_13$    & 0.5684 (11.5$\times$) & CsRb2BiTe3 & $P2_13$ & 0.1079 (2.6$\times$) \\
+\bottomrule
+\end{tabular}
+\normalsize
+\end{table}
+
+\noindent
+Bold marks each population's single best candidate overall by this
+conservative ranking. \textbf{CrSi\textsubscript{3}Cl\textsubscript{16}
+holds its \#1 spot even after re-ranking} --- its 7.6$\times$ ratio, while
+not the tightest in the table, is still low enough that it stays ahead once
+every candidate's own uncertainty is priced in, unlike
+HgWCl\textsubscript{10} (previously \#2 by point estimate) which drops out
+of the top 10 entirely once ranked by p95. Among oxides, the point-estimate
+winner ReAsOF\textsubscript{10} is displaced by COF\textsubscript{14} ---
+a much less dramatic \KL{} but a $2.3\times$ ratio, the tightest of any
+oxide crystal-system winner.
+
+\begin{table}[H]
+\centering
+\caption{Top 10 overall (one row per space group, ranked by \KL{} p95),
+oxide subset. Full 134-row table:
+\texttt{gnome\_oxide\_best\_by\_spacegroup.csv} (also carries the point
+estimate and p05 for every row).}
+\begin{tabular}{lllll r}
+\toprule
+\# & Formula & Space group & Crystal system & p95 & Ratio \\
+\midrule
+1  & ReOF5          & $Pnma$     & orthorhombic & 0.0636 & 6.2$\times$ \\
+2  & COF14          & $P2_1$     & monoclinic   & 0.0663 & \textbf{2.3$\times$} \\
+3  & S24ClO3        & $R3m$      & trigonal     & 0.0684 & 3.8$\times$ \\
+4  & ReAsOF10       & $P2$       & monoclinic   & 0.0701 & 19.3$\times$ \\
+5  & CeSCl6O        & $P2_1/c$   & monoclinic   & 0.0745 & \textbf{2.1$\times$} \\
+6  & CuSCl6O        & $P\bar{1}$ & triclinic    & 0.0756 & 4.3$\times$ \\
+7  & Rb2Re2OF10     & $P2/c$     & monoclinic   & 0.0837 & 3.9$\times$ \\
+8  & TlRe2Ag(OF2)4  & $Cmm2$     & orthorhombic & 0.0974 & 4.6$\times$ \\
+9  & Na(S8O)3       & $P1$       & triclinic    & 0.1103 & 7.7$\times$ \\
+10 & AgN5O14        & $I\bar{4}$ & tetragonal   & 0.1119 & 7.5$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Row 4 is the point-estimate winner from before (\KL{} $=0.0158$) --- still a
+strong candidate, just no longer \#1 once its own $19.3\times$ uncertainty
+is weighed against tighter alternatives like row 2 or row 5.
+
+\begin{table}[H]
+\centering
+\caption{Top 10 overall (one row per space group, ranked by \KL{} p95), full
+screen. Full 167-row table: \texttt{gnome\_screen\_best\_by\_spacegroup.csv}.}
+\begin{tabular}{lllll r}
+\toprule
+\# & Formula & Space group & Crystal system & p95 & Ratio \\
+\midrule
+1  & CrSi3Cl16       & $P1$       & triclinic    & 0.0094 & 7.6$\times$ \\
+2  & SbP2Cl13        & $Cmc2_1$   & orthorhombic & 0.0125 & 2.4$\times$ \\
+3  & BI5             & $Pbcm$     & orthorhombic & 0.0140 & 3.0$\times$ \\
+4  & BPI6            & $Pnma$     & orthorhombic & 0.0161 & 4.1$\times$ \\
+5  & POsCl10         & $P4/n$     & tetragonal   & 0.0163 & 4.2$\times$ \\
+6  & TaSb(As2Cl13)2  & $Cm$       & monoclinic   & 0.0191 & \textbf{2.0$\times$} \\
+7  & YAg3Br28        & $Pm$       & monoclinic   & 0.0193 & 2.7$\times$ \\
+8  & Au3IBr12        & $P2_1$     & monoclinic   & 0.0210 & 4.5$\times$ \\
+9  & P(WCl6)2        & $P2_1/m$   & monoclinic   & 0.0212 & 4.8$\times$ \\
+10 & AgBr5           & $P2_1/c$   & monoclinic   & 0.0218 & 2.9$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Every survivor here is again a heavy halide (Cl, Br), reinforcing
+Section~3.1's enrichment finding independently of which ranking is used ---
+the chemistry signal is robust to the point-estimate/p95 choice even though
+the individual winners are not.
+
+\clearpage
+% =====================================================================
+\appendix
+\section{Appendix: CSV column reference}
+
+Every CSV referenced above shares the columns below. Columns already present
+in \texttt{gnome\_screen\_all.csv} (from \texttt{13\_screen\_gnome.py}) ride
+along unchanged; \texttt{space\_group}, \texttt{space\_group\_number} and
+\texttt{crystal\_system} are added by this document's own scripts
+(\texttt{16\_spacegroups\_oxides.py}, \texttt{17\_spacegroups\_general.py}).
+
 \subsection*{Identity}
-
 \begin{center}
-\begin{tabular}{lp{10.3cm}}
+\begin{tabular}{p{4.4cm}p{7.6cm}}
 \toprule
 Column & Meaning \\
 \midrule
 \texttt{material\_id} & GNoME's own identifier for the material. \\
-\texttt{formula} & Reduced chemical formula, e.g.\ \texttt{SbWO4}. \\
-\texttt{stoichiometry\_pattern} & A rough structural family, read off the
-  \emph{reduced} cation:oxygen ratio --- see the box below. \\
-\texttt{is\_low\_kappa\_candidate} & (\texttt{gnome\_oxide\_candidates.csv}
-  only) \texttt{True} if this row also appears in the low-$\kappa$ file. \\
+\texttt{formula} & Reduced chemical formula. \\
+\texttt{stoichiometry\_pattern} & (oxide files only) reduced cation:oxygen
+  ratio family --- see Section~4's table. \\
+\texttt{is\_low\_kappa\_candidate} & \texttt{True} if \KL{} $\leq 1$~W~m$^{-1}$~K$^{-1}$. \\
+\texttt{space\_group} / \texttt{space\_group\_number} / \texttt{crystal\_system}
+  & Read from GNoME's own structure metadata --- see the keybox in Section~2.2. \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\keybox{What \texttt{stoichiometry\_pattern} means}{A pattern-match on the
-\emph{ratio} of cations to oxygen after reducing to lowest integers --- not a
-verified crystal structure, which would need atomic positions this column
-does not look at. \textbf{ABO3-type}: two cations in 1:1 ratio, three oxygens
-(perovskite-like). \textbf{AB2O4-type}: cations in 1:2, four oxygens
-(spinel-like). \textbf{A2B2O7-type}: cations in 1:1 (reduces from 2:2), seven
-oxygens (pyrochlore-like). Anything else with two cations is labelled a
-generic ternary oxide; three or more cations become \textit{complex oxide
-($n$ elements)}. In this particular screen no exact ABO3 or simple binary
-(single-cation) oxide survived the paper's own bandgap/stability/
-non-radioactive filters --- GNoME's discovered materials skew toward more
-complex, previously-uncatalogued compositions, and simple perovskites are
-mostly already well known.}
-
-% -----------------------------------------------------------------------
-\subsection*{Structural quantities}
-
-\noindent Read directly from the primitive cell of the parsed structure ---
-not predicted, not uncertain.
-
+\subsection*{Structural quantities (read from the primitive cell, not predicted)}
 \begin{center}
-\begin{tabular}{lp{10.3cm}}
+\begin{tabular}{p{4.4cm}p{7.6cm}}
 \toprule
-Column & Meaning \\
-\midrule
-\texttt{Number of Atoms} & Atom count in the \emph{primitive} cell (not
-  whatever supercell GNoME's CIF happened to use). \\
+\texttt{Number of Atoms} & Atom count in the primitive cell. \\
 \texttt{Volume (A3)} & Primitive-cell volume, \AA$^3$. \\
 \texttt{Density (g cm-3)} & Mass $\div$ volume. \\
 \texttt{Atomic mass (amu)} & Total composition weight of the primitive cell. \\
@@ -110,87 +517,29 @@ Column & Meaning \\
 \end{tabular}
 \end{center}
 
-% -----------------------------------------------------------------------
-\subsection*{Model predictions}
-
-\noindent The actual machine-learning output --- the mean of the 3-model
-CGCNN ensemble, in linear GPa (converted back from the $\log_{10}$ space the
-network is trained in).
-
+\subsection*{Model predictions (the 3-model CGCNN ensemble mean, linear GPa)}
 \begin{center}
-\begin{tabular}{lp{10.3cm}}
+\begin{tabular}{p{4.4cm}p{7.6cm}}
 \toprule
-Column & Meaning \\
-\midrule
-\texttt{K\_VRH\_pred} & Predicted bulk modulus $K$ (GPa). \\
-\texttt{G\_VRH\_pred} & Predicted shear modulus $G$ (GPa). \\
-\texttt{K\_VRH\_spread\_log10} & How much the 3 ensemble members
-  \emph{disagree} on $K$, in $\log_{10}$(GPa) --- a per-crystal uncertainty
-  estimate, not a physical property. \\
-\texttt{G\_VRH\_spread\_log10} & Same disagreement measure for $G$. \\
+\texttt{K\_VRH\_pred} / \texttt{G\_VRH\_pred} & Predicted bulk / shear modulus (GPa). \\
+\texttt{K\_VRH\_spread\_log10} / \texttt{G\_VRH\_spread\_log10} & Ensemble
+  disagreement, in $\log_{10}$(GPa) --- a per-crystal uncertainty estimate. \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-% -----------------------------------------------------------------------
-\subsection*{Derived physics (the Slack model)}
-
-\noindent Everything below is computed from $K$ and $G$ above via the
-paper's unchanged Slack-model formulas
-(\texttt{scripts/cgcnn/07\_predict\_kappa.py}, \texttt{slack\_physics()}).
-
+\subsection*{Derived physics (Slack model, Section~2.2) and Monte Carlo uncertainty}
 \begin{center}
-\begin{tabular}{lp{10.3cm}}
+\begin{tabular}{p{4.4cm}p{7.6cm}}
 \toprule
-Column & Meaning \\
-\midrule
-\texttt{Poisson ratio} & From the ratio of longitudinal to transverse sound
-  velocity, $v_{\mathrm{long}} = \sqrt{(K + \tfrac{4}{3}G)/\rho}$,
-  $v_{\mathrm{trans}} = \sqrt{G/\rho}$. \\
-\texttt{Gruneisen parameter} & How anharmonic the lattice vibrations are,
-  derived from the Poisson ratio. Larger $\Rightarrow$ phonons scatter off
-  each other more strongly $\Rightarrow$ generally lower $\kappa_L$. \\
-\texttt{Kappa\_cal (W m-1 K-1)} & \textbf{The predicted lattice thermal
-  conductivity} --- the number this whole screen thresholds on. \\
+\texttt{Poisson ratio} / \texttt{Gruneisen parameter} & $\nu$, $\gamma$ above. \\
+\texttt{Kappa\_cal (W m-1 K-1)} & The predicted \KL{} --- the number the whole screen thresholds on. \\
+\texttt{Kappa\_cal\_p05} / \texttt{\_p50} / \texttt{\_p95} & 5th/50th/95th
+  percentile of \KL{} across 2{,}000 Monte Carlo draws of $K$ and $G$ (width
+  set by the ensemble spread above). A tight interval means the ensemble
+  agreed; a wide one means the candidate is worth a DFT check before trusting. \\
 \bottomrule
 \end{tabular}
 \end{center}
-
-\begin{center}
-$\kappa_L = \dfrac{G \cdot v_{\mathrm{sound}} \cdot V^{1/3}}
-{N_{\mathrm{atoms}} \cdot 300} \cdot e^{-\gamma}$
-\quad (Eq.\ 2 of the PINK paper; $\delta=1$)
-\end{center}
-
-% -----------------------------------------------------------------------
-\subsection*{Uncertainty interval (Monte Carlo)}
-
-\begin{center}
-\begin{tabular}{lp{10.3cm}}
-\toprule
-Column & Meaning \\
-\midrule
-\texttt{Kappa\_cal\_p05} & 5th percentile of $\kappa_L$ across 2{,}000 Monte
-  Carlo draws. \\
-\texttt{Kappa\_cal\_p50} & Median of the same 2{,}000 draws --- sits close to
-  \texttt{Kappa\_cal} above. \\
-\texttt{Kappa\_cal\_p95} & 95th percentile. \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\keybox{How the interval is built, and how to read it}{$K$ and $G$ are each
-redrawn 2{,}000 times from a normal distribution centred on the ensemble
-prediction, with width equal to \texttt{K\_VRH\_spread\_log10} /
-\texttt{G\_VRH\_spread\_log10} --- i.e.\ how much the 3 ensemble members
-disagreed. Structural quantities stay fixed; only the \emph{predicted} moduli
-are uncertain. Every draw goes through the identical Slack-model formula used
-for the point estimate, so p05/p50/p95 are just percentiles of the resulting
-2{,}000 $\kappa_L$ values --- consistent with \texttt{Kappa\_cal} by
-construction, not a separate approximation. \textbf{A tight p05--p95 range
-means the ensemble agreed and the prediction is trustworthy; a wide range
-means the 3 models disagreed and the candidate is worth a real DFT check
-before believing it.} This is something a single point-estimate model (like
-the paper's own released checkpoint) cannot report at all.}
 
 \end{document}
