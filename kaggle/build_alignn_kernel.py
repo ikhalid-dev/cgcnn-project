@@ -150,10 +150,35 @@ print("=" * 62, flush=True)
 import torch
 print("torch      :", torch.__version__, flush=True)
 print("cuda avail :", torch.cuda.is_available(), flush=True)
-if torch.cuda.is_available():
-    print("gpu        :", torch.cuda.get_device_name(0), flush=True)
-else:
+if not torch.cuda.is_available():
     raise SystemExit("No GPU. Check kernel-metadata.json's machine_shape.")
+
+print("gpu        :", torch.cuda.get_device_name(0), flush=True)
+
+# is_available() IS NOT ENOUGH. A GPU whose compute capability the installed
+# torch was never compiled for still reports available=True AND a correct
+# device name; it only fails on the first real kernel launch, minutes in,
+# with "no kernel image is available for execution on the device". A P100
+# (sm_60) does exactly this against Kaggle's torch 2.10+cu128, which is built
+# for sm_70..sm_120. This kernel already asks for a T4 (sm_75), so the guard
+# is insurance rather than a fix - but if machine_shape is ever changed, this
+# fails in seconds instead of wasting the whole run.
+capability = torch.cuda.get_device_capability(0)
+arch_list = torch.cuda.get_arch_list()
+print("capability :", f"sm_{{capability[0]}}{{capability[1]}}", flush=True)
+print("torch archs:", arch_list, flush=True)
+if f"sm_{{capability[0]}}{{capability[1]}}" not in arch_list:
+    raise SystemExit(
+        f"GPU is sm_{{capability[0]}}{{capability[1]}} but this torch build only "
+        f"supports {{arch_list}}. Change machine_shape in "
+        f"kaggle/build_alignn_kernel.py (T4 = sm_75 works).")
+try:
+    # The definitive test: allocate and reduce on the device for real.
+    _probe = (torch.ones(64, device="cuda") * 2).sum().item()
+    assert _probe == 128.0, _probe
+    print("cuda probe : OK", flush=True)
+except Exception as exc:
+    raise SystemExit(f"GPU present but unusable - a real CUDA op failed: {{exc}}")
 
 # alignn pulls in jarvis-tools automatically; pymatgen/matminer are needed
 # separately because scripts/11 reuses 01b_prepare_full_dataset.py's

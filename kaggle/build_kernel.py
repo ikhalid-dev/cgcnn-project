@@ -120,10 +120,35 @@ print("=" * 62, flush=True)
 import torch
 print("torch      :", torch.__version__, flush=True)
 print("cuda avail :", torch.cuda.is_available(), flush=True)
-if torch.cuda.is_available():
-    print("gpu        :", torch.cuda.get_device_name(0), flush=True)
-else:
+if not torch.cuda.is_available():
     raise SystemExit("No GPU. Enable the accelerator in kernel-metadata.json.")
+
+print("gpu        :", torch.cuda.get_device_name(0), flush=True)
+
+# is_available() IS NOT ENOUGH, and this cost a full wasted run to learn.
+# A GPU whose compute capability the installed torch was never compiled for
+# still reports available=True AND a correct device name. It only fails on the
+# first real kernel launch - which here is minutes in, after dataset prep -
+# with "CUDA error: no kernel image is available for execution on the device".
+# That is exactly what a P100 (sm_60) does against Kaggle's current
+# torch 2.10+cu128, which is built for sm_70..sm_120 only.
+# So verify the capability against the compiled arch list AND run a real op.
+capability = torch.cuda.get_device_capability(0)
+arch_list = torch.cuda.get_arch_list()
+print("capability :", f"sm_{{capability[0]}}{{capability[1]}}", flush=True)
+print("torch archs:", arch_list, flush=True)
+if f"sm_{{capability[0]}}{{capability[1]}}" not in arch_list:
+    raise SystemExit(
+        f"GPU is sm_{{capability[0]}}{{capability[1]}} but this torch build only "
+        f"supports {{arch_list}}. Change machine_shape in "
+        f"kaggle/build_kernel.py (T4 = sm_75 works).")
+try:
+    # The definitive test: allocate and reduce on the device for real.
+    _probe = (torch.ones(64, device="cuda") * 2).sum().item()
+    assert _probe == 128.0, _probe
+    print("cuda probe : OK", flush=True)
+except Exception as exc:
+    raise SystemExit(f"GPU present but unusable - a real CUDA op failed: {{exc}}")
 
 # matminer pulls the matbench datasets; pymatgen does the crystal handling.
 # Kaggle preinstalls neither at a usable version, and this needs internet
@@ -237,9 +262,16 @@ def main():
         # that taught us this reported "torch 2.10.0+cpu, cuda avail: False").
         # machine_shape is the field that actually attaches a device.
         # Allowed: NvidiaTeslaT4, NvidiaTeslaP100, Tpu1VmV38.
-        # P100 over T4: ~9.3 vs ~8.1 TFLOPS FP32, and this model trains in FP32.
+        #
+        # WAS NvidiaTeslaP100, on the reasoning that P100 beats T4 on raw FP32
+        # (~9.3 vs ~8.1 TFLOPS) and this model trains in FP32. That reasoning
+        # is now DEAD: Kaggle's image ships torch 2.10.0+cu128, compiled for
+        # sm_70..sm_120, and the P100 is sm_60. Every CUDA op dies with
+        # "no kernel image is available for execution on the device", while
+        # torch.cuda.is_available() still says True. T4 is sm_75 and works.
+        # See the capability guard in KERNEL_TEMPLATE above.
         "enable_gpu": True,
-        "machine_shape": "NvidiaTeslaP100",
+        "machine_shape": "NvidiaTeslaT4",
         # Un-pin the docker image. Kaggle pinned this kernel to the exact image
         # sha of its FIRST run - which was a CPU run - and every later push
         # inherited that pin, so the container came back CPU-only no matter what
