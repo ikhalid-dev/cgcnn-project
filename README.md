@@ -26,6 +26,14 @@ CIF ──► CGCNN ──► bulk modulus K, shear modulus G
 produces the (K, G) table the κ_L stage consumes. The full method is written up in
 **[`docs/method.pdf`](docs/method.pdf)**.
 
+**Since that base reproduction**, the project has gone further than the paper itself in three ways,
+each documented in its own section below: a [shared-trunk multi-head architecture](#fixing-the-kg-correlation-problem-and-adding-a-trained-γ)
+that fixes a K/G error-correlation problem the paper doesn't address; a Grüneisen parameter *trained*
+on AFLOW's own tabulated values instead of derived from an empirical formula; and a full
+[554,054-material GNoME screen](#the-actual-screen-gnome-end-to-end) run twice — once with the
+original derived-γ pipeline, once with the trained one — with both results kept side by side rather
+than the older one being overwritten.
+
 ## Results
 
 Measured on 1,648 held-out crystals. Every model shares the same train/val/test split, so all
@@ -164,6 +172,33 @@ matching ours. The paper's text and its own model disagree with each other.
 | `scripts/alignn/17_alignn_diagnostics.py` | Parity/training/residual figures for ALIGNN, matching `03_evaluate.py`'s CGCNN ones |
 | `scripts/cgcnn/13_screen_gnome.py` | **The actual GNoME screen** — 33,323 candidates, K/G/κ_L/uncertainty for each |
 | `scripts/cgcnn/14_compare_gnome_screen.py` | Compares our screen against the paper's own 11,869 published candidates |
+| `scripts/cgcnn/15_filter_oxides.py` | Pulls the oxide-containing candidates out of the full screen |
+| `scripts/cgcnn/16_spacegroups_oxides.py` | Spacegroup + stoichiometry breakdown of the oxide candidates |
+| `scripts/cgcnn/17_spacegroups_general.py` | Spacegroup + crystal-system breakdown of the full screen |
+| `scripts/cgcnn/18_element_frequency.py` | Element-frequency analysis across the full screen |
+| `scripts/cgcnn/19_small_cells.py` | Filters to small unit cells (DFT-tractable candidates) |
+| `scripts/cgcnn/20_high_symmetry.py` | Cubic / high-symmetry candidates from the spacegroup breakdown |
+| `scripts/cgcnn/21_feature_importance.py` | Feature-importance analysis on the screen's own predictions |
+| `scripts/cgcnn/22_best_dft_candidate.py` | Ranks the small-cell, low-κ candidates for DFT follow-up |
+| `scripts/cgcnn/23_kappa_vs_atoms.py` | κ_L vs atom-count relationship across the screen |
+| `scripts/cgcnn/24_small_cell_oxides_for_dft.py` | Oxide-restricted DFT shortlist |
+| `scripts/cgcnn/25_calibration_check.py` | Checks the ensemble's claimed 90% interval against real coverage (see `docs/oxide_screen_columns.tex`) |
+| `scripts/cgcnn/26_recalibrated_dft_shortlist.py` | DFT rankings re-scored with the 4.3–4.5× recalibration factor from the check above |
+| `scripts/cgcnn/27_alignn_dft_shortlist.py` | Cross-checks the DFT shortlist against ALIGNN's own predictions |
+| `scripts/cgcnn/28_alignn_small_cell_filter.py` | ALIGNN-side small-cell filter, mirroring `19_small_cells.py` |
+| `scripts/cgcnn/29_alignn_agreement_dft_candidates.py` | Candidates where CGCNN and ALIGNN independently agree |
+| `scripts/cgcnn/30_compare_with_paper_screens.py` | Compares against other published low-κ screens (JMI, Materials Project) |
+| `cgcnn_scratch/joint.py` | **The shared-trunk, multi-head model** — 2 heads (K/G) or 3 (K/G/γ); see below |
+| `scripts/cgcnn/31_train_joint.py` | Trains the joint model on matbench (K, G, and optionally the K/G ratio target) |
+| `scripts/cgcnn/32_ensemble_joint.py` | Combines joint-model members into one ensemble |
+| `scripts/cgcnn/33_fetch_aflow_gamma.py` | Fetches AFLOW-AGL's own tabulated K, G, γ, κ_L via the AFLUX API |
+| `scripts/cgcnn/34_fetch_aflow_structures.py` | Fetches the matching AFLOW POSCAR structures, resume-safe |
+| `scripts/cgcnn/35_merge_aflow.py` | Folds AFLOW's soft crystals into matbench **training only** (never val/test) |
+| `scripts/cgcnn/36_prepare_gamma_dataset.py` | Builds the AFLOW-only 3-head (K/G/γ) training set |
+| `scripts/cgcnn/37_train_gamma.py` | Trains G, K/G and γ jointly on AFLOW — the model behind round 9's result, below |
+| `scripts/cgcnn/38_train_gamma_transfer.py` | Two-stage matbench→AFLOW transfer scheme; superseded by round 9's single-stage retrain |
+| `scripts/cgcnn/39_screen_gnome_gamma.py` | Re-screens GNoME with the trained-γ model's own K/G/γ, self-consistently |
+| `kaggle/build_joint_kernel.py`, `run_joint_kernel.py` | Kaggle kernel for the joint-model / AFLOW-gamma training grid |
 | `gnome_data/` | Downloaded GNoME summary CSV + structure zip (gitignored, ~620 MB) |
 | `run_pipeline.sh` | Stage 1, everything above, in order |
 | `results/cgcnn/` | Checkpoints, metrics, figures, predictions for the CGCNN pipeline |
@@ -459,6 +494,72 @@ None of these are exotic — they're exactly the class of doc-vs-code mismatch t
 into before (the paper's own "two hidden layers" vs. its checkpoint's `n_h=1`), and exactly why every
 claim in this project gets checked by running something, not by reading about it.
 
+## Fixing the K/G correlation problem, and adding a trained γ
+
+κ_L depends on K and G only through the Grüneisen parameter γ (via Poisson's ratio), and in log
+space that ratio is a *difference*: log₁₀(K/G) = log₁₀(K) − log₁₀(G). Two separately-trained
+models' prediction errors on K and G are close to independent, so they **add** in that difference
+instead of cancelling — directly inflating γ's error. `cgcnn_scratch/joint.py` fixes the mechanism,
+not just the number: one shared trunk forks into 2 or 3 small heads (log₁₀(G), log₁₀(K/G), and —
+from round 7 on — log₁₀(γ)), so a trunk mistake shows up in every head at once and the two moduli
+errors correlate again instead of adding.
+
+Measured on the 1,648-crystal matbench test set (paired bootstrap across 3 independent ensembles):
+
+| | separate models | joint (shared trunk) |
+|---|---|---|
+| residual correlation, err(K) vs err(G) | +0.263 | +0.297 |
+| MAE log₁₀(K/G) | 0.0993 | 0.0887 |
+| κ_L MAE attributable to the moduli | 0.2065 | 0.1897 |
+
+The correlation and ratio error move the right way, and 54% of the K/G-difference error turns out
+to be decorrelation rather than either modulus's own noise — but the total κ_L MAE gain (rounds
+2–6, `scripts/cgcnn/31_train_joint.py` / `32_ensemble_joint.py`) did not clear statistical
+significance on this test set. Seven rounds of architecture, loss-weighting and soft-material
+augmentation variants never moved **recall@10%** — the fraction of the true lowest-κ decile the
+model actually recovers, the metric that matters for screening — off 70.1%.
+
+**The real lever turned out to be γ itself, not the moduli.** Matbench has no measured γ at all —
+every number in the pipeline above *derives* γ from the predicted K/G ratio through an empirical
+Poisson-ratio formula. AFLOW's AGL database tabulates γ directly, alongside an independently
+computed κ_L, for materials it has actually run phonon calculations on:
+
+```bash
+python scripts/cgcnn/33_fetch_aflow_gamma.py        # AFLUX API: 5,653 entries with K, G, gamma, kappa
+python scripts/cgcnn/34_fetch_aflow_structures.py   # matching POSCARs, resume-safe (5,563 of 5,653)
+python scripts/cgcnn/36_prepare_gamma_dataset.py    # -> data_full/gamma_graphs.pt / gamma_labels.csv
+python scripts/cgcnn/37_train_gamma.py              # trains G, K/G and gamma jointly, on AFLOW alone
+```
+
+Training on AFLOW instead of matbench is deliberate: matbench's "true" κ_L isn't measured, it's
+Slack(true K, true G) with γ *derived* the same way this model is trying to improve on — a model
+that predicts a genuinely better γ would score **worse** against that target by construction. AFLOW
+supplies both a real γ label and an independently computed κ_L, so neither the label nor the
+yardstick is circular.
+
+Round 7, on AFLOW's first 1,022-crystal training slice, established the head works — γ MAE dropped
+from 0.36 (derived) to 0.19 (predicted), correlation 0.33 → 0.57 — but the moduli were still the
+bigger error source at that scale (MAE log₁₀(K) 0.18 on AFLOW vs 0.06 on matbench's 7× larger
+training set). Round 8's two-stage transfer (freeze a matbench-trained trunk, train only the γ head
+on AFLOW) tried to borrow matbench's moduli accuracy and made things **worse**: an offline
+recalibration check on the saved checkpoints showed the derived-γ pipeline had been accidentally
+*cancelling* a real matbench/AFLOW elastic-convention offset, and real γ exposed that offset instead
+of fixing it (`scripts/cgcnn/38_train_gamma_transfer.py`'s own docstring has the full diagnosis).
+
+The AFLOW structure fetch (scripts 33/34) originally stalled at 1,460 of 5,653 structures; once it
+finished (5,563 of 5,653), round 9 retrained the *identical* round-7 recipe — single-stage, no
+transfer — on the full set, 3 seeds, on Kaggle (`kaggle/build_joint_kernel.py`, 20.6 minutes total):
+
+| | round 7 (1,022 crystals) | round 9 (5,563 crystals, 3 seeds) |
+|---|---|---|
+| κ_L MAE (log₁₀) | 0.3408 | 0.250 / 0.254 / 0.266 |
+| **recall@10%** | 19.0% | **43.4% / 45.8% / 39.8%** |
+
+Recall@10% more than doubled and held across all three seeds — confirming data volume, not
+architecture or the transfer scheme, was the actual bottleneck all along. Full per-seed breakdown in
+`results/gamma_comparison.csv`; checkpoints are `results/cgcnn/model_37_r9_full_s*.pth`. The re-run
+of the full GNoME screen with this trained-γ model is in the next section.
+
 ## The actual screen: GNoME, end to end
 
 Everything above runs on 1,213 or 45 crystals. The paper's real headline result is a 377,221-material
@@ -528,3 +629,43 @@ Carlo κ_L interval from the ensemble's own K/G spread (`results/cgcnn/gnome_ove
 The paper's own pipeline has no equivalent of this list at all — it can name candidates, but not say
 which ones it's actually sure about. `results/cgcnn/gnome_screen_all.csv` is the full 33,323-candidate
 scored pool (pre-threshold); `results/cgcnn/gnome_screen_candidates.csv` is the 16,299 that pass κ_L ≤ 1.
+
+### Re-screened on a later snapshot, then again with a trained γ
+
+Everything above is one screen, run once (2026-08-09 GNoME snapshot), and its outputs keep their
+original bare filenames. Two things happened after it:
+
+**A verification re-run**, once every script in this pipeline was renamed to stamp its own number
+into its result filenames (`13_gnome_screen_all.csv` etc. — see the repository layout table). Same
+model, same code path, a fresh GNoME pull (2026-08-10): **33,323** filtered candidates again
+(coincidentally identical count — the filter itself is deterministic), **16,216** clear κ_L ≤ 1
+(down from 16,299 — real upstream churn in what GNoME publishes as "stable" between download dates,
+not a code change). Verified directly: `Kappa_cal` is **bit-identical** on all 33,059 materials
+present in both snapshots, confirming the rename pass changed zero model behavior. One real,
+independently-verified GNoME data defect turned up in the process: ~0.6% of rows carry a corrupted
+`MaterialId` (a literal `"NaN"` string, or a garbled 30+ digit number) in Google's own source file —
+every affected row across all four screen/oxide outputs carries an `id_unverifiable` flag rather
+than being silently dropped.
+
+**A trained-γ re-score**, `scripts/cgcnn/39_screen_gnome_gamma.py`, using round 9's model (previous
+section) instead of the derived-γ formula. Deliberately *not* a graft of the new γ head onto the
+existing matbench-trained K/G predictions above — that would mix AFLOW's elastic-modulus convention
+with matbench's inside one κ_L number, exactly what rounds 7–8 already proved costs more accuracy
+than it buys. Instead it runs round 9's own K, G *and* γ heads together, self-consistently, on every
+GNoME candidate; Monte Carlo uncertainty is measured on each seed's own fully-computed κ_L rather
+than assuming K, G and γ are independent (they aren't — one shared trunk per seed):
+
+| | derived γ (matbench K/G, 2026-08-10 snapshot) | trained γ (AFLOW K/G/γ, round 9) |
+|---|---|---|
+| candidates κ_L ≤ 1 W/m/K | 16,216 | **7,271** |
+| of which oxides | 1,536 | 548 |
+
+6,111 candidates clear the threshold under **both** pipelines (35.2% Jaccard overlap) — the
+highest-confidence subset, agreed on by two independently-trained model families on two different
+elastic-modulus conventions. log₁₀(κ_L) correlation between the two pipelines' scores, over all
+33,118 candidates scored by both: **r = 0.601** — a real, moderate positive relationship, not noise,
+but far from identical, consistent with derived γ's known worse accuracy (MAE 0.36 vs 0.14) plus the
+matbench/AFLOW convention gap layered on top. The trained-γ pipeline flags markedly fewer candidates
+overall, which is the expected direction: a noisier γ estimate systematically lets more materials
+slip under the threshold. `results/cgcnn/39_gnome_screen_all_gamma.csv` carries both pipelines'
+κ_L side by side for every candidate, so the disagreement is inspectable, not asserted.
