@@ -83,7 +83,15 @@ confident low-\KL{} prediction. Re-ranked this way,
 its \#1 spot in the general screen (p95 $=0.0094$~W~m$^{-1}$~K$^{-1}$,
 $7.6\times$ ratio); the oxide leaderboard reorders, with
 \textbf{COF\textsubscript{14}} (monoclinic, $P2_1$) taking the top spot at a
-much tighter $2.3\times$ ratio.
+much tighter $2.3\times$ ratio. \textbf{That p95/p05 ranking itself turned
+out to be overconfident}: checked against 1{,}648 real DFT-labelled test
+crystals (Section~6), the ensemble's claimed 90\% interval actually covers
+only 48--51\% of true values --- a validated, out-of-sample recalibration
+widens every interval 4.3--4.5$\times$, after which COF\textsubscript{14}
+still holds its \#1 oxide spot, but CrSi\textsubscript{3}Cl\textsubscript{16}
+is displaced from the general-screen top spot by
+\textbf{SbP\textsubscript{2}Cl\textsubscript{13}}. The ranking survives
+better than any individual confidence claim does.
 \end{abstract}
 
 \tableofcontents
@@ -476,6 +484,143 @@ Every survivor here is again a heavy halide (Cl, Br), reinforcing
 Section~3.1's enrichment finding independently of which ranking is used ---
 the chemistry signal is robust to the point-estimate/p95 choice even though
 the individual winners are not.
+
+\clearpage
+% =====================================================================
+\section{Is the uncertainty interval actually calibrated?}
+
+Section~5's entire premise --- that ranking by \KL{} p95 rather than the
+point estimate protects against noisy predictions --- depends on one
+assumption never yet tested: that the ensemble's claimed 90\% interval
+(the gap between \texttt{Kappa\_cal\_p05} and \texttt{Kappa\_cal\_p95})
+actually contains the true value about 90\% of the time.
+\texttt{docs/method.tex} already flags this as ``weak by construction,''
+since real experimental \KL{} exists for only 2 materials our ensemble
+never trained on --- nowhere near enough to check. But the uncertainty
+itself comes from disagreement on $K$ and $G$, not \KL{} directly, and the
+matbench \emph{test} split --- 1{,}648 crystals with real DFT-computed $K$
+and $G$, genuinely held out from training --- already has everything needed
+to check that half, with no new data required.
+
+\subsection{The check}
+
+For each of the 1{,}648 test crystals, does the true $\log_{10}$ modulus
+fall inside the ensemble's own claimed interval
+($\text{pred} \pm z \cdot \sigma_{\text{ensemble}}$, $z=1.6449$ for a 90\%
+normal interval — mathematically the same claim
+\texttt{monte\_carlo\_kappa()}'s 2{,}000-draw sampling converges to, just
+without sampling noise)? Repeated at every nominal level from 10\% to 90\%,
+not just the one used for screening.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{../results/cgcnn/calibration_check.png}
+\caption{Reliability diagram: nominal coverage (claimed by the interval) vs.
+empirical coverage (actual, on 1{,}648 held-out test crystals). Left: the
+raw ensemble-spread interval used everywhere in this document up to this
+point. Right: after the recalibration in Section~6.2, with the correction
+factor fit on the (disjoint) validation split and checked on test.}
+\end{figure}
+
+\keybox{Badly overconfident, not roughly right}{At the 90\% level used
+throughout this document, the ACTUAL coverage is \textbf{50.8\%} for $K$
+and \textbf{47.9\%} for $G$ --- barely more than half of what the interval
+claims. The cause: ensemble spread measures how much three
+identically-trained models \emph{disagree with each other}, which is a
+much smaller quantity than how far they collectively sit from the truth.
+Checked directly: median ensemble spread is 0.018--0.028 $\log_{10}$, but
+the actual test RMSE is 0.118 for both moduli --- the real error is
+4--6$\times$ larger than ensemble disagreement alone suggests. Three
+models sharing one architecture and one training set agree with each
+other even when they share the same blind spots.}
+
+\subsection{The fix, checked out-of-sample}
+
+A scale factor derived from the \emph{validation} split (a different 1,648
+crystals from test) and applied to test --- so the check is not circular
+--- widens the interval to $K{:}~4.27\times$, $G{:}~4.54\times$ (on top of
+the untouched $z=1.645$), and recovers \textbf{89.5\%} ($K$) and
+\textbf{90.9\%} ($G$) actual coverage on test: right on target,
+out-of-sample.
+
+\subsection{What changes when this is applied to Section 5's own picks}
+
+Nothing about the model changes --- $K_{\mathrm{VRH}}$, \GV{}, and the
+point-estimate \KL{} are byte-for-byte identical. Only how wide the error
+bars are reported changes. Re-scoring the same 14 crystal-system winners
+from Table~6 with the validated factor:
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Table~6's own picks, p95 and ratio before vs.\ after recalibration.
+Every single one moves from ``moderate''/``tight'' into deep ``wide''
+territory.}
+\begin{tabular}{ll rr rr}
+\toprule
+Population & Formula & Old p95 & Old ratio & New p95 & New ratio \\
+\midrule
+Oxide   & CuSCl6O        & 0.076 & 4.3$\times$  & 0.734  & 417$\times$ \\
+Oxide   & \textbf{COF14} & 0.066 & 2.3$\times$  & \textbf{0.248} & 36$\times$ \\
+Oxide   & ReOF5          & 0.064 & 6.2$\times$  & 0.908  & 1{,}972$\times$ \\
+Oxide   & AgN5O14        & 0.112 & 7.5$\times$  & 1.956  & 2{,}591$\times$ \\
+Oxide   & S24ClO3        & 0.068 & 3.8$\times$  & 0.404  & 273$\times$ \\
+Oxide   & Rb6BaO4        & 0.487 & 3.7$\times$  & 3.070  & 193$\times$ \\
+Oxide   & Fe3Br4O        & 0.568 & 11.5$\times$ & 15.090 & 14{,}474$\times$ \\
+\midrule
+General & \textbf{CrSi3Cl16} & 0.009 & 7.6$\times$ & 0.178 & 1{,}343$\times$ \\
+General & \textbf{SbP2Cl13}  & 0.013 & 2.4$\times$ & \textbf{0.042} & 31$\times$ \\
+General & POsCl10        & 0.016 & 4.2$\times$  & 0.121  & 250$\times$ \\
+General & TaSb(As2Cl13)2 & 0.019 & 2.0$\times$  & 0.050  & 16$\times$ \\
+General & FeSeBr18       & 0.026 & 2.2$\times$  & 0.099  & 34$\times$ \\
+General & Rb3Co2Br9      & 0.105 & 4.8$\times$  & 1.300  & 689$\times$ \\
+General & CsRb2BiTe3     & 0.108 & 2.6$\times$  & 0.411  & 40$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\keybox{One ranking survives intact, one does not}{\textbf{COF14 (oxide) holds
+its \#1 spot} even after recalibration --- its new p95 (0.248) is still the
+lowest of the seven oxide picks, the same conclusion Section~5 reached with
+the uncalibrated interval. \textbf{CrSi3Cl16 (general) does not}: it was the
+overall \#1 pick by the uncalibrated p95, but its own ratio explodes to
+$1{,}343\times$ under the honest interval, and \textbf{SbP2Cl13} --- previously
+ranked \#2 in the space-group table (Table~8) --- takes over as the new \#1,
+with the tightest new ratio of the seven ($31\times$, still ``wide'' by the
+old cutoffs, but the best available). Every ratio in both populations
+inflates by roughly two to four orders of magnitude, a direct, honest
+consequence of a $\log_{10}$-space correction compounding once exponentiated
+back to linear \KL{} --- not a new error, the old numbers were simply wrong
+in the optimistic direction.}
+
+\noindent
+The fixed 2$\times$/5$\times$ tight/moderate/wide cutoffs (Section~3's
+convention) were calibrated by eye against the \emph{old}, artificially
+narrow interval; they do not carry over meaningfully once the interval is
+corrected, where every single one of these 14 headline picks now lands
+deep in ``wide'' territory. This is a known failure mode of small deep
+ensembles: disagreement among a handful of identically-architected,
+identically-trained members is a poor proxy for true predictive error,
+because it captures variance from random initialisation but not the bias
+every member shares. \textbf{The practical conclusion}: the \emph{ranking}
+remains the most defensible thing to trust --- COF14 and SbP2Cl13 are still
+the best \emph{available} picks after recalibration --- but no individual
+candidate's uncertainty interval should be read as a genuine confidence
+guarantee until a fundamentally better-calibrated uncertainty method --- a
+larger ensemble, conformal prediction, or an approach that captures model
+bias rather than only member disagreement --- replaces the current one.
+This is now the single highest-leverage next step identified in this
+document, ahead of finding more candidates.
+
+\noindent
+Reproduces via \texttt{scripts/cgcnn/25\_calibration\_check.py} (the check
+and the fix, on the matbench val/test splits) and
+\texttt{scripts/cgcnn/26\_recalibrated\_dft\_shortlist.py} (the same
+correction applied to this project's small-cell DFT shortlist, a further
+267-candidate population screened alongside Sections 3--5 but not otherwise
+described in this document); recalibrated small-cell tables:
+\texttt{gnome\_small\_cell\_dft\_ranking\_recalibrated.csv} and
+\texttt{gnome\_small\_cell\_oxides\_for\_dft\_recalibrated.csv}.
 
 \clearpage
 % =====================================================================
