@@ -60,22 +60,23 @@ scripts/01b_prepare_full_dataset.py uses, against the live matbench structures,
 rather than assuming "not in complete-data" means "not trained on."
 """
 
-import argparse
-import os
-import shutil
-import subprocess
-import sys
-import warnings
+import argparse       # CLI flag parsing
+import os              # path joining/creation, path existence checks
+import shutil           # copies an existing CIF into the working cif_dir
+import subprocess         # runs 04_predict_moduli.py / 07_predict_kappa.py as child processes
+import sys                 # sys.exit() on a fatal error, sys.executable to relaunch the same python
+import warnings             # suppresses noisy-but-harmless parser warnings below
 
 import torch  # noqa: F401  (see cgcnn_scratch/data.py - import order matters)
 
-import numpy as np
-import pandas as pd
-from pymatgen.analysis.structure_matcher import StructureMatcher
-from pymatgen.core import Structure
+import numpy as np                                        # not used directly below but kept for parity with sibling scripts' import block
+import pandas as pd                                        # DataFrame construction, CSV I/O
+from pymatgen.analysis.structure_matcher import StructureMatcher  # symmetry-aware crystal-structure equality test
+from pymatgen.core import Structure                        # parses a .cif file into a Structure object
 
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")   # silences all Python warnings for the rest of this process
 
+# walks up three directories from this file (scripts/cgcnn/ -> scripts/ -> project root)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # (mp_id, formula, kappa_exp, kappa_pink, G_paper, vs_paper, gamma_paper), all
@@ -90,6 +91,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 # aggregate kappa_L number with no way to tell why it differs. The paper
 # lists two distinct KBr entries (mp-23251, mp-570891) - kept as two rows,
 # since they are two different structures the paper treated separately.
+# (one literal tuple per material - the schema is the comment above; not
+# annotated row by row, that would repeat the same 7-field shape 46 times)
 TABLE1 = [
     ("mp-22922", "AgCl", 1.0, 1.091, 8.801, 1423.597, 1.9),
     ("mp-2172", "AlAs", 98, 47.054, 40.51, 3733.087, 0.66),
@@ -146,30 +149,30 @@ def fetch_structures(cif_dir, complete_data_dir):
     Requires a Materials Project API key discoverable by pymatgen (PMG_MAPI_KEY
     in ~/.pmgrc.yaml, or the MP_API_KEY / PMG_MAPI_KEY env var).
     """
-    from mp_api.client import MPRester
-    from pymatgen.core import SETTINGS
+    from mp_api.client import MPRester         # Materials Project REST client
+    from pymatgen.core import SETTINGS          # reads pymatgen's own config file (~/.pmgrc.yaml)
 
-    os.makedirs(cif_dir, exist_ok=True)
-    key = SETTINGS.get("PMG_MAPI_KEY") or os.environ.get("MP_API_KEY")
+    os.makedirs(cif_dir, exist_ok=True)   # create the output directory if missing
+    key = SETTINGS.get("PMG_MAPI_KEY") or os.environ.get("MP_API_KEY")   # config file first, env var as fallback
     if not key:
         sys.exit("No Materials Project API key found. Set PMG_MAPI_KEY in "
                  "~/.pmgrc.yaml or export MP_API_KEY.")
 
-    to_fetch = [mp_id for mp_id, *_ in TABLE1
-               if not os.path.exists(os.path.join(complete_data_dir, f"{mp_id}.cif"))]
+    to_fetch = [mp_id for mp_id, *_ in TABLE1                                            # unpack mp_id, ignore the other 6 fields
+               if not os.path.exists(os.path.join(complete_data_dir, f"{mp_id}.cif"))]   # keep only ids without an existing CIF
     print(f"{len(TABLE1)} materials in Table 1; {len(to_fetch)} need fetching "
          f"({len(TABLE1) - len(to_fetch)} already in complete-data/)")
 
     failed = []
-    with MPRester(key) as mpr:
-        for i, mp_id in enumerate(to_fetch, 1):
+    with MPRester(key) as mpr:   # opens (and auto-closes) an authenticated MP API session
+        for i, mp_id in enumerate(to_fetch, 1):   # 1-based counter for the progress printout
             out_path = os.path.join(cif_dir, f"{mp_id}.cif")
             if os.path.exists(out_path):
-                continue
+                continue   # already fetched in a previous run of this script
             try:
-                structure = mpr.get_structure_by_material_id(mp_id)
+                structure = mpr.get_structure_by_material_id(mp_id)   # fetch the relaxed structure for this mp-id
             except Exception as exc:
-                failed.append((mp_id, str(exc)[:80]))
+                failed.append((mp_id, str(exc)[:80]))   # record id + truncated error
                 print(f"  [{i}/{len(to_fetch)}] SKIPPED {mp_id} - {str(exc)[:80]}")
                 continue
             if structure is None:
@@ -184,7 +187,7 @@ def fetch_structures(cif_dir, complete_data_dir):
                 print(f"  [{i}/{len(to_fetch)}] SKIPPED {mp_id} - no structure "
                      f"returned")
                 continue
-            structure.to(filename=out_path)
+            structure.to(filename=out_path)   # write the fetched structure out as a CIF file
             print(f"  [{i}/{len(to_fetch)}] fetched {mp_id}")
 
     if failed:
@@ -196,12 +199,12 @@ def fetch_structures(cif_dir, complete_data_dir):
     # cif_dir so 04_predict_moduli.py can be pointed at one directory.
     for mp_id, *_ in TABLE1:
         dest = os.path.join(cif_dir, f"{mp_id}.cif")
-        if not os.path.exists(dest):
+        if not os.path.exists(dest):                                    # not yet fetched into cif_dir this run
             src = os.path.join(complete_data_dir, f"{mp_id}.cif")
-            if os.path.exists(src):
-                shutil.copy(src, dest)
+            if os.path.exists(src):                                     # it was already sitting in complete-data/
+                shutil.copy(src, dest)                                  # copy it across so cif_dir has everything
 
-    return [mp_id for mp_id, _ in failed]
+    return [mp_id for mp_id, _ in failed]   # unpack (mp_id, reason) pairs, keep only the ids
 
 
 def check_provenance(mp_ids, cif_dir):
@@ -214,28 +217,28 @@ def check_provenance(mp_ids, cif_dir):
     "not originally in complete-data/" must not be treated as "unseen" without
     actually checking.
     """
-    from matminer.datasets import load_dataset
+    from matminer.datasets import load_dataset   # fetches/loads the named matbench dataset
 
     print("\nChecking whether these materials are in the matbench training set...")
-    kvrh = load_dataset("matbench_log_kvrh")
-    matcher = StructureMatcher(primitive_cell=True, attempt_supercell=False)
+    kvrh = load_dataset("matbench_log_kvrh")   # the same 10,987-row training benchmark 01b uses
+    matcher = StructureMatcher(primitive_cell=True, attempt_supercell=False)   # symmetry-aware equality test
 
-    buckets = {}
+    buckets = {}   # reduced formula -> list of matbench row indices sharing it
     for i, structure in enumerate(kvrh.structure):
         buckets.setdefault(structure.composition.reduced_formula, []).append(i)
 
-    provenance = {}
+    provenance = {}   # mp_id -> "in_matbench_training" or "unseen"
     for mp_id in mp_ids:
         cif_path = os.path.join(cif_dir, f"{mp_id}.cif")
         if not os.path.exists(cif_path):
             continue  # fetch failed for this one; excluded upstream already
-        structure = Structure.from_file(cif_path)
+        structure = Structure.from_file(cif_path)   # parse the local CIF
         formula = structure.composition.reduced_formula
-        in_matbench = any(matcher.fit(structure, kvrh.structure[idx])
+        in_matbench = any(matcher.fit(structure, kvrh.structure[idx])         # True if this structure equals any bucket member
                          for idx in buckets.get(formula, []))
         provenance[mp_id] = "in_matbench_training" if in_matbench else "unseen"
 
-    n_train = sum(v == "in_matbench_training" for v in provenance.values())
+    n_train = sum(v == "in_matbench_training" for v in provenance.values())   # count of True-valued entries
     print(f"  {n_train}/{len(mp_ids)} are in the matbench training set "
          f"(predictions for these are recall, not generalisation)")
     return provenance
@@ -249,43 +252,47 @@ def main():
     parser.add_argument("--results-dir", default=os.path.join(PROJECT_ROOT, "results", "cgcnn"))
     parser.add_argument("--skip-fetch", action="store_true",
                         help="CIFs already fetched; just (re)run provenance + pipeline")
-    args = parser.parse_args()
+    args = parser.parse_args()   # reads sys.argv, returns a Namespace with the fields above
 
     print("=== Fetching PINK's Table 1 real-data validation set ===\n")
     failed_ids = []
     if not args.skip_fetch:
-        failed_ids = fetch_structures(args.cif_dir, args.complete_data)
+        failed_ids = fetch_structures(args.cif_dir, args.complete_data)   # list of mp_ids that could not be fetched
 
-    mp_ids = [mp_id for mp_id, *_ in TABLE1 if mp_id not in failed_ids]
+    mp_ids = [mp_id for mp_id, *_ in TABLE1 if mp_id not in failed_ids]   # every id we actually have a CIF for
     provenance = check_provenance(mp_ids, args.cif_dir)
 
     reference = pd.DataFrame(TABLE1, columns=["material_id", "formula", "kappa_exp", "kappa_pink", "G_paper", "vs_paper", "gamma_paper"])
-    reference = reference[~reference.material_id.isin(failed_ids)].copy()
-    reference["provenance"] = reference.material_id.map(provenance)
-    ref_path = os.path.join(args.results_dir, "table1_reference.csv")
+    reference = reference[~reference.material_id.isin(failed_ids)].copy()   # drop rows whose fetch failed
+    reference["provenance"] = reference.material_id.map(provenance)         # join the in_matbench_training/unseen label
+    # 09_ prefix: this script's own number, so this result can be told apart
+    # from any other script's output sitting in the same results/ directory.
+    ref_path = os.path.join(args.results_dir, "09_table1_reference.csv")
     reference.to_csv(ref_path, index=False)
     print(f"\nWrote {ref_path} ({len(reference)}/{len(TABLE1)} materials; "
          f"{len(failed_ids)} excluded: {failed_ids})")
 
     print("\n--- Running our moduli ensemble on these 46 crystals ---")
+    moduli_path = os.path.join(args.results_dir, "09_table1_moduli_predictions.csv")   # this run's own intermediate file, read back below
     subprocess.run([sys.executable, "-u",
                    os.path.join(PROJECT_ROOT, "scripts", "04_predict_moduli.py"),
                    "--cif-dir", args.cif_dir,
                    "--k-tag", "K_VRH_full,K_VRH_s1,K_VRH_s2",
                    "--g-tag", "G_VRH_full,G_VRH_s1,G_VRH_s2",
-                   "--out", os.path.join(args.results_dir, "table1_moduli_predictions.csv")],
-                  check=True)
+                   "--out", moduli_path],
+                  check=True)   # raises CalledProcessError if the child script exits non-zero
 
     print("\n--- Running the Slack-model physics on those moduli ---")
+    kappa_path = os.path.join(args.results_dir, "09_table1_kappa_predictions.csv")
     subprocess.run([sys.executable, "-u",
                    os.path.join(PROJECT_ROOT, "scripts", "07_predict_kappa.py"),
-                   "--predictions", os.path.join(args.results_dir, "table1_moduli_predictions.csv"),
+                   "--predictions", moduli_path,
                    "--cif-dir", args.cif_dir,
-                   "--out", os.path.join(args.results_dir, "table1_kappa_predictions.csv")],
+                   "--out", kappa_path],
                   check=True)
 
     print(f"\nDone. Next: scripts/10_validate_table1.py compares "
-         f"table1_kappa_predictions.csv against table1_reference.csv's kappa_exp.")
+         f"09_table1_kappa_predictions.csv against 09_table1_reference.csv's kappa_exp.")
 
 
 if __name__ == "__main__":

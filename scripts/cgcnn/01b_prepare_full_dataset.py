@@ -49,31 +49,32 @@ Run:
     python scripts/01b_prepare_full_dataset.py
 """
 
-import argparse
-import collections
-import glob
-import os
-import sys
-import time
-import warnings
+import argparse       # parses --out-dir / --cif-dir / --limit etc. from the CLI
+import collections     # defaultdict, used to bucket structures by formula
+import glob            # expands "*.cif" into a list of matching file paths
+import os              # path joining/creation and file-size lookups
+import sys             # sys.path mutation and sys.exit() on a fatal error
+import time            # wall-clock timing for progress/ETA printouts
+import warnings        # suppresses noisy-but-harmless CIF parser warnings
 
 # torch MUST be imported before numpy/pymatgen in this conda env - MKL loads its
 # own OpenMP runtime first and the duplicate libiomp5 segfaults torch. Do not
 # "tidy" these imports into alphabetical order.
 import torch
 
-import numpy as np
-import pandas as pd
-from matminer.datasets import load_dataset
-from pymatgen.analysis.structure_matcher import StructureMatcher
-from pymatgen.core import Structure
+import numpy as np                                    # not used directly below but kept for parity with sibling scripts' import block
+import pandas as pd                                    # DataFrame construction, CSV I/O
+from matminer.datasets import load_dataset             # fetches named benchmark datasets (downloads + caches them)
+from pymatgen.analysis.structure_matcher import StructureMatcher  # symmetry-aware crystal-structure equality test
+from pymatgen.core import Structure                    # parses a .cif file into a Structure object
 
 # CIF parsing is noisy about rounded coordinates and partial occupancies.
 # None of it is actionable here, so keep the log readable.
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")   # silences all Python warnings for the rest of this process
 
+# walks up three directories from this file (scripts/cgcnn/ -> scripts/ -> project root)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)   # makes `cgcnn_scratch` importable regardless of the caller's cwd
 
 from cgcnn_scratch.data import (AtomFeaturiser, GaussianDistance,  # noqa: E402
                                 structure_to_graph)
@@ -91,22 +92,22 @@ def load_benchmark():
     with another crystal's shear modulus and still train perfectly happily.
     """
     print("Loading matbench elastic datasets (downloads ~100 MB on first run)...")
-    kvrh = load_dataset("matbench_log_kvrh")
-    gvrh = load_dataset("matbench_log_gvrh")
+    kvrh = load_dataset("matbench_log_kvrh")   # DataFrame: columns include `structure` and `log10(K_VRH)`
+    gvrh = load_dataset("matbench_log_gvrh")   # DataFrame: columns include `structure` and `log10(G_VRH)`
     assert len(kvrh) == len(gvrh), "the two datasets should be row-aligned"
     print(f"  loaded {len(kvrh)} benchmark entries")
 
     # Spot-check the alignment on a sample rather than comparing all 11k
     # structures, which would itself take minutes.
-    for i in (0, len(kvrh) // 2, len(kvrh) - 1):
+    for i in (0, len(kvrh) // 2, len(kvrh) - 1):   # first, middle, and last row indices
         assert (kvrh.structure[i].composition.reduced_formula ==
                 gvrh.structure[i].composition.reduced_formula), \
             f"row {i} disagrees between the two datasets - not row-aligned"
 
     return pd.DataFrame({
-        "structure": kvrh.structure,
-        "K_VRH": 10 ** kvrh["log10(K_VRH)"],
-        "G_VRH": 10 ** gvrh["log10(G_VRH)"],
+        "structure": kvrh.structure,     # pymatgen Structure objects, one per crystal
+        "K_VRH": 10 ** kvrh["log10(K_VRH)"],   # undo the log10 matbench stores, back to GPa
+        "G_VRH": 10 ** gvrh["log10(G_VRH)"],   # same, for shear modulus
     })
 
 
@@ -117,42 +118,42 @@ def build_graphs(benchmark, atom_init_path, max_num_nbr, radius, step):
     crystal. Returns (ids, graphs, rows) where `rows` is the labels table,
     restricted to the crystals that actually converted.
     """
-    ari = AtomFeaturiser(atom_init_path)
-    gdf = GaussianDistance(dmin=0, dmax=radius, step=step)
+    ari = AtomFeaturiser(atom_init_path)                 # loads the 92-dim per-element feature table
+    gdf = GaussianDistance(dmin=0, dmax=radius, step=step)  # builds the Gaussian bond-distance expansion basis
 
-    ids, graphs, rows, failed = [], [], [], []
-    start = time.time()
+    ids, graphs, rows, failed = [], [], [], []   # accumulators filled by the loop below
+    start = time.time()   # wall-clock start, used for the rate/ETA printout
 
-    for i, record in enumerate(benchmark.itertuples(index=False)):
-        structure = record.structure
-        mb_id = f"mb-{i:05d}"
+    for i, record in enumerate(benchmark.itertuples(index=False)):   # iterate rows as lightweight namedtuples
+        structure = record.structure           # the pymatgen Structure for this row
+        mb_id = f"mb-{i:05d}"                  # zero-padded row-index identifier, e.g. "mb-00042"
         try:
-            graph = structure_to_graph(structure, ari, gdf, max_num_nbr, radius)
+            graph = structure_to_graph(structure, ari, gdf, max_num_nbr, radius)  # atom/bond featurisation -> graph tensors
         except Exception as exc:
             # Almost always an element with no row in atom_init.json (the table
             # covers elements 1-100), or a structure with partial occupancies.
-            failed.append((mb_id, str(exc)[:70]))
+            failed.append((mb_id, str(exc)[:70]))   # record id + truncated error message, then skip this crystal
             continue
 
-        ids.append(mb_id)
-        graphs.append(graph)
+        ids.append(mb_id)      # keep the id list in the same order as `graphs`
+        graphs.append(graph)   # the featurised graph for this crystal
         rows.append({
             "mb_id": mb_id,
-            "formula": structure.composition.reduced_formula,
-            "n_sites": len(structure),
+            "formula": structure.composition.reduced_formula,   # e.g. "SiO2"
+            "n_sites": len(structure),                          # atom count in the unit cell
             "K_VRH": record.K_VRH,
             "G_VRH": record.G_VRH,
         })
 
-        if (i + 1) % 500 == 0:
-            rate = (i + 1) / (time.time() - start)
-            remaining = (len(benchmark) - i - 1) / rate
+        if (i + 1) % 500 == 0:   # print progress every 500 crystals, not every one
+            rate = (i + 1) / (time.time() - start)                  # crystals processed per second so far
+            remaining = (len(benchmark) - i - 1) / rate              # estimated seconds left at the current rate
             print(f"  {i + 1:5d}/{len(benchmark)} graphs  "
                   f"({rate:.0f}/s, ~{remaining / 60:.0f} min left)")
 
     print(f"Built {len(graphs)} graphs in {(time.time() - start) / 60:.1f} min")
     if failed:
-        print(f"  {len(failed)} structures failed to convert, e.g. {failed[:3]}")
+        print(f"  {len(failed)} structures failed to convert, e.g. {failed[:3]}")   # show only the first 3 as a sample
     return ids, graphs, pd.DataFrame(rows)
 
 
@@ -163,13 +164,13 @@ def match_our_cifs(cif_dir, benchmark):
     StructureMatcher (exact, symmetry-aware). We only need to know
     WHICH of our CIFs are in the training set, not to copy any labels.
     """
-    paths = sorted(glob.glob(os.path.join(cif_dir, "*.cif")))
+    paths = sorted(glob.glob(os.path.join(cif_dir, "*.cif")))   # every local CIF file path, alphabetically ordered
     print(f"\nMatching {len(paths)} local CIFs against the benchmark for provenance...")
 
     # Pass 1: bucket the benchmark by reduced formula.
-    buckets = collections.defaultdict(list)
+    buckets = collections.defaultdict(list)   # formula string -> list of matbench row indices
     for i, structure in enumerate(benchmark.structure):
-        buckets[structure.composition.reduced_formula].append(i)
+        buckets[structure.composition.reduced_formula].append(i)   # group row indices sharing the same formula
 
     # primitive_cell=True reduces both crystals first, so a 2x2x2 supercell
     # still matches the single cell it was built from.
@@ -177,15 +178,15 @@ def match_our_cifs(cif_dir, benchmark):
 
     rows = []
     for path in paths:
-        mp_id = os.path.splitext(os.path.basename(path))[0]
+        mp_id = os.path.splitext(os.path.basename(path))[0]   # filename without extension, e.g. "mp-1234"
         try:
-            structure = Structure.from_file(path)
+            structure = Structure.from_file(path)   # parse the CIF into a pymatgen Structure
         except Exception:
-            continue
+            continue   # unparsable CIF - skip it, it simply won't get a provenance row
 
         formula = structure.composition.reduced_formula
-        for i in buckets.get(formula, []):
-            if matcher.fit(structure, benchmark.structure[i]):
+        for i in buckets.get(formula, []):   # only compare against benchmark rows with a matching formula
+            if matcher.fit(structure, benchmark.structure[i]):   # True if the two structures are the same crystal
                 rows.append({"mp_id": mp_id, "mb_id": f"mb-{i:05d}",
                              "formula": formula})
                 break  # first match wins; duplicates in matbench are rare
@@ -213,19 +214,19 @@ def main():
                         help="skip the provenance matching pass (saves ~5 min)")
     parser.add_argument("--limit", type=int, default=None,
                         help="only process the first N crystals (smoke testing)")
-    args = parser.parse_args()
+    args = parser.parse_args()   # reads sys.argv, returns a Namespace with the fields above
 
-    os.makedirs(args.out_dir, exist_ok=True)
-    benchmark = load_benchmark()
+    os.makedirs(args.out_dir, exist_ok=True)   # create data_full/ if it does not already exist
+    benchmark = load_benchmark()               # the full 10,987-row matbench DataFrame
     if args.limit:
         print(f"  --limit {args.limit}: truncating (this is a smoke test, "
               f"do not train on the result)")
-        benchmark = benchmark.head(args.limit)
+        benchmark = benchmark.head(args.limit)   # keep only the first N rows
 
     ids, graphs, labels = build_graphs(
         benchmark, args.atom_init, args.max_num_nbr, args.radius, args.step)
     if not graphs:
-        sys.exit("No graphs were built - nothing to train on.")
+        sys.exit("No graphs were built - nothing to train on.")   # abort with a non-zero exit code
 
     # --- Write the graph cache ---------------------------------------------
     # The featurisation settings ride along with the tensors so that a stale
@@ -235,21 +236,21 @@ def main():
     torch.save({"ids": ids, "graphs": graphs,
                 "config": {"max_num_nbr": args.max_num_nbr,
                            "radius": args.radius, "step": args.step}},
-               cache_path)
-    size_mb = os.path.getsize(cache_path) / 1e6
+               cache_path)   # serialises the dict (ids, graph tensors, settings) to disk in one file
+    size_mb = os.path.getsize(cache_path) / 1e6   # file size in megabytes, for the printout below
 
     labels_path = os.path.join(args.out_dir, "labels.csv")
-    labels.to_csv(labels_path, index=False)
+    labels.to_csv(labels_path, index=False)   # write the labels table, no pandas row-index column
 
     if not args.skip_match:
-        mapping = match_our_cifs(args.cif_dir, benchmark)
+        mapping = match_our_cifs(args.cif_dir, benchmark)   # DataFrame of mp_id/mb_id/formula rows
         mapping.to_csv(os.path.join(args.out_dir, "mp_to_mb.csv"), index=False)
 
     print(f"\nWrote {len(labels)} labelled crystals to {args.out_dir}/")
     print(f"  graphs.pt   {size_mb:.0f} MB")
     print(f"  labels.csv  {len(labels)} rows")
     print("\nTarget distribution (GPa):")
-    print(labels[["K_VRH", "G_VRH", "n_sites"]].describe().round(2).to_string())
+    print(labels[["K_VRH", "G_VRH", "n_sites"]].describe().round(2).to_string())   # summary stats: count/mean/std/min/max/quartiles
 
 
 if __name__ == "__main__":

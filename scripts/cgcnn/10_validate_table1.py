@@ -72,18 +72,19 @@ paper's own units" is a direct comparison rather than an implied one across
 mismatched units.
 """
 
-import argparse
-import os
+import argparse  # stdlib CLI argument parser
+import os  # stdlib path helpers (join, dirname)
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-from scipy import stats
+import matplotlib  # plotting library
+matplotlib.use("Agg")  # non-interactive backend, needed to save PNGs with no display attached
+import matplotlib.pyplot as plt  # the actual plotting API used below
+import numpy as np  # array ops, log10/log, correlation coefficients
+import pandas as pd  # DataFrame I/O and joins
+from scipy import stats  # pearsonr/spearmanr correlation tests
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-RESULTS = os.path.join(PROJECT_ROOT, "results", "cgcnn")
+# ^ absolute path of this file, walked up 3 directories: scripts/cgcnn/10_validate_table1.py -> project root
+RESULTS = os.path.join(PROJECT_ROOT, "results", "cgcnn")  # where 09's outputs live and this script's own outputs go
 
 # Same house palette as scripts/03_evaluate.py and scripts/08_compare_kappa.py.
 BLUE = "#2a78d6"
@@ -103,8 +104,9 @@ plt.rcParams.update({
     "font.family": "sans-serif", "font.size": 10,
     "axes.spines.top": False, "axes.spines.right": False,
 })
+# ^ sets these as the default style for every matplotlib figure created below
 
-OURS_COL = "Kappa_cal (W m-1 K-1)"
+OURS_COL = "Kappa_cal (W m-1 K-1)"  # column name holding our own predicted kappa in the merged frame
 
 
 def load_and_merge(kappa_path, reference_path):
@@ -119,31 +121,32 @@ def load_and_merge(kappa_path, reference_path):
     09_fetch_validation_set.py). Drop the naive column so only the accurate
     one survives the merge.
     """
-    kappa = pd.read_csv(kappa_path).drop(columns=["provenance"])
-    reference = pd.read_csv(reference_path)
+    kappa = pd.read_csv(kappa_path).drop(columns=["provenance"])  # our kappa predictions, minus the naive column
+    reference = pd.read_csv(reference_path)  # Table 1's own values plus the accurate provenance column
     return kappa.merge(reference, on="material_id", suffixes=("", "_ref"))
+    # ^ inner join on material_id; any overlapping non-key column from `reference` gets a "_ref" suffix
 
 
 def compute_metrics(df, pred_col, true_col="kappa_exp"):
     """log10 MAE/R^2/Pearson r, plus natural-log MAE to match the paper's own
     stated Figure 6B units (see module docstring)."""
-    n = len(df)
-    log_pred = np.log10(df[pred_col])
-    log_true = np.log10(df[true_col])
-    resid = log_pred - log_true
+    n = len(df)  # number of rows being scored
+    log_pred = np.log10(df[pred_col])  # predicted kappa in log10 space
+    log_true = np.log10(df[true_col])  # experimental kappa in log10 space
+    resid = log_pred - log_true  # signed per-row log10 error
 
-    if n >= 2:
-        pearson_r, _ = stats.pearsonr(log_pred, log_true)
-        spearman_r, _ = stats.spearmanr(df[pred_col], df[true_col])
-        ss_tot = ((log_true - log_true.mean()) ** 2).sum()
-        r2 = 1 - (resid ** 2).sum() / ss_tot if ss_tot > 0 else np.nan
+    if n >= 2:  # correlation coefficients need at least 2 points to be defined
+        pearson_r, _ = stats.pearsonr(log_pred, log_true)  # linear correlation in log space
+        spearman_r, _ = stats.spearmanr(df[pred_col], df[true_col])  # rank correlation on the raw values
+        ss_tot = ((log_true - log_true.mean()) ** 2).sum()  # total sum of squares, for R^2's denominator
+        r2 = 1 - (resid ** 2).sum() / ss_tot if ss_tot > 0 else np.nan  # coefficient of determination in log space
     else:
-        pearson_r = spearman_r = r2 = np.nan
+        pearson_r = spearman_r = r2 = np.nan  # undefined with fewer than 2 points
 
     return {
         "n": n,
-        "mae_log10": resid.abs().mean(),
-        "mae_ln": resid.abs().mean() * np.log(10),
+        "mae_log10": resid.abs().mean(),  # mean absolute log10 error - this project's usual headline metric
+        "mae_ln": resid.abs().mean() * np.log(10),  # same error converted to natural-log units (ln10 = log10 * ln(10))
         "r2_log10": r2,
         "pearson_r_log10": pearson_r,
         "spearman_r": spearman_r,
@@ -152,8 +155,8 @@ def compute_metrics(df, pred_col, true_col="kappa_exp"):
 
 def print_metrics(label, m):
     print(f"  {label}: MAE = {m['mae_log10']:.3f} log10  ({m['mae_ln']:.3f} ln, "
-         f"the paper's own units)", end="")
-    if m["n"] >= 2 and not np.isnan(m["r2_log10"]):
+         f"the paper's own units)", end="")  # end="" so the R^2/Pearson line below continues on the same row
+    if m["n"] >= 2 and not np.isnan(m["r2_log10"]):  # only print correlation stats when they were actually computed
         print(f"   R^2(log10) = {m['r2_log10']:.3f}   Pearson r = "
              f"{m['pearson_r_log10']:.3f}   Spearman rho = {m['spearman_r']:.3f}")
     else:
@@ -166,16 +169,20 @@ def diagnose_pipeline_stages(merged):
     only ever seeing one aggregate number. Returns the dict used both for
     the printed report and the gamma-substitution test below.
     """
-    log_g = np.log10(merged["G_VRH_pred"] / merged["G_paper"])
+    log_g = np.log10(merged["G_VRH_pred"] / merged["G_paper"])  # log10 ratio of our shear modulus to the paper's own
 
+    # Debye/Slack-style average sound velocity from OUR predicted K and G:
+    # v_long is the longitudinal wave speed, v_trans the transverse wave speed.
     v_long = ((merged["K_VRH_pred"] + 4 * merged["G_VRH_pred"] / 3)
              / merged["Density (g cm-3)"]) ** 0.5 * 1000
     v_trans = (merged["G_VRH_pred"] / merged["Density (g cm-3)"]) ** 0.5 * 1000
+    # harmonic mean of the two speeds, weighted 1:2 (one longitudinal mode, two transverse modes per atom)
     v_sound_ours = ((1 / v_long ** 3 + 2 / v_trans ** 3) / 3) ** (-1 / 3)
-    log_vs = np.log10(v_sound_ours / merged["vs_paper"])
+    log_vs = np.log10(v_sound_ours / merged["vs_paper"])  # log10 ratio of our sound velocity to the paper's own
 
-    gamma_diff = merged["Gruneisen parameter"] - merged["gamma_paper"]
+    gamma_diff = merged["Gruneisen parameter"] - merged["gamma_paper"]  # our formula-derived gamma minus the paper's real one
     r_g = np.corrcoef(np.log10(merged["G_VRH_pred"]), np.log10(merged["G_paper"]))[0, 1]
+    # ^ [0,1] pulls the off-diagonal entry (the actual correlation) out of numpy's 2x2 correlation matrix
 
     print("\n--- Where does the kappa_L gap actually come from? (diagnostic, not opinion) ---")
     print(f"  Shear modulus G (ours vs paper's own G, on these 45 crystals):"
@@ -189,7 +196,7 @@ def diagnose_pipeline_stages(merged):
          f"AFLOW/experimental-sourced value): mean signed diff = "
          f"{gamma_diff.mean():+.3f}   MAE = {gamma_diff.abs().mean():.3f}"
          f"   <-- THIS is where the gap lives")
-    return v_sound_ours
+    return v_sound_ours  # handed back only for potential reuse; not consumed by main() currently
 
 
 def gamma_substitution_test(merged):
@@ -200,44 +207,51 @@ def gamma_substitution_test(merged):
     so this multiplicative correction is exact given that formula - no need
     to recompute v_sound or anything else from scratch.
     """
+    # exp(gamma_ours - gamma_paper) rescales our kappa exactly as if gamma_paper had been used from the start,
+    # because kappa ~ exp(-gamma): dividing by exp(-gamma_ours) and multiplying by exp(-gamma_paper) is this factor.
     corrected = merged[OURS_COL] * np.exp(merged["Gruneisen parameter"] - merged["gamma_paper"])
     return compute_metrics(merged.assign(_corrected=corrected), "_corrected")
+    # ^ .assign adds a temporary column so compute_metrics can be reused unchanged
 
 
 def plot_parity(merged, ours_metrics, pink_metrics, path):
     """Both models against real kappa_exp, log-log, house parity-plot style."""
-    fig, ax = plt.subplots(figsize=(6.8, 6.8))
+    fig, ax = plt.subplots(figsize=(6.8, 6.8))  # one square figure/axes pair
 
-    x = merged["kappa_exp"]
-    y_ours = merged[OURS_COL]
-    y_pink = merged["kappa_pink"]
+    x = merged["kappa_exp"]  # x-axis: ground-truth experimental kappa
+    y_ours = merged[OURS_COL]  # y-axis series 1: our prediction
+    y_pink = merged["kappa_pink"]  # y-axis series 2: the paper's own prediction
 
-    lo = min(x.min(), y_ours.min(), y_pink.min()) * 0.6
-    hi = max(x.max(), y_ours.max(), y_pink.max()) * 1.4
+    lo = min(x.min(), y_ours.min(), y_pink.min()) * 0.6  # axis lower bound, with 40% headroom below the smallest point
+    hi = max(x.max(), y_ours.max(), y_pink.max()) * 1.4  # axis upper bound, with 40% headroom above the largest point
 
     ax.fill_between([lo, hi], [lo / 2, hi / 2], [lo * 2, hi * 2],
                     color=MUTED, alpha=0.08, linewidth=0, zorder=0)
+    # ^ shades the region within a factor of 2 of perfect agreement
     ax.plot([lo, hi], [lo, hi], color=MUTED, linewidth=1, linestyle="--", zorder=1)
+    # ^ the y=x parity line itself
 
     ax.scatter(x, y_pink, s=46, facecolor="none", edgecolor=ORANGE, linewidth=1.3,
               alpha=0.9, zorder=2, label="PINK (paper's own model)")
+    # ^ hollow orange markers for the paper's predictions
     ax.scatter(x, y_ours, s=42, color=BLUE, alpha=0.8, linewidth=0, zorder=3,
               label="Ours (from scratch)")
+    # ^ filled blue markers for our own predictions, drawn on top (higher zorder)
 
     # The 2 genuinely-unseen materials are the real generalisation evidence -
     # call them out by name directly rather than adding a legend entry for a
     # 2-vs-43 categorical split.
-    unseen = merged[merged.provenance == "unseen"]
-    for _, row in unseen.iterrows():
+    unseen = merged[merged.provenance == "unseen"]  # rows whose provenance flag is "unseen"
+    for _, row in unseen.iterrows():  # label each unseen point with its chemical formula
         ax.annotate(row["formula"], (row["kappa_exp"], row[OURS_COL]),
                    textcoords="offset points", xytext=(6, 5), fontsize=8,
                    color=INK_SOFT, fontweight="bold")
 
-    ax.set_xscale("log")
-    ax.set_yscale("log")
+    ax.set_xscale("log")  # log-scaled x-axis, since kappa spans orders of magnitude
+    ax.set_yscale("log")  # log-scaled y-axis to match
     ax.set_xlim(lo, hi)
     ax.set_ylim(lo, hi)
-    ax.set_aspect("equal")
+    ax.set_aspect("equal")  # equal x/y scaling so the y=x line is visually at 45 degrees
     ax.set_xlabel("Experimental $\\kappa_L$ (W m$^{-1}$ K$^{-1}$), paper's Table 1")
     ax.set_ylabel("Predicted $\\kappa_L$ (W m$^{-1}$ K$^{-1}$)")
     ax.set_title("Phase 1: real-data validation against the paper's Table 1",
@@ -253,14 +267,15 @@ def plot_parity(merged, ours_metrics, pink_metrics, path):
            transform=ax.transAxes, va="top", ha="left", fontsize=9, color=INK_SOFT,
            bbox=dict(boxstyle="round,pad=0.5", facecolor=SURFACE, edgecolor=GRID,
                     linewidth=0.8))
+    # ^ text box in axes-fraction coordinates (transform=ax.transAxes), top-left corner
 
     ax.legend(loc="lower right", frameon=True, facecolor=SURFACE, edgecolor=GRID,
              fontsize=9)
     ax.grid(True, which="major", linewidth=0.6, alpha=0.7)
-    ax.set_axisbelow(True)
-    fig.tight_layout()
-    fig.savefig(path, dpi=160)
-    plt.close(fig)
+    ax.set_axisbelow(True)  # draw gridlines behind the data points, not on top of them
+    fig.tight_layout()  # shrink margins so labels/titles are not clipped
+    fig.savefig(path, dpi=160)  # write the PNG to disk
+    plt.close(fig)  # free the figure's memory now that it is saved
 
 
 def plot_gamma_diagnostic(merged, path):
@@ -271,74 +286,79 @@ def plot_gamma_diagnostic(merged, path):
     semiconductors) - the two panels together are the visual version of the
     diagnose_pipeline_stages() printout.
     """
-    fig, axes = plt.subplots(1, 2, figsize=(11.6, 5.6))
+    fig, axes = plt.subplots(1, 2, figsize=(11.6, 5.6))  # one row of two side-by-side panels
 
-    ax = axes[0]
-    lo = min(merged.G_VRH_pred.min(), merged.G_paper.min()) * 0.7
-    hi = max(merged.G_VRH_pred.max(), merged.G_paper.max()) * 1.3
-    ax.plot([lo, hi], [lo, hi], color=MUTED, linewidth=1, linestyle="--", zorder=1)
+    ax = axes[0]  # left panel: shear modulus agreement
+    lo = min(merged.G_VRH_pred.min(), merged.G_paper.min()) * 0.7  # axis lower bound with headroom
+    hi = max(merged.G_VRH_pred.max(), merged.G_paper.max()) * 1.3  # axis upper bound with headroom
+    ax.plot([lo, hi], [lo, hi], color=MUTED, linewidth=1, linestyle="--", zorder=1)  # y=x parity line
     ax.scatter(merged.G_paper, merged.G_VRH_pred, s=36, color=BLUE, alpha=0.75,
               linewidth=0, zorder=2)
-    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xscale("log"); ax.set_yscale("log")  # both axes log-scaled
     ax.set_xlim(lo, hi); ax.set_ylim(lo, hi)
     ax.set_aspect("equal")
     ax.set_xlabel("Paper's own predicted G (GPa)")
     ax.set_ylabel("Our predicted G (GPa)")
     ax.set_title("Shear modulus: close agreement", fontsize=11, pad=10)
-    r_g = np.corrcoef(np.log10(merged.G_VRH_pred), np.log10(merged.G_paper))[0, 1]
+    r_g = np.corrcoef(np.log10(merged.G_VRH_pred), np.log10(merged.G_paper))[0, 1]  # log-space Pearson r
     ax.text(0.05, 0.93, f"Pearson r (log) = {r_g:.3f}", transform=ax.transAxes,
            fontsize=9, color=INK_SOFT, va="top")
     ax.grid(True, which="major", linewidth=0.6, alpha=0.7)
     ax.set_axisbelow(True)
 
-    ax = axes[1]
+    ax = axes[1]  # right panel: Gruneisen parameter disagreement
     lo2 = min(merged["Gruneisen parameter"].min(), merged.gamma_paper.min()) * 0.85
     hi2 = max(merged["Gruneisen parameter"].max(), merged.gamma_paper.max()) * 1.15
-    ax.plot([lo2, hi2], [lo2, hi2], color=MUTED, linewidth=1, linestyle="--", zorder=1)
+    ax.plot([lo2, hi2], [lo2, hi2], color=MUTED, linewidth=1, linestyle="--", zorder=1)  # y=x parity line
     ax.scatter(merged.gamma_paper, merged["Gruneisen parameter"], s=36, color=ORANGE,
               alpha=0.75, linewidth=0, zorder=2)
     ax.set_xlim(lo2, hi2); ax.set_ylim(lo2, hi2)
+    # note: no log scale here, unlike the left panel - gamma is O(1), not orders-of-magnitude like G
     ax.set_aspect("equal")
     ax.set_xlabel("Paper's Table 1 $\\gamma$ (AFLOW / experimental)")
     ax.set_ylabel("Our $\\gamma$ (Slack-formula, from predicted K/G)")
     ax.set_title("Gruneisen parameter: this is the gap", fontsize=11, pad=10)
-    mae_gamma = (merged["Gruneisen parameter"] - merged.gamma_paper).abs().mean()
+    mae_gamma = (merged["Gruneisen parameter"] - merged.gamma_paper).abs().mean()  # mean absolute gamma error
     ax.text(0.05, 0.93, f"MAE = {mae_gamma:.3f}", transform=ax.transAxes,
            fontsize=9, color=INK_SOFT, va="top")
     ax.grid(True, which="major", linewidth=0.6, alpha=0.7)
     ax.set_axisbelow(True)
 
     fig.suptitle("Why our kappa_L differs from the paper's Table 1 numbers",
-                fontsize=12.5, y=1.02)
+                fontsize=12.5, y=1.02)  # one title spanning both panels
     fig.tight_layout()
-    fig.savefig(path, dpi=160, bbox_inches="tight")
+    fig.savefig(path, dpi=160, bbox_inches="tight")  # bbox_inches="tight" also crops around the suptitle
     plt.close(fig)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--kappa", default=os.path.join(RESULTS, "table1_kappa_predictions.csv"))
-    parser.add_argument("--reference", default=os.path.join(RESULTS, "table1_reference.csv"))
-    parser.add_argument("--out-fig", default=os.path.join(RESULTS, "table1_validation.png"))
-    parser.add_argument("--out-fig2", default=os.path.join(RESULTS, "table1_gamma_diagnostic.png"))
-    parser.add_argument("--out-csv", default=os.path.join(RESULTS, "table1_comparison.csv"))
-    args = parser.parse_args()
+    # 09_table1_kappa_predictions.csv / 09_table1_reference.csv: script-09's outputs, script number in the filename
+    # per this project's convention so the producing script is unambiguous in a shared results/ directory.
+    parser.add_argument("--kappa", default=os.path.join(RESULTS, "09_table1_kappa_predictions.csv"))
+    parser.add_argument("--reference", default=os.path.join(RESULTS, "09_table1_reference.csv"))
+    # this script's own outputs get its number, 10, per the same convention
+    parser.add_argument("--out-fig", default=os.path.join(RESULTS, "10_table1_validation.png"))
+    parser.add_argument("--out-fig2", default=os.path.join(RESULTS, "10_table1_gamma_diagnostic.png"))
+    parser.add_argument("--out-csv", default=os.path.join(RESULTS, "10_table1_comparison.csv"))
+    args = parser.parse_args()  # parse sys.argv into an args namespace
 
     print("=== Phase 1: real-data validation against PINK's Table 1 ===\n")
-    merged = load_and_merge(args.kappa, args.reference)
+    merged = load_and_merge(args.kappa, args.reference)  # join our predictions to the Table 1 reference rows
     print(f"{len(merged)}/45 fetched Table 1 materials merged successfully "
          f"(mp-3490/GaP excluded from all of Phase 1 - could not be fetched, "
          f"see scripts/09's own output)")
 
-    n_unseen = int((merged.provenance == "unseen").sum())
-    n_train = int((merged.provenance == "in_matbench_training").sum())
+    n_unseen = int((merged.provenance == "unseen").sum())  # count of rows genuinely outside the training set
+    n_train = int((merged.provenance == "in_matbench_training").sum())  # count of rows already seen in training
     print(f"Provenance: {n_train} already in the matbench training set (recall), "
          f"{n_unseen} genuinely unseen by our ensemble (real generalisation evidence)")
 
     def report(subset, label):
-        ours = compute_metrics(subset, OURS_COL)
-        pink = compute_metrics(subset, "kappa_pink")
+        """Compute and print both models' metrics on one subset of rows; return them for reuse."""
+        ours = compute_metrics(subset, OURS_COL)  # our model's error vs experiment, on this subset
+        pink = compute_metrics(subset, "kappa_pink")  # the paper's model's error vs experiment, on this subset
         print(f"\n--- {label} (n={len(subset)}) ---")
         print_metrics("Ours vs experiment          ", ours)
         print_metrics("PINK (paper) vs experiment  ", pink)
@@ -348,15 +368,15 @@ def main():
     report(merged[merged.provenance == "in_matbench_training"],
           f"{n_train} materials ALSO in the matbench training set - this is RECALL, not generalisation")
 
-    unseen_subset = merged[merged.provenance == "unseen"]
+    unseen_subset = merged[merged.provenance == "unseen"]  # rows with no training-set overlap
     print(f"\n--- {n_unseen} materials genuinely UNSEEN by our ensemble "
          f"(the real generalisation evidence) ---")
-    for _, row in unseen_subset.iterrows():
+    for _, row in unseen_subset.iterrows():  # print each unseen material's raw numbers individually (n too small to aggregate blindly)
         our_val, pink_val, exp_val = row[OURS_COL], row["kappa_pink"], row["kappa_exp"]
         print(f"  {row['formula']:8s} ({row['material_id']}): exp={exp_val:6.2f}   "
              f"ours={our_val:7.2f} ({our_val / exp_val:.2f}x)   "
              f"PINK={pink_val:7.2f} ({pink_val / exp_val:.2f}x)")
-    if n_unseen >= 2:
+    if n_unseen >= 2:  # only compute an aggregate correlation once there are enough points for it to mean anything
         report(unseen_subset, f"{n_unseen} unseen materials, aggregated")
     else:
         print("  (fewer than 2 unseen materials - no aggregate correlation computed, "
@@ -365,17 +385,17 @@ def main():
     # Head-to-head in log space (consistent with every other metric here,
     # and the fair comparison given kappa_L spans 1-3000 W/m/K) - which
     # model's prediction is closer to experiment, material by material.
-    log_exp = np.log10(merged["kappa_exp"])
-    ours_err = (np.log10(merged[OURS_COL]) - log_exp).abs()
-    pink_err = (np.log10(merged["kappa_pink"]) - log_exp).abs()
-    n_better = int((ours_err < pink_err).sum())
+    log_exp = np.log10(merged["kappa_exp"])  # ground truth in log10 space
+    ours_err = (np.log10(merged[OURS_COL]) - log_exp).abs()  # our per-row absolute log10 error
+    pink_err = (np.log10(merged["kappa_pink"]) - log_exp).abs()  # the paper's per-row absolute log10 error
+    n_better = int((ours_err < pink_err).sum())  # count of materials where our error is strictly smaller
     print(f"\nHead-to-head (log10 error, per material): ours closer to experiment "
          f"on {n_better}/{len(merged)} materials, PINK closer on "
          f"{len(merged) - n_better}/{len(merged)}")
 
     # --- Why? Localise the gap instead of stopping at the headline number ---
-    diagnose_pipeline_stages(merged)
-    corrected_metrics = gamma_substitution_test(merged)
+    diagnose_pipeline_stages(merged)  # prints the G/sound-velocity/gamma breakdown
+    corrected_metrics = gamma_substitution_test(merged)  # our K/G but the paper's own gamma
     print(f"\n  Substitution test: our K/G/structure, but the PAPER'S OWN "
          f"tabulated gamma instead of ours:")
     print_metrics("  Ours + paper's gamma        ", corrected_metrics)
@@ -384,13 +404,13 @@ def main():
          f"{ours_all['mae_log10']:.3f} to {corrected_metrics['mae_log10']:.3f} "
          f"log10 (paper's own: {pink_all['mae_log10']:.3f}).")
 
-    plot_parity(merged, ours_all, pink_all, args.out_fig)
-    plot_gamma_diagnostic(merged, args.out_fig2)
-    merged.to_csv(args.out_csv, index=False)
+    plot_parity(merged, ours_all, pink_all, args.out_fig)  # writes 10_table1_validation.png
+    plot_gamma_diagnostic(merged, args.out_fig2)  # writes 10_table1_gamma_diagnostic.png
+    merged.to_csv(args.out_csv, index=False)  # writes 10_table1_comparison.csv, the full merged table
     print(f"\nWrote {args.out_fig}")
     print(f"Wrote {args.out_fig2}")
     print(f"Wrote {args.out_csv}")
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":  # standard entry-point guard
+    main()  # invoke the CLI when run directly as a script

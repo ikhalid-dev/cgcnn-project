@@ -52,27 +52,28 @@ this script only filters rows and adds two new columns:
                               label otherwise.
 """
 
-import argparse
-import os
-import sys
-import warnings
+import argparse                      # command-line flag parsing for the file paths/threshold below
+import os                            # path joining/checking
+import sys                           # sys.exit() with a message on a missing input file
+import warnings                      # suppress a noisy, harmless pymatgen warning below
 
-import pandas as pd
-from pymatgen.core import Composition
+import pandas as pd                  # CSV I/O and DataFrame filtering/sorting
+from pymatgen.core import Composition  # parses a chemical formula into its constituent elements/amounts
 
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")    # silence pymatgen's formula-parsing warnings for the whole script
 
+# walk up 3 levels from this file (scripts/cgcnn/<this file>) to the repo root
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-RESULTS = os.path.join(PROJECT_ROOT, "results", "cgcnn")
+RESULTS = os.path.join(PROJECT_ROOT, "results", "cgcnn")  # shared results directory
 
 
 def has_oxygen(formula):
     """True if O appears anywhere in the parsed formula - see module
     docstring for why this has to go through pymatgen, not str.find("O")."""
     try:
-        return "O" in {str(el) for el in Composition(formula).elements}
+        return "O" in {str(el) for el in Composition(formula).elements}  # parse into element symbols, then a plain set-membership test
     except Exception:
-        return False
+        return False  # unparseable formula: treat as "no oxygen" rather than crashing the whole run
 
 
 def classify_oxide(formula):
@@ -85,9 +86,9 @@ def classify_oxide(formula):
     the giveaway the user asked for ("eg ABO3, other likes this"), so it's a
     useful first-pass label to sort/skim by.
     """
-    amounts = Composition(formula).reduced_composition.get_el_amt_dict()
-    o_amt = amounts.pop("O", 0)
-    cations = sorted(amounts.values())
+    amounts = Composition(formula).reduced_composition.get_el_amt_dict()  # {element symbol: reduced integer amount}
+    o_amt = amounts.pop("O", 0)          # oxygen's own amount, removed from the dict (defaults to 0 if somehow absent)
+    cations = sorted(amounts.values())   # remaining (non-oxygen) element amounts, sorted for order-independent pattern matching
 
     if len(cations) == 1:
         return "binary oxide (A-O)"
@@ -99,25 +100,28 @@ def classify_oxide(formula):
         return "A2B2O7-type (pyrochlore-like)"
     if len(cations) == 2:
         return "ternary oxide (A-B-O, other ratio)"
-    return f"complex oxide ({len(cations) + 1} elements)"
+    return f"complex oxide ({len(cations) + 1} elements)"  # +1 to count oxygen back in for the element total
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--screen-csv", default=os.path.join(RESULTS, "gnome_screen_all.csv"),
+    # input: 13_screen_gnome.py's full, unfiltered scored-candidate table
+    parser.add_argument("--screen-csv", default=os.path.join(RESULTS, "13_gnome_screen_all.csv"),
                         help="the full scored screen (all 33,323, pre-threshold) - "
                              "default, so oxides that scored above the kappa "
                              "threshold are still visible with is_low_kappa_candidate=False")
     parser.add_argument("--kappa-threshold", type=float, default=1.0,
                         help="must match 13_screen_gnome.py's own threshold to "
                              "correctly flag is_low_kappa_candidate")
-    parser.add_argument("--out", default=os.path.join(RESULTS, "gnome_oxide_candidates.csv"))
+    # output: every scored oxide, "15_" prefix (read downstream by 16_spacegroups_oxides.py)
+    parser.add_argument("--out", default=os.path.join(RESULTS, "15_gnome_oxide_candidates.csv"))
+    # output: just the low-kappa oxide subset, "15_" prefix (terminal - nothing reads this back)
     parser.add_argument("--out-low-kappa",
-                        default=os.path.join(RESULTS, "gnome_oxide_low_kappa_candidates.csv"),
+                        default=os.path.join(RESULTS, "15_gnome_oxide_low_kappa_candidates.csv"),
                         help="second file, the is_low_kappa_candidate subset only - "
                              "the actual low-kappa oxide finds, not every oxide scored")
-    args = parser.parse_args()
+    args = parser.parse_args()  # reads sys.argv; every flag above falls back to its default if not passed
 
     print("=== Filtering the GNoME screen for oxide candidates ===\n")
     if not os.path.exists(args.screen_csv):
@@ -126,31 +130,31 @@ def main():
     df = pd.read_csv(args.screen_csv)
     print(f"Loaded {len(df)} scored candidates from {args.screen_csv}")
 
-    is_oxide = df["formula"].apply(has_oxygen)
-    oxides = df[is_oxide].copy()
+    is_oxide = df["formula"].apply(has_oxygen)  # per-row boolean: does the formula contain oxygen
+    oxides = df[is_oxide].copy()  # boolean-mask filter, then an explicit copy to silence pandas' SettingWithCopyWarning
     print(f"{len(oxides)} of {len(df)} contain oxygen ({len(oxides) / len(df) * 100:.1f}%)")
 
-    oxides["stoichiometry_pattern"] = oxides["formula"].apply(classify_oxide)
-    oxides["is_low_kappa_candidate"] = oxides["Kappa_cal (W m-1 K-1)"] <= args.kappa_threshold
-    oxides = oxides.sort_values("Kappa_cal (W m-1 K-1)").reset_index(drop=True)
+    oxides["stoichiometry_pattern"] = oxides["formula"].apply(classify_oxide)  # one stoichiometry tag per row
+    oxides["is_low_kappa_candidate"] = oxides["Kappa_cal (W m-1 K-1)"] <= args.kappa_threshold  # per-row boolean: clears the threshold
+    oxides = oxides.sort_values("Kappa_cal (W m-1 K-1)").reset_index(drop=True)  # ascending by predicted kappa; reindex 0..N-1
 
-    n_candidates = int(oxides["is_low_kappa_candidate"].sum())
+    n_candidates = int(oxides["is_low_kappa_candidate"].sum())  # True/False column summed as 1/0
     print(f"  {n_candidates} of those also clear the kappa_L <= {args.kappa_threshold} "
          f"W/m/K threshold (real low-kappa oxide candidates, not just scored oxides)")
 
     print("\nBy stoichiometry pattern:")
-    for pattern, count in oxides["stoichiometry_pattern"].value_counts().items():
-        n_cand = int(oxides[oxides.stoichiometry_pattern == pattern]["is_low_kappa_candidate"].sum())
+    for pattern, count in oxides["stoichiometry_pattern"].value_counts().items():  # iterate (pattern, row count) pairs
+        n_cand = int(oxides[oxides.stoichiometry_pattern == pattern]["is_low_kappa_candidate"].sum())  # low-kappa count within this pattern
         print(f"  {pattern:38s} {count:6d} total, {n_cand:6d} low-kappa candidates")
 
-    oxides.to_csv(args.out, index=False)
+    oxides.to_csv(args.out, index=False)  # index=False: don't write the pandas row-number column
     print(f"\nWrote {args.out} ({len(oxides)} rows, sorted by predicted kappa_L ascending)")
 
-    low_kappa = oxides[oxides["is_low_kappa_candidate"]].drop(columns=["is_low_kappa_candidate"])
+    low_kappa = oxides[oxides["is_low_kappa_candidate"]].drop(columns=["is_low_kappa_candidate"])  # subset rows, then drop the now-constant-True column
     low_kappa.to_csv(args.out_low_kappa, index=False)
     print(f"Wrote {args.out_low_kappa} ({len(low_kappa)} rows - just the oxides that "
          f"cleared kappa_L <= {args.kappa_threshold})")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # only run main() when executed directly, not when imported
     main()

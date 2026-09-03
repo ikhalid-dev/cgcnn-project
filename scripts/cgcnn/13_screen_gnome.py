@@ -76,31 +76,32 @@ uses for numeric-prefixed filenames), slack_physics/monte_carlo_kappa from
 code.
 """
 
-import argparse
-import os
-import sys
-import time
-import warnings
-import zipfile
-from importlib import import_module
+import argparse          # CLI flag parsing
+import os                 # path joining/creation, path existence checks
+import sys                 # sys.path mutation and sys.exit() on fatal errors
+import time                 # wall-clock timing for progress/ETA printouts
+import warnings              # suppresses noisy-but-harmless parser warnings
+import zipfile                 # reads CIF entries out of by_composition.zip without extracting to disk
+from importlib import import_module   # loads a numeric-prefixed module (e.g. "04_predict_moduli") by string name
 
 # torch first - see cgcnn_scratch/data.py for why.
 import torch  # noqa: F401
 
-import numpy as np
-import pandas as pd
-from pymatgen.core import Structure
+import numpy as np                          # not used directly below but kept for parity with sibling scripts' import block
+import pandas as pd                          # DataFrame construction, CSV I/O
+from pymatgen.core import Structure          # parses CIF text into a Structure object
 
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")   # silences all Python warnings for the rest of this process
 
+# walks up three directories from this file (scripts/cgcnn/ -> scripts/ -> project root)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)   # makes `cgcnn_scratch` importable regardless of the caller's cwd
 
 from cgcnn_scratch.data import AtomFeaturiser, GaussianDistance, structure_to_graph  # noqa: E402
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-_predict = import_module("04_predict_moduli")
-_kappa = import_module("07_predict_kappa")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # makes this script's own directory importable by module name
+_predict = import_module("04_predict_moduli")   # module object for 04_predict_moduli.py (can't `import 04_...` - starts with a digit)
+_kappa = import_module("07_predict_kappa")      # module object for 07_predict_kappa.py
 
 # Radioactive / synthetic elements, matching the paper's stated screening
 # criterion ("removing radioactive elements"). Tc and Pm are the two lighter
@@ -119,22 +120,22 @@ def filter_candidates(summary_path, bandgap_lo, bandgap_hi):
     paper's own 377,221 -> 30,199 -> 26,305 funnel, only its order of
     magnitude.
     """
-    import ast
+    import ast   # ast.literal_eval turns the CSV's stringified list column back into a real Python list
 
     print(f"Loading {summary_path}...")
-    df = pd.read_csv(summary_path)
+    df = pd.read_csv(summary_path)   # the full GNoME summary table, one row per material
     print(f"  {len(df)} materials in this GNoME snapshot "
          f"(paper's own screen used 377,221 - see module docstring)")
 
-    bandgap_ok = df["Bandgap"].between(bandgap_lo, bandgap_hi)
-    stable = df["Decomposition Energy Per Atom"] <= 0
-    step1 = df[bandgap_ok & stable]
+    bandgap_ok = df["Bandgap"].between(bandgap_lo, bandgap_hi)          # boolean mask: bandgap inside the window
+    stable = df["Decomposition Energy Per Atom"] <= 0                   # boolean mask: thermodynamically stable or better
+    step1 = df[bandgap_ok & stable]                                     # rows passing both masks
     print(f"  after bandgap [{bandgap_lo},{bandgap_hi}] eV + decomposition "
          f"energy <= 0: {len(step1)} (paper: 30,199)")
 
-    elements = step1["Elements"].apply(ast.literal_eval)
-    has_radioactive = elements.apply(lambda els: bool(RADIOACTIVE.intersection(els)))
-    step2 = step1[~has_radioactive]
+    elements = step1["Elements"].apply(ast.literal_eval)   # parse each row's element-list string into an actual list
+    has_radioactive = elements.apply(lambda els: bool(RADIOACTIVE.intersection(els)))   # True if any element is in RADIOACTIVE
+    step2 = step1[~has_radioactive]   # keep only rows with no radioactive element
     print(f"  after removing radioactive elements: {len(step2)} (paper: 26,305)")
 
     # itertuples() mangles column names containing spaces into positional
@@ -153,44 +154,44 @@ def extract_and_featurise(filtered, zip_path, atom_init_path, max_num_nbr, radiu
     for the physics), just fed from one in-memory Structure instead of two
     separate file reads.
     """
-    ari = AtomFeaturiser(atom_init_path)
-    gdf = GaussianDistance(dmin=0, dmax=radius, step=step)
-    zf = zipfile.ZipFile(zip_path)
+    ari = AtomFeaturiser(atom_init_path)                    # loads the 92-dim per-element feature table
+    gdf = GaussianDistance(dmin=0, dmax=radius, step=step)  # builds the Gaussian bond-distance expansion basis
+    zf = zipfile.ZipFile(zip_path)                          # opens the zip archive for random-access reads (no extraction)
 
-    graphs, ids, meta, failed = [], [], [], []
-    start = time.time()
-    n = len(filtered)
+    graphs, ids, meta, failed = [], [], [], []   # accumulators filled by the loop below
+    start = time.time()    # wall-clock start, used for the rate/ETA printout
+    n = len(filtered)       # total candidate count, used for progress printouts
 
-    for i, row in enumerate(filtered.itertuples()):
-        entry = f"by_composition/{row.Composition}.CIF"
+    for i, row in enumerate(filtered.itertuples()):   # iterate rows as lightweight namedtuples
+        entry = f"by_composition/{row.Composition}.CIF"   # the zip member name for this candidate
         try:
-            cif_text = zf.read(entry).decode("utf-8")
-            structure = Structure.from_str(cif_text, fmt="cif")
-            graph = structure_to_graph(structure, ari, gdf, max_num_nbr, radius)
-            primitive = structure.get_primitive_structure()
+            cif_text = zf.read(entry).decode("utf-8")               # raw CIF bytes -> text, still only in memory
+            structure = Structure.from_str(cif_text, fmt="cif")     # parse the CIF text into a Structure
+            graph = structure_to_graph(structure, ari, gdf, max_num_nbr, radius)   # featurise into CGCNN graph tensors
+            primitive = structure.get_primitive_structure()          # smallest repeating cell, for volume/density below
         except Exception as exc:
-            failed.append((row.MaterialId, str(exc)[:70]))
+            failed.append((row.MaterialId, str(exc)[:70]))   # record id + truncated error, then skip this candidate
             continue
 
-        graphs.append(graph)
-        ids.append(row.MaterialId)
+        graphs.append(graph)         # keep in the same order as `ids`
+        ids.append(row.MaterialId)   # GNoME's own material identifier
         meta.append({
             "material_id": row.MaterialId,
             "formula": row.ReducedFormula,
-            "Number of Atoms": len(primitive),
-            "Volume (A3)": primitive.volume,
-            "Density (g cm-3)": primitive.density,
-            "Atomic mass (amu)": float(primitive.composition.weight),
+            "Number of Atoms": len(primitive),                          # atom count in the primitive cell
+            "Volume (A3)": primitive.volume,                            # primitive-cell volume in cubic angstrom
+            "Density (g cm-3)": primitive.density,                      # mass / volume, in g/cm^3
+            "Atomic mass (amu)": float(primitive.composition.weight),   # total formula-unit mass in atomic mass units
         })
 
-        if (i + 1) % 2000 == 0:
-            rate = (i + 1) / (time.time() - start)
+        if (i + 1) % 2000 == 0:   # print progress every 2000 candidates, not every one
+            rate = (i + 1) / (time.time() - start)   # candidates processed per second so far
             print(f"  {i + 1:6d}/{n} featurised ({rate:.0f}/s, "
                  f"~{(n - i - 1) / rate / 60:.1f} min left)")
 
     print(f"Featurised {len(graphs)}/{n} in {(time.time() - start) / 60:.1f} min")
     if failed:
-        print(f"  {len(failed)} failed, e.g. {failed[:3]}")
+        print(f"  {len(failed)} failed, e.g. {failed[:3]}")   # show only the first 3 as a sample
     return _predict.PredictionSet(graphs, ids), pd.DataFrame(meta)
 
 
@@ -208,22 +209,22 @@ def main():
     parser.add_argument("--g-tags", default="G_VRH_full,G_VRH_s1,G_VRH_s2")
     parser.add_argument("--limit", type=int, default=None,
                         help="only screen the first N filtered candidates (smoke test)")
-    args = parser.parse_args()
+    args = parser.parse_args()   # reads sys.argv, returns a Namespace with the fields above
 
     print("=== Phase 3: screening GNoME for low-kappa_L candidates ===\n")
 
     summary_path = os.path.join(args.gnome_dir, "stable_materials_summary.csv")
     zip_path = os.path.join(args.gnome_dir, "by_composition.zip")
-    if not (os.path.exists(summary_path) and os.path.exists(zip_path)):
+    if not (os.path.exists(summary_path) and os.path.exists(zip_path)):   # both inputs must already be downloaded
         sys.exit(f"Missing GNoME files in {args.gnome_dir} - fetch both:\n"
                  f"  curl -o {summary_path} https://storage.googleapis.com/"
                  f"gdm_materials_discovery/gnome_data/stable_materials_summary.csv\n"
                  f"  curl -o {zip_path} https://storage.googleapis.com/"
                  f"gdm_materials_discovery/gnome_data/by_composition.zip")
 
-    filtered = filter_candidates(summary_path, args.bandgap_lo, args.bandgap_hi)
+    filtered = filter_candidates(summary_path, args.bandgap_lo, args.bandgap_hi)   # the funnel output DataFrame
     if args.limit:
-        filtered = filtered.head(args.limit)
+        filtered = filtered.head(args.limit)   # keep only the first N rows
         print(f"  --limit {args.limit}: smoke-testing on the first "
              f"{len(filtered)} candidates only")
 
@@ -235,12 +236,13 @@ def main():
         max_num_nbr=12, radius=8, step=0.2)
 
     print("\nRunning the CGCNN ensemble (bulk and shear modulus)...")
+    # loads each named checkpoint and keeps only (model, normalizer) - [:2] drops any extra return values
     k_models = [_predict.load_model(t, args.results_dir)[:2] for t in args.k_tags.split(",")]
     g_models = [_predict.load_model(t, args.results_dir)[:2] for t in args.g_tags.split(",")]
-    k_moduli, k_spread = _predict.predict_ensemble(k_models, dataset)
+    k_moduli, k_spread = _predict.predict_ensemble(k_models, dataset)   # per-material mean prediction + ensemble spread
     g_moduli, g_spread = _predict.predict_ensemble(g_models, dataset)
 
-    meta["K_VRH_pred"] = meta.material_id.map(k_moduli)
+    meta["K_VRH_pred"] = meta.material_id.map(k_moduli)                 # join predictions back onto the metadata table by id
     meta["G_VRH_pred"] = meta.material_id.map(g_moduli)
     meta["K_VRH_spread_log10"] = meta.material_id.map(k_spread)
     meta["G_VRH_spread_log10"] = meta.material_id.map(g_spread)
@@ -249,22 +251,24 @@ def main():
     point = _kappa.slack_physics(
         meta["K_VRH_pred"].values, meta["G_VRH_pred"].values,
         meta["Volume (A3)"].values, meta["Density (g cm-3)"].values,
-        meta["Atomic mass (amu)"].values, meta["Number of Atoms"].values)
+        meta["Atomic mass (amu)"].values, meta["Number of Atoms"].values)   # point-estimate physics: one kappa per material
     meta["Poisson ratio"] = point["poisson"]
     meta["Gruneisen parameter"] = point["gruneisen"]
     meta["Kappa_cal (W m-1 K-1)"] = point["kappa_cal"]
 
-    mc = _kappa.monte_carlo_kappa(meta, n_samples=args.mc_samples, seed=args.seed)
-    meta["Kappa_cal_p05"] = mc["Kappa_cal_p05"]
-    meta["Kappa_cal_p50"] = mc["Kappa_cal_p50"]
-    meta["Kappa_cal_p95"] = mc["Kappa_cal_p95"]
+    mc = _kappa.monte_carlo_kappa(meta, n_samples=args.mc_samples, seed=args.seed)   # resamples predictions to get a kappa distribution per material
+    meta["Kappa_cal_p05"] = mc["Kappa_cal_p05"]   # 5th percentile of the Monte Carlo kappa distribution
+    meta["Kappa_cal_p50"] = mc["Kappa_cal_p50"]   # median
+    meta["Kappa_cal_p95"] = mc["Kappa_cal_p95"]   # 95th percentile (the pessimistic bound used for ranking)
 
-    all_path = os.path.join(args.results_dir, "gnome_screen_all.csv")
+    # 13_ prefix: this script's own number, so this result can be told apart
+    # from any other script's output sitting in the same results/ directory.
+    all_path = os.path.join(args.results_dir, "13_gnome_screen_all.csv")
     meta.to_csv(all_path, index=False)
     print(f"\nWrote {all_path} ({len(meta)} scored candidates, pre-threshold)")
 
-    candidates = meta[meta["Kappa_cal (W m-1 K-1)"] <= args.kappa_threshold].copy()
-    cand_path = os.path.join(args.results_dir, "gnome_screen_candidates.csv")
+    candidates = meta[meta["Kappa_cal (W m-1 K-1)"] <= args.kappa_threshold].copy()   # rows clearing the kappa threshold
+    cand_path = os.path.join(args.results_dir, "13_gnome_screen_candidates.csv")
     candidates.to_csv(cand_path, index=False)
     print(f"kappa_L <= {args.kappa_threshold} W/m/K: {len(candidates)} candidates "
          f"(paper: 11,869, on their smaller/older snapshot)")

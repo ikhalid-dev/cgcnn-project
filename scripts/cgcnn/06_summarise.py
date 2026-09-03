@@ -28,14 +28,15 @@ Also writes `results/RESULTS.md`, a human-readable version of the same thing,
 so the headline numbers are visible without opening a spreadsheet.
 """
 
-import argparse
-import glob
-import json
-import os
-import re
+import argparse  # CLI argument parsing (--results-dir)
+import glob  # wildcard filename matching (metrics_*.csv, summary_*.json)
+import json  # reading each run's summary_<tag>.json
+import os  # path joining and filesystem path handling
+import re  # stripping the "metrics_"/".csv" wrapper off a filename to recover its tag
 
-import pandas as pd
+import pandas as pd  # building and writing the combined summary table
 
+# walk up three directories from this file (scripts/cgcnn/06_...py -> scripts/cgcnn -> scripts -> project root)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # How to describe each tag in the summary. Anything not listed is reported with
@@ -57,31 +58,31 @@ HEADLINE = ["K_VRH_ens", "G_VRH_ens"]
 
 def collect(results_dir):
     """Read every metrics_<tag>.csv into one long table."""
-    rows = []
-    for path in sorted(glob.glob(os.path.join(results_dir, "metrics_*.csv"))):
-        tag = re.sub(r"^metrics_|\.csv$", "", os.path.basename(path))
+    rows = []  # one DataFrame per discovered metrics file, concatenated at the end
+    for path in sorted(glob.glob(os.path.join(results_dir, "metrics_*.csv"))):  # every metrics_*.csv in the results directory, sorted for a stable order
+        tag = re.sub(r"^metrics_|\.csv$", "", os.path.basename(path))  # strip the "metrics_" prefix and ".csv" suffix, leaving just the run's tag
         if tag == "summary":
             continue  # our own output, if this is re-run
-        frame = pd.read_csv(path)
-        frame.insert(0, "tag", tag)
-        frame.insert(1, "target", "K_VRH" if tag.startswith("K_") else "G_VRH")
-        frame.insert(2, "description", DESCRIPTIONS.get(tag, tag))
+        frame = pd.read_csv(path)  # load this one run's metrics rows
+        frame.insert(0, "tag", tag)  # insert the tag as the first column
+        frame.insert(1, "target", "K_VRH" if tag.startswith("K_") else "G_VRH")  # infer which physical property this run predicted from its tag prefix
+        frame.insert(2, "description", DESCRIPTIONS.get(tag, tag))  # human-readable label, falling back to the bare tag if not in the table above
         rows.append(frame)
 
     if not rows:
-        raise SystemExit(f"No metrics_*.csv found in {results_dir}")
-    return pd.concat(rows, ignore_index=True)
+        raise SystemExit(f"No metrics_*.csv found in {results_dir}")  # nothing to summarise - fail loudly rather than writing an empty table
+    return pd.concat(rows, ignore_index=True)  # stack every run's rows into one long table, renumbering the index
 
 
 def training_cost(results_dir):
     """Pull wall-clock time and parameter count out of the run summaries."""
-    costs = {}
-    for path in glob.glob(os.path.join(results_dir, "summary_*.json")):
+    costs = {}  # maps tag -> {epochs, minutes, n_params}
+    for path in glob.glob(os.path.join(results_dir, "summary_*.json")):  # every per-run summary JSON
         with open(path) as fh:
-            data = json.load(fh)
+            data = json.load(fh)  # parse this run's summary dict
         costs[data.get("tag", "?")] = {
             "epochs": data.get("epochs"),
-            "minutes": round(data.get("seconds", 0) / 60, 1),
+            "minutes": round(data.get("seconds", 0) / 60, 1),  # convert wall-clock seconds to minutes, one decimal place
             "n_params": data.get("n_params"),
         }
     return costs
@@ -89,7 +90,7 @@ def training_cost(results_dir):
 
 def write_markdown(summary, costs, path):
     """Write the same numbers as prose + tables, for people not opening a CSV."""
-    test = summary[summary.split == "test"].set_index("tag")
+    test = summary[summary.split == "test"].set_index("tag")  # only the test-split rows, indexed by tag for easy .loc lookups below
 
     lines = [
         "# Results",
@@ -107,10 +108,10 @@ def write_markdown(summary, costs, path):
         "| Model | MAE log10(GPa) | R² | MAE (GPa) | Relative error | % of range |",
         "|---|---|---|---|---|---|",
     ]
-    for tag in HEADLINE:
+    for tag in HEADLINE:  # only the two models chosen to lead the report
         if tag not in test.index:
-            continue
-        row = test.loc[tag]
+            continue  # skip silently if this headline model hasn't been trained/summarised yet
+        row = test.loc[tag]  # this tag's single test-split row
         lines.append(
             f"| **{row.description}** | **{row.MAE_log10:.4f}** | {row.R2:.3f} | "
             f"{row.MAE_GPa:.2f} | {row.rel_error_pct:.1f}% | "
@@ -134,9 +135,9 @@ def write_markdown(summary, costs, path):
         "| Model | MAE log10 | R² | MAE (GPa) | Rel. err | % range | Epochs | Train time |",
         "|---|---|---|---|---|---|---|---|",
     ]
-    for tag, row in test.iterrows():
-        cost = costs.get(tag, {})
-        minutes = f"{cost['minutes']:.0f} min" if cost.get("minutes") else "-"
+    for tag, row in test.iterrows():  # every model's test-split row, in whatever order the index has
+        cost = costs.get(tag, {})  # this tag's training-cost dict, or {} if no summary JSON was found for it
+        minutes = f"{cost['minutes']:.0f} min" if cost.get("minutes") else "-"  # "-" placeholder when the cost is unknown
         epochs = cost.get("epochs", "-")
         lines.append(
             f"| {row.description} | {row.MAE_log10:.4f} | {row.R2:.3f} | "
@@ -154,7 +155,7 @@ def write_markdown(summary, costs, path):
         "| Model | Split | n | MAE log10 | R² |",
         "|---|---|---|---|---|",
     ]
-    for _, row in summary.iterrows():
+    for _, row in summary.iterrows():  # every (model, split) row in the full (not test-only) summary table
         lines.append(f"| {row.description} | {row.split} | {int(row.n)} | "
                      f"{row.MAE_log10:.4f} | {row.R2:.3f} |")
 
@@ -176,30 +177,30 @@ def write_markdown(summary, costs, path):
     ]
 
     with open(path, "w") as fh:
-        fh.write("\n".join(lines) + "\n")
+        fh.write("\n".join(lines) + "\n")  # join every line with a newline, plus one trailing newline at the end of the file
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results-dir",
                         default=os.path.join(PROJECT_ROOT, "results", "cgcnn"))
-    args = parser.parse_args()
+    args = parser.parse_args()  # parse sys.argv into the `args` namespace
 
-    summary = collect(args.results_dir)
-    costs = training_cost(args.results_dir)
+    summary = collect(args.results_dir)  # combined (model, split) metrics table
+    costs = training_cost(args.results_dir)  # per-tag wall-clock/epoch/param-count info
 
     csv_path = os.path.join(args.results_dir, "metrics_summary.csv")
-    summary.round(6).to_csv(csv_path, index=False)
+    summary.round(6).to_csv(csv_path, index=False)  # round to 6 decimals before writing, no pandas row-index column
 
     md_path = os.path.join(args.results_dir, "RESULTS.md")
-    write_markdown(summary, costs, md_path)
+    write_markdown(summary, costs, md_path)  # human-readable prose/table version of the same numbers
 
     print(f"Wrote {csv_path}")
     print(f"Wrote {md_path}\n")
-    test = summary[summary.split == "test"]
+    test = summary[summary.split == "test"]  # test-split rows only, for the console printout
     print(test[["tag", "MAE_log10", "R2", "rel_error_pct",
-                "pct_of_range"]].round(4).to_string(index=False))
+                "pct_of_range"]].round(4).to_string(index=False))  # compact console table, no pandas row-index column
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # only run main() when executed as a script, not when imported as a module
     main()
