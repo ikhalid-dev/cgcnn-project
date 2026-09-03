@@ -62,6 +62,12 @@ kaggle/pulled/
 kaggle/build_alignn/
 kaggle/output_alignn/
 
+# Same idea again for the joint two/three-head model's Kaggle kernel
+# (kaggle/build_joint_kernel.py / run_joint_kernel.py) - own build/output
+# directories for the same reason: never touch the other kernels' state.
+kaggle/build_joint/
+kaggle/output_joint/
+
 # Same idea for the ALIGNN Colab-CLI runner: the uploaded bundle zip is
 # rebuilt from BUNDLE by run_alignn_cli.py, and alignn_output/ is where
 # downloaded status/log/results files land before being merged into results/alignn/.
