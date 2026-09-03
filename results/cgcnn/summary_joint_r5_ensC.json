@@ -1,0 +1,44 @@
+{
+  "tag": "r5_ensC",
+  "members": [
+    "r5_huber_s6",
+    "r5_huber_s7",
+    "r5_huber_s8"
+  ],
+  "n_members": 3,
+  "results": {
+    "train": {
+      "n": 7691,
+      "mae_log_K": 0.050774717620812204,
+      "mae_log_G": 0.052564439296827456,
+      "mae_log_ratio": 0.04680573115712304,
+      "residual_corr": 0.5165283612682955,
+      "kappa_mae_total": 0.1084271932618164,
+      "kappa_mae_prefactor": 0.07843748168163021,
+      "kappa_mae_anharmonic": 0.04730948396331749,
+      "gamma_mae": 0.10893411253117573
+    },
+    "val": {
+      "n": 1648,
+      "mae_log_K": 0.06641936286310679,
+      "mae_log_G": 0.0812234169906958,
+      "mae_log_ratio": 0.08123786666003235,
+      "residual_corr": 0.38584962836869374,
+      "kappa_mae_total": 0.18374237116082304,
+      "kappa_mae_prefactor": 0.12087861326489067,
+      "kappa_mae_anharmonic": 0.08380009254645825,
+      "gamma_mae": 0.1929568438889962
+    },
+    "test": {
+      "n": 1648,
+      "mae_log_K": 0.06815847268689319,
+      "mae_log_G": 0.08350922867394822,
+      "mae_log_ratio": 0.08126558172127832,
+      "residual_corr": 0.44217480159361827,
+      "kappa_mae_total": 0.1871017350983033,
+      "kappa_mae_prefactor": 0.12428727138764815,
+      "kappa_mae_anharmonic": 0.0836600250068394,
+      "gamma_mae": 0.19263432646025747
+    }
+  }
+}
