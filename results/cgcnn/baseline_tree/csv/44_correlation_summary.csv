@@ -1,0 +1,16 @@
+source,target,against,pearson_r
+matbench,K_VRH,decision_tree,0.8588977680638665
+matbench,K_VRH,random_forest,0.9174075033880068
+matbench,K_VRH,xgboost,0.9198478439482604
+matbench,G_VRH,decision_tree,0.8227398247761275
+matbench,G_VRH,random_forest,0.9115553074705265
+matbench,G_VRH,xgboost,0.9056826539203837
+aflow,K_VRH,decision_tree,0.9023032489604583
+aflow,K_VRH,random_forest,0.939713236921972
+aflow,K_VRH,xgboost,0.9495426854450915
+aflow,G_VRH,decision_tree,0.8383932085891694
+aflow,G_VRH,random_forest,0.9078198851290061
+aflow,G_VRH,xgboost,0.9100813203953635
+aflow,gamma,decision_tree,0.6533627412114912
+aflow,gamma,random_forest,0.7938071271106085
+aflow,gamma,xgboost,0.7818455501299137

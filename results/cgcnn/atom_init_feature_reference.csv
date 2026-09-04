@@ -1,0 +1,93 @@
+feature_index,property_block,index_within_block,block_width,n_elements_in_bin,example_elements,elements_with_property_undefined
+0,group_number,0,19,26,"La, Ce, Pr, Nd, Pm, Sm...",0
+1,group_number,1,19,7,"H, Li, Na, K, Rb, Cs...",0
+2,group_number,2,19,6,"Be, Mg, Ca, Sr, Ba, Ra",0
+3,group_number,3,19,3,"Sc, Y, Lu",0
+4,group_number,4,19,3,"Ti, Zr, Hf",0
+5,group_number,5,19,3,"V, Nb, Ta",0
+6,group_number,6,19,3,"Cr, Mo, W",0
+7,group_number,7,19,3,"Mn, Tc, Re",0
+8,group_number,8,19,3,"Fe, Ru, Os",0
+9,group_number,9,19,3,"Co, Rh, Ir",0
+10,group_number,10,19,3,"Ni, Pd, Pt",0
+11,group_number,11,19,3,"Cu, Ag, Au",0
+12,group_number,12,19,3,"Zn, Cd, Hg",0
+13,group_number,13,19,5,"B, Al, Ga, In, Tl",0
+14,group_number,14,19,5,"C, Si, Ge, Sn, Pb",0
+15,group_number,15,19,5,"N, P, As, Sb, Bi",0
+16,group_number,16,19,5,"O, S, Se, Te, Po",0
+17,group_number,17,19,5,"F, Cl, Br, I, At",0
+18,group_number,18,19,6,"He, Ne, Ar, Kr, Xe, Rn",0
+19,period,0,7,2,"H, He",0
+20,period,1,7,8,"Li, Be, B, C, N, O...",0
+21,period,2,7,8,"Na, Mg, Al, Si, P, S...",0
+22,period,3,7,18,"K, Ca, Sc, Ti, V, Cr...",0
+23,period,4,7,18,"Rb, Sr, Y, Zr, Nb, Mo...",0
+24,period,5,7,32,"Cs, Ba, La, Ce, Pr, Nd...",0
+25,period,6,7,14,"Fr, Ra, Ac, Th, Pa, U...",0
+26,electronegativity,0,10,4,"K, Rb, Cs, Fr",15
+27,electronegativity,1,10,14,"Li, Na, Ca, Sr, Ba, La...",15
+28,electronegativity,2,10,15,"Mg, Sc, Ti, Y, Zr, Dy...",15
+29,electronegativity,3,10,21,"Be, Al, Si, V, Cr, Mn...",15
+30,electronegativity,4,10,19,"H, B, P, Ni, Ge, As...",15
+31,electronegativity,5,10,5,"C, S, Se, Rh, Au",15
+32,electronegativity,6,10,2,"I, Xe",15
+33,electronegativity,7,10,3,"N, Cl, Br",15
+34,electronegativity,8,10,1,O,15
+35,electronegativity,9,10,1,F,15
+36,covalent_radius,0,10,2,"H, He",0
+37,covalent_radius,1,10,3,"O, F, Ne",0
+38,covalent_radius,2,10,3,"B, C, N",0
+39,covalent_radius,3,10,9,"Be, P, S, Cl, Ar, Co...",0
+40,covalent_radius,4,10,30,"Li, Al, Si, Ti, V, Cr...",0
+41,covalent_radius,5,10,17,"Na, Mg, Sc, Zr, Nb, Mo...",0
+42,covalent_radius,6,10,28,"Ca, Y, La, Ce, Pr, Nd...",0
+43,covalent_radius,7,10,5,"K, Sr, Ba, Ra, Ac",0
+44,covalent_radius,8,10,2,"Rb, Fr",0
+45,covalent_radius,9,10,1,Cs,0
+46,valence_electrons,0,12,7,"H, Li, Na, K, Rb, Cs...",0
+47,valence_electrons,1,12,33,"He, Be, Mg, Ca, Sr, Ba...",0
+48,valence_electrons,2,12,8,"B, Al, Sc, Ga, Y, In...",0
+49,valence_electrons,3,12,8,"C, Si, Ti, Ge, Zr, Sn...",0
+50,valence_electrons,4,12,8,"N, P, V, As, Nb, Sb...",0
+51,valence_electrons,5,12,8,"O, S, Cr, Se, Mo, Te...",0
+52,valence_electrons,6,12,8,"F, Cl, Mn, Br, Tc, I...",0
+53,valence_electrons,7,12,8,"Ne, Ar, Fe, Kr, Ru, Xe...",0
+54,valence_electrons,8,12,3,"Co, Rh, Ir",0
+55,valence_electrons,9,12,2,"Ni, Pt",0
+56,valence_electrons,10,12,3,"Cu, Ag, Au",0
+57,valence_electrons,11,12,4,"Zn, Pd, Cd, Hg",0
+58,first_ionization_energy,0,10,4,"K, Rb, Cs, Fr",0
+59,first_ionization_energy,1,10,7,"Li, Na, Ba, Pr, Lu, Ra...",0
+60,first_ionization_energy,2,10,33,"Al, Ca, Sc, Ga, Sr, Y...",0
+61,first_ionization_energy,3,10,24,"Mg, Si, Ti, V, Cr, Mn...",0
+62,first_ionization_energy,4,10,15,"Be, B, Zn, As, Se, Pd...",0
+63,first_ionization_energy,5,10,8,"C, P, S, Br, I, Xe...",0
+64,first_ionization_energy,6,10,5,"H, N, O, Cl, Kr",0
+65,first_ionization_energy,7,10,2,"F, Ar",0
+66,first_ionization_energy,8,10,1,Ne,0
+67,first_ionization_energy,9,10,1,He,0
+68,electron_affinity,0,10,1,Be,26
+69,electron_affinity,1,10,0,,26
+70,electron_affinity,2,10,1,N,26
+71,electron_affinity,3,10,0,,26
+72,electron_affinity,4,10,16,"B, Ca, Sc, Ti, Fe, Sr...",26
+73,electron_affinity,5,10,29,"H, Li, Na, Al, P, K...",26
+74,electron_affinity,6,10,15,"C, O, Si, Ni, Cu, Ge...",26
+75,electron_affinity,7,10,7,"S, Se, Te, Nd, Pt, Au...",26
+76,electron_affinity,8,10,1,At,26
+77,electron_affinity,9,10,4,"F, Cl, Br, I",26
+78,block_spdf,0,4,14,"H, He, Li, Be, Na, Mg...",0
+79,block_spdf,1,4,30,"B, C, N, O, F, Ne...",0
+80,block_spdf,2,4,30,"Sc, Ti, V, Cr, Mn, Fe...",0
+81,block_spdf,3,4,26,"La, Ce, Pr, Nd, Pm, Sm...",0
+82,atomic_volume,0,10,3,"Be, B, C",9
+83,atomic_volume,1,10,6,"Cr, Mn, Fe, Co, Ni, Cu",9
+84,atomic_volume,2,10,15,"Al, V, Zn, Mo, Tc, Ru...",9
+85,atomic_volume,3,10,11,"Li, Si, Ti, Ga, Ge, As...",9
+86,atomic_volume,4,10,18,"H, N, O, F, Ne, Mg...",9
+87,atomic_volume,5,10,24,"Na, Cl, Br, Y, Sb, Te...",9
+88,atomic_volume,6,10,6,"He, Ar, Ca, I, Eu, Yb",9
+89,atomic_volume,7,10,3,"Kr, Sr, Ba",9
+90,atomic_volume,8,10,3,"K, Xe, Ra",9
+91,atomic_volume,9,10,2,"Rb, Cs",9

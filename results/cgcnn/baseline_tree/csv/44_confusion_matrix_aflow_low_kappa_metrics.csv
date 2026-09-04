@@ -1,0 +1,2 @@
+model,kappa_threshold_w_mk,n_test_crystals,n_dropped_non_finite,n_true_low_kappa,n_pred_low_kappa,precision,recall,f1
+xgboost,1.0,835,0,93,76,0.6973684210526315,0.5698924731182796,0.6272189349112426
