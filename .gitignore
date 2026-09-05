@@ -117,6 +117,15 @@ results/alignn/alignn_*/*_data_range
 # README.md; the pipeline never reads it.
 PINK.pdf
 
+# 45_screen_gnome_baseline_tree.py's full pre-threshold table. Every one of its
+# 33,118 rows and columns is already in results/cgcnn/39_gnome_screen_all_gamma.csv
+# (which that script annotates in place with the same baseline columns) - only the
+# sort order differs, so this is 14 MB of exact duplication. Regenerate with
+# scripts/cgcnn/45_screen_gnome_baseline_tree.py (~3 min). The candidate and oxide
+# tables next to it ARE committed: those are the actual deliverable, and the
+# threshold that defines them is the script's, not 39's.
+results/cgcnn/45_gnome_screen_all_baseline.csv
+
 # predict.py's default output location: one-off real-world predictions from
 # whatever CIFs someone hands it, not part of the reproducible pipeline -
 # same reasoning PREDICT_NEW_CIFS.txt already gives for my_cifs/my_predictions/.
