@@ -1,0 +1,3 @@
+rule,n_aflow_with_kappa,n_aflow_keys,n_matbench,n_matched,n_ambiguous_keys,median_kappa_spread_factor
+strict,5653,5252,10987,2904,307,1.239796214773599
+loose,5653,4911,10987,3379,483,1.5578033496638943

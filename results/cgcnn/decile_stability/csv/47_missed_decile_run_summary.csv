@@ -1,0 +1,27 @@
+run,tier,n_decile,n_hit,n_missed,recall_pct,median_pred_rank_of_missed
+separate 3-ens (baseline),ensemble,164,115,49,70.1,256
+joint r4 huber 3-ens,ensemble,164,115,49,70.1,270
+joint r5 ens B,ensemble,164,113,51,68.9,256
+joint r5 ens C,ensemble,164,113,51,68.9,265
+r7 matbench a=0.4,ensemble,164,108,56,65.9,239
+r7 +AFLOW a=0.0,ensemble,164,113,51,68.9,270
+r7 +AFLOW a=0.4,ensemble,164,116,48,70.7,252
+separate 1-model,single,164,111,53,67.7,245
+r4 huber s42,single,164,106,58,64.6,274
+r4 huber s1,single,164,105,59,64.0,283
+r4 huber s2,single,164,115,49,70.1,285
+r5 huber s3,single,164,108,56,65.9,283
+r5 huber s4,single,164,109,55,66.5,293
+r5 huber s5,single,164,112,52,68.3,269
+r5 huber s6,single,164,112,52,68.3,298
+r5 huber s7,single,164,113,51,68.9,255
+r5 huber s8,single,164,113,51,68.9,298
+r7 mb a=0.4 s42,single,164,108,56,65.9,249
+r7 mb a=0.4 s1,single,164,106,58,64.6,285
+r7 mb a=0.4 s2,single,164,112,52,68.3,282
+r7 af a=0.0 s42,single,164,113,51,68.9,268
+r7 af a=0.0 s1,single,164,108,56,65.9,261
+r7 af a=0.0 s2,single,164,108,56,65.9,304
+r7 af a=0.4 s42,single,164,113,51,68.9,291
+r7 af a=0.4 s1,single,164,113,51,68.9,291
+r7 af a=0.4 s2,single,164,113,51,68.9,278
