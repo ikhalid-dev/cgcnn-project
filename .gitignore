@@ -131,3 +131,10 @@ results/cgcnn/45_gnome_screen_all_baseline.csv
 # same reasoning PREDICT_NEW_CIFS.txt already gives for my_cifs/my_predictions/.
 predictions/
 
+
+# Same idea once more for the direct-kappa (no Slack) kernel
+# (kaggle/build_direct_kappa_kernel.py / run_direct_kappa_kernel.py) - the
+# bundle is a 73 KB base64 blob regenerated from source on every build, and
+# output_direct_kappa/ is just downloaded logs and checkpoints.
+kaggle/build_direct_kappa/
+kaggle/output_direct_kappa/
