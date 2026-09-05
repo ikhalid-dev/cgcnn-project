@@ -1,0 +1,4 @@
+source,mb_id,formula,n_sites,K_VRH,G_VRH,split,family,gid,gamma,kappa_agl,density_g_cm3,volume_m3
+matbench,mb-07362,BaNaScSi2O7,24,88.00000000000001,45.00000000000001,train,complex oxide (5 elements),,,,,
+matbench,mb-08239,Ba2CaCu2HgO6,12,78.99999999999999,34.0,train,complex oxide (5 elements),,,,,
+matbench,mb-10291,BaLaMgTaO6,10,141.99999999999994,42.99999999999999,val,complex oxide (5 elements),,,,,

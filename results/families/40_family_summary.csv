@@ -1,0 +1,17 @@
+family,gnome_candidates,gnome_low_kappa,matbench_train,matbench_val,matbench_test,aflow_train,aflow_val,aflow_test,extra_shortlist_rows
+non-oxide,21580,6723,6197,1274,1332,3444,738,739,2389
+complex oxide (4 elements),4972,184,82,24,18,0,0,0,141
+complex oxide (5 elements),3296,33,2,1,0,0,0,0,6
+other oxide (mixed-anion / molecular-ion),2811,253,360,94,80,52,14,17,250
+ternary oxide (other ratio),413,76,265,63,42,56,12,12,36
+pyrochlore-like (A2B2O7),21,1,23,4,9,34,10,4,0
+trirutile-like (AB2O6),13,0,25,5,1,14,1,2,1
+spinel-like (AB2O4),8,1,94,24,17,31,9,7,0
+scheelite/zircon-like (ABO4),3,0,90,15,20,14,3,3,0
+delafossite-like (ABO2),1,0,160,46,44,30,7,5,1
+corundum/bixbyite-like (A2O3),0,0,43,8,13,20,4,3,0
+elemental oxygen (no cation),0,0,1,0,0,0,0,1,0
+fluorite/rutile-like (AO2),0,0,75,20,11,53,4,17,0
+other binary oxide (uncommon ratio),0,0,49,13,15,30,4,4,0
+perovskite-like (ABO3),0,0,197,50,37,84,19,14,0
+rock-salt-like (AO),0,0,28,7,9,32,9,7,0

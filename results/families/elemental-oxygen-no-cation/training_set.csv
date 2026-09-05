@@ -1,0 +1,3 @@
+source,mb_id,formula,n_sites,K_VRH,G_VRH,split,family,gid,gamma,kappa_agl,density_g_cm3,volume_m3
+matbench,mb-05166,O2,8,6.0,2.0,train,elemental oxygen (no cation),,,,,
+aflow,,O4,4,19.5204,7.38963,test,elemental oxygen (no cation),ag-02f1cbf29c0e,2.11692,6.85764,2.24406,4.735636077851758e-29
