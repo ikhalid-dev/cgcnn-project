@@ -288,6 +288,22 @@ def main():
     with open(os.path.join(BUILD_DIR, "kernel-metadata.json"), "w") as fh:
         json.dump(metadata, fh, indent=2)
 
+    # Compile the generated kernel before anyone can push it. The template is a
+    # format string containing Python source, so it is parsed twice - once when
+    # this builder is read, once on Kaggle - and one lost backslash turns an
+    # escape into a real newline. That file is only parsed for the first time on
+    # Kaggle, which costs eight minutes and a GPU slot to discover. It happened
+    # once, on build_aflow_recipe_kernel.py.
+    #
+    # This catches SYNTAX errors only - it compiles to bytecode, it does not run
+    # the code. A missing dataset or a bad path still fails remotely.
+    import py_compile
+    try:
+        py_compile.compile(kernel_path, doraise=True)
+    except py_compile.PyCompileError as exc:
+        raise SystemExit(f"generated kernel does not compile:\n{exc}")
+    print("generated kernel compiles OK")
+
     size_kb = os.path.getsize(kernel_path) / 1024
     print(f"Built kernel for {username}/{KERNEL_SLUG}")
     print(f"  {kernel_path}  ({size_kb:.0f} KB)")

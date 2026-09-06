@@ -1,46 +1,66 @@
 #!/usr/bin/env python3
 """
-Build the Kaggle GPU kernel for the DIRECT-KAPPA (no Slack) experiment.
+Build the Kaggle GPU kernel for the AFLOW / MATBENCH-RECIPE experiment.
 ================================================================================
 
-    python kaggle/build_direct_kappa_kernel.py
-    python kaggle/run_direct_kappa_kernel.py            # push and watch
+    python kaggle/build_aflow_recipe_kernel.py
+    python kaggle/run_aflow_recipe_kernel.py            # push and watch
 
-WHAT THIS RUNS
-----------------
-The experiment in direct_kappa_no_slack/ - can a CGCNN predict AFLOW's
-lattice thermal conductivity DIRECTLY from the crystal graph, better than the
-current pipeline predicts moduli and pushes them through Slack's formula?
+WHAT THIS RUNS, AND WHY
+-------------------------
+Steps 43/44 found the composition-only tree beats round 9 on AFLOW, and
+diagnosed UNDERFITTING rather than a real advantage: round 9's TRAINING error
+on AFLOW K (0.103) is worse than the tree's TEST error (0.059), and its
+test/train ratios sit at 1.08-1.23 - the band where a model never learned,
+against a healthy baseline of 2.36. Step 51 then showed the tree beats round 9
+at the low-kappa call (F1 0.646 vs 0.400, CI excluding zero), and the
+direct-kappa experiment lost to the tree too. Three results, one suspect.
 
-Both arms run in ONE kernel, on one GPU, off one dataset build:
+This is the test step 44 named and nobody ran: the ORIGINAL single-target
+CGCNN on AFLOW with the MATBENCH recipe - no dropout, MSE, one target per
+model, batch 32, lr 0.02, 200 epochs, plateau schedule. Same widths
+(64/128/3 convs), so this is not a bigger network, it is the same network with
+the regularisation removed.
 
-    direct_s42 / s1 / s2     direct_kappa_no_slack/01_train_direct_kappa.py
-    control_s42 / s1 / s2    scripts/cgcnn/37_train_gamma.py  (3 heads + Slack)
+    K_VRH  x 3 seeds     scripts/cgcnn/02_train.py, UNMODIFIED
+    G_VRH  x 3 seeds     scripts/cgcnn/02_train.py, UNMODIFIED
+    kappa  x 3 seeds     01_train_direct_kappa.py with matbench-recipe flags
 
-The control is re-trained here rather than quoted from the existing round-9
-checkpoints, because this project's own rule is that a control belongs in the
-same session as the thing it controls for. The existing checkpoints are still
-scored locally by 02 as a third reference, but the in-session pair is what any
-claim rests on.
+02_train.py runs untouched because it is the script every headline baseline in
+this project was produced by; editing it to read a second dataset layout would
+change the recipe under test. Instead step 52 presents AFLOW in the layout it
+already expects (gid -> mb_id, gamma_graphs.pt -> graphs.pt), and its
+split_indices was VERIFIED to produce the identical 3894/834/835 split that
+round 9, the tree baseline and the direct model were all scored on - so every
+number here is directly comparable to them.
 
-Three seeds per arm because an effect smaller than the seed spread is not a
-result, and one seed cannot measure the spread.
+ONE RESIDUAL DIFFERENCE, STATED RATHER THAN HIDDEN
+----------------------------------------------------
+The kappa arm uses 01_train_direct_kappa.py, which offers a cosine schedule
+but not 02_train.py's ReduceLROnPlateau. Every other recipe difference that
+matters for underfitting - dropout, loss, batch size, learning rate, epoch
+budget, single target - is matched exactly. The scheduler is the one thing
+that is not, and it should be named in any writeup.
 
-WHY A GPU AT ALL
-------------------
-On this laptop the direct model runs ~15 s/epoch, so 300 epochs x 6 runs is
-about seven and a half hours. On a T4 the same six runs are well under an
-hour, and 37_train_gamma.py's own summary shows ~400 s per run at this size.
+WHAT THE OUTCOMES MEAN
+------------------------
+  gap closes            round 9 was underfit. Every AFLOW conclusion in this
+                        project needs redoing with a properly-fit model,
+                        including step 51's shortlist verdict and the
+                        direct-vs-Slack non-answer.
+  gap persists AND      composition genuinely carries the signal in AFLOW and
+  train error drops     structure adds little. A real finding, not a bug.
+  below the tree's
+
+Train error is as important as test error here: a model that still cannot fit
+its own training data has not answered the question.
 
 THE P100 TRAP - DO NOT CHANGE MACHINE_SHAPE TO P100
 ------------------------------------------------------
-Kaggle's image ships a torch compiled for sm_70..sm_120. The P100 is sm_60,
-so every CUDA op dies with "no kernel image is available for execution on the
-device" - AFTER torch.cuda.is_available() has returned True and
-get_device_name() has cheerfully printed "Tesla P100-PCIE-16GB". A full
-12-run grid was lost to this once. The kernel below checks the compute
-capability against torch's compiled arch list AND performs a real device op,
-so it fails in seconds instead of minutes.
+Kaggle's image ships a torch compiled for sm_70..sm_120. The P100 is sm_60, so
+every CUDA op dies with "no kernel image is available" AFTER
+torch.cuda.is_available() has returned True. The kernel checks the capability
+against the compiled arch list and does a real device op, failing in seconds.
 """
 
 import base64
@@ -50,7 +70,7 @@ import os
 import zipfile
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BUILD_DIR = os.path.join(PROJECT_ROOT, "kaggle", "build_direct_kappa")
+BUILD_DIR = os.path.join(PROJECT_ROOT, "kaggle", "build_aflow_recipe")
 
 # =============================================================================
 #  CONFIG - edit these to change what the GPU run actually does
@@ -59,7 +79,7 @@ BUILD_DIR = os.path.join(PROJECT_ROOT, "kaggle", "build_direct_kappa")
 # Kaggle derives the real URL slug from the TITLE, not from the id we send.
 # Getting this wrong makes every later status/output call 404 against a kernel
 # that exists under a different name.
-KERNEL_TITLE = "PINK direct kappa no slack"
+KERNEL_TITLE = "PINK AFLOW matbench recipe"
 KERNEL_SLUG = KERNEL_TITLE.lower().replace(" ", "-")
 
 # T4 is sm_75 and inside the supported range. See the docstring before
@@ -74,13 +94,21 @@ DATASET_SOURCES = ["aizazkhalidkhan/aflow-agl-kappa"]
 # Epoch budget. Both arms use it, so the cosine schedule anneals over the same
 # trajectory in each - changing it changes both, which is what keeps this a
 # one-variable experiment.
-EPOCHS = 300          # matches 37_train_gamma.py and 01_train_direct_kappa.py
+EPOCHS = 200          # 02_train.py's default - the matbench recipe, not 37's 300
 SEEDS = [42, 1, 2]    # three, so the seed spread is measurable
+SPLIT_SEED = 42       # VERIFIED to reproduce round 9 / tree / direct-model split
 
 # Flags shared by every run. Per the argparse ordering rule these are placed
 # BEFORE the per-run flags when the command is assembled, so a per-run
 # override always wins - the trap that silently reverted four of six sweeps.
 COMMON_FLAGS = ["--epochs", str(EPOCHS), "--device", "cuda"]
+
+# The matbench recipe, spelled out. These are 02_train.py's own defaults and
+# are passed explicitly so the kernel log records what actually ran.
+MB_RECIPE = ["--batch-size", "32", "--lr", "0.02", "--weight-decay", "1e-5",
+             "--atom-fea-len", "64", "--h-fea-len", "128", "--n-conv", "3",
+             "--n-h", "1", "--scheduler", "plateau"]
+AFLOW_DIR = "data_full/aflow_matbench_layout"
 
 # Files shipped inside the kernel source, at their real repo paths. Path
 # shape matters: 01_train_direct_kappa.py computes PROJECT_ROOT by walking up
@@ -94,6 +122,9 @@ BUNDLE = [
     ("cgcnn_scratch/atom_init.json", "cgcnn_scratch/atom_init.json"),
     ("scripts/cgcnn/36_prepare_gamma_dataset.py", "scripts/cgcnn/36_prepare_gamma_dataset.py"),
     ("scripts/cgcnn/37_train_gamma.py", "scripts/cgcnn/37_train_gamma.py"),
+    ("scripts/cgcnn/02_train.py", "scripts/cgcnn/02_train.py"),
+    ("scripts/cgcnn/52_aflow_as_matbench_layout.py",
+     "scripts/cgcnn/52_aflow_as_matbench_layout.py"),
     ("direct_kappa_no_slack/01_train_direct_kappa.py",
      "direct_kappa_no_slack/01_train_direct_kappa.py"),
 ]
@@ -104,19 +135,28 @@ BUNDLE = [
 
 
 def build_run_plan():
-    """(tag, script, flags) for all six runs: three direct, three control.
+    """(tag, script, flags) for all nine runs.
 
-    The control is 37_train_gamma.py at n_heads=3 - the round-9 configuration
-    exactly, so the only difference between the arms is the head target and
-    the presence of the Slack formula.
+    K and G go through 02_train.py UNMODIFIED - that is the point of the
+    experiment, so the recipe cannot be paraphrased. kappa goes through
+    01_train_direct_kappa.py with the same recipe expressed in its own flag
+    names; see the module docstring for the one residual difference.
     """
     plan = []
-    for s in SEEDS:
-        plan.append((f"direct_s{s}", "direct_kappa_no_slack/01_train_direct_kappa.py",
-                     ["--seed", str(s), "--tag", f"s{s}"]))
-    for s in SEEDS:
-        plan.append((f"control_s{s}", "scripts/cgcnn/37_train_gamma.py",
-                     ["--init-seed", str(s), "--tag", f"control_s{s}", "--n-heads", "3"]))
+    for target in ("K_VRH", "G_VRH"):
+        for s_ in SEEDS:
+            plan.append((
+                f"{target}_s{s_}", "scripts/cgcnn/02_train.py",
+                ["--data-dir", AFLOW_DIR, "--target", target,
+                 "--seed", str(s_), "--split-seed", str(SPLIT_SEED),
+                 "--tag", f"aflow_mbrecipe_{target}_s{s_}"] + MB_RECIPE))
+    for s_ in SEEDS:
+        plan.append((
+            f"kappa_s{s_}", "direct_kappa_no_slack/01_train_direct_kappa.py",
+            ["--seed", str(s_), "--tag", f"mbrecipe_s{s_}",
+             # the matbench recipe in 01's flag names: brakes off
+             "--dropout", "0.0", "--loss-fn", "mse",
+             "--batch-size", "32", "--learning-rate", "0.02"]))
     return plan
 
 
@@ -140,7 +180,7 @@ def build_bundle_b64():
 KERNEL_TEMPLATE = '''"""
 PINK - direct kappa (no Slack) vs the Slack pipeline, three seeds each.
 
-Generated by kaggle/build_direct_kappa_kernel.py - do not edit here, edit the
+Generated by kaggle/build_aflow_recipe_kernel.py - do not edit here, edit the
 generator. Everything worth keeping is left in /kaggle/working.
 """
 
@@ -158,7 +198,7 @@ import zipfile
 # Work in /kaggle/temp: it is scratch and is NOT captured as kernel output, so
 # the ~240 MB graph cache is never downloaded. Only what is copied to
 # /kaggle/working at the end comes back.
-WORK = "/kaggle/temp/pink_direct"
+WORK = "/kaggle/temp/pink_aflow_recipe"
 OUT = "/kaggle/working"
 
 BUNDLE_B64 = "{bundle_b64}"
@@ -209,7 +249,7 @@ if f"sm_{{capability[0]}}{{capability[1]}}" not in arch_list:
     raise SystemExit(
         f"GPU is sm_{{capability[0]}}{{capability[1]}} but this torch build only "
         f"supports {{arch_list}}. Set MACHINE_SHAPE to NvidiaTeslaT4 (sm_75) in "
-        f"kaggle/build_direct_kappa_kernel.py.")
+        f"kaggle/build_aflow_recipe_kernel.py.")
 try:
     _probe = (torch.ones(64, device="cuda") * 2).sum().item()
     assert _probe == 128.0, _probe
@@ -292,9 +332,18 @@ print(f"\\nAFLOW dataset: {{n_pos}} structures copied", flush=True)
 # BOTH arms read exactly this one build, which is what makes the comparison
 # one-variable: same graphs, same labels, same split_seed.
 print("\\n" + "=" * 70, flush=True)
-print("BUILDING THE AFLOW GRAPH CACHE (shared by both arms)", flush=True)
+print("BUILDING THE AFLOW GRAPH CACHE (shared by every arm)", flush=True)
 print("=" * 70, flush=True)
 run(["scripts/cgcnn/36_prepare_gamma_dataset.py"])
+
+# Present it in the layout 02_train.py already expects, so that script runs
+# UNMODIFIED - editing it would change the very recipe under test. Step 52
+# also asserts the cache/label id order matches, which is what guarantees the
+# split is the same 3894/834/835 round 9 and the tree were scored on.
+print("\\n" + "=" * 70, flush=True)
+print("ADAPTING AFLOW TO THE MATBENCH LAYOUT", flush=True)
+print("=" * 70, flush=True)
+run(["scripts/cgcnn/52_aflow_as_matbench_layout.py"])
 
 # --- Train every run ------------------------------------------------------
 print("\\n" + "=" * 70, flush=True)
@@ -327,11 +376,15 @@ os.makedirs(os.path.join(OUT, "models"), exist_ok=True)
 os.makedirs(os.path.join(OUT, "predictions"), exist_ok=True)
 
 for pattern, dest in (
-        ("direct_kappa_no_slack/models/*.pth", "models"),
-        ("direct_kappa_no_slack/models/*.json", "models"),
-        ("results/cgcnn/model_37_control_s*.pth", "models"),
-        ("results/cgcnn/summary_37_control_s*.json", "models"),
-        ("direct_kappa_no_slack/results/csv/*.csv", "predictions")):
+        # the K/G arm, written by 02_train.py into results/cgcnn/
+        ("results/cgcnn/model_aflow_mbrecipe_*.pth", "models"),
+        ("results/cgcnn/summary_aflow_mbrecipe_*.json", "models"),
+        ("results/cgcnn/history_aflow_mbrecipe_*.csv", "predictions"),
+        ("results/cgcnn/predictions_aflow_mbrecipe_*.csv", "predictions"),
+        # the kappa arm, written by 01_train_direct_kappa.py
+        ("direct_kappa_no_slack/models/*mbrecipe*.pth", "models"),
+        ("direct_kappa_no_slack/models/*mbrecipe*.json", "models"),
+        ("direct_kappa_no_slack/results/csv/*mbrecipe*.csv", "predictions")):
     for path in sorted(glob.glob(os.path.join(WORK, pattern))):
         shutil.copy(path, os.path.join(OUT, dest, os.path.basename(path)))
 
@@ -341,11 +394,21 @@ for path in sorted(glob.glob(os.path.join(OUT, "models", "*.json"))):
         blob = json.load(fh)
     res = blob.get("results", {{}})
     test = res.get("test", {{}})
+    name = os.path.basename(path)
+    # 02_train.py writes its metrics flat (test_mae, train_mae, ...) while
+    # 01_train_direct_kappa.py nests them under results.test. Both shapes are
+    # written through as-is; the local comparison script does the like-for-like
+    # scoring from the checkpoints, so nothing here has to guess a schema.
+    flat = {{f"top_{{k}}": v for k, v in blob.items()
+            if isinstance(v, (int, float, str)) and k not in ("tag",)}}
     rows.append({{
         "tag": blob.get("tag"),
-        "arm": "direct" if "direct" in os.path.basename(path) else "control",
+        "arm": ("kappa" if "mbrecipe_s" in name
+                else "K_VRH" if "K_VRH" in name
+                else "G_VRH" if "G_VRH" in name else "?"),
         "best_epoch": blob.get("best_epoch"),
         "seconds": blob.get("seconds"),
+        **flat,
         # The direct arm reports kappa error directly; the control's summary
         # carries its own kappa keys. Whatever is present is written through
         # unchanged - 02 does the like-for-like scoring locally from the
@@ -355,7 +418,7 @@ for path in sorted(glob.glob(os.path.join(OUT, "models", "*.json"))):
 if rows:
     import csv as _csv
     keys = sorted({{k for r in rows for k in r}})
-    with open(os.path.join(OUT, "direct_vs_control_summary.csv"), "w", newline="") as fh:
+    with open(os.path.join(OUT, "aflow_mbrecipe_summary.csv"), "w", newline="") as fh:
         w = _csv.DictWriter(fh, fieldnames=keys)
         w.writeheader()
         w.writerows(rows)
@@ -381,7 +444,7 @@ def main():
     username = api.config_values["username"]
 
     plan = build_run_plan()
-    kernel_path = os.path.join(BUILD_DIR, "pink_direct.py")
+    kernel_path = os.path.join(BUILD_DIR, "pink_aflow_recipe.py")
     with open(kernel_path, "w") as fh:
         fh.write(KERNEL_TEMPLATE.format(bundle_b64=build_bundle_b64(),
                                         run_plan=plan,
@@ -390,7 +453,7 @@ def main():
     metadata = {
         "id": f"{username}/{KERNEL_SLUG}",
         "title": KERNEL_TITLE,
-        "code_file": "pink_direct.py",
+        "code_file": "pink_aflow_recipe.py",
         "language": "python",
         "kernel_type": "script",
         "is_private": True,
@@ -411,14 +474,10 @@ def main():
         json.dump(metadata, fh, indent=2)
 
     # Compile the generated kernel before anyone can push it. The template is a
-    # format string containing Python source, so it is parsed twice - once when
-    # this builder is read, once on Kaggle - and one lost backslash turns an
-    # escape into a real newline. That file is only parsed for the first time on
-    # Kaggle, which costs eight minutes and a GPU slot to discover. It happened
-    # once, on build_aflow_recipe_kernel.py.
-    #
-    # This catches SYNTAX errors only - it compiles to bytecode, it does not run
-    # the code. A missing dataset or a bad path still fails remotely.
+    # format string containing Python source, so one lost backslash turns an
+    # escape into a real newline and produces a file that only fails ON KAGGLE,
+    # eight minutes and one GPU slot later. That happened once; this makes it
+    # impossible to repeat.
     import py_compile
     try:
         py_compile.compile(kernel_path, doraise=True)
@@ -435,7 +494,7 @@ def main():
     for tag, script, flags in plan:
         print(f"    {tag:<14} {os.path.basename(script):<28} {' '.join(flags)}")
     print("\nPush and watch it with:")
-    print("    python kaggle/run_direct_kappa_kernel.py")
+    print("    python kaggle/run_aflow_recipe_kernel.py")
 
 
 if __name__ == "__main__":

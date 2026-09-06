@@ -360,24 +360,59 @@ print("\\nunpacked:", sorted(os.listdir(WORK)), flush=True)
 # the bundle (1,460 of them alone pushed the kernel source over Kaggle's
 # ~1 MB limit - see the module docstring). Copy them into WORK/data_full so
 # 36_prepare_gamma_dataset.py finds them exactly where it would locally.
-AFLOW_INPUT = "/kaggle/input/aflow-agl-kappa"
-if os.path.isdir(AFLOW_INPUT):
-    os.makedirs(os.path.join(WORK, "data_full", "aflow_structures"), exist_ok=True)
-    for name in ("aflow_agl.csv", "aflow_soft.csv"):
-        src_p = os.path.join(AFLOW_INPUT, name)
-        if os.path.exists(src_p):
-            shutil.copy(src_p, os.path.join(WORK, "data_full", name))
-    n_pos = 0
-    for root, _, files in os.walk(AFLOW_INPUT):
-        for fn in files:
-            if fn.endswith(".poscar"):
-                shutil.copy(os.path.join(root, fn),
-                            os.path.join(WORK, "data_full", "aflow_structures", fn))
-                n_pos += 1
-    print(f"\\nAFLOW dataset: {{n_pos}} structures copied from {{AFLOW_INPUT}}", flush=True)
-else:
-    print(f"\\nWARNING: {{AFLOW_INPUT}} not mounted - AFLOW steps will be skipped",
-          flush=True)
+# The mount directory is DISCOVERED, not assumed. Kaggle used to mount a
+# dataset at /kaggle/input/<ref-slug> and now nests it as
+# /kaggle/input/datasets/<owner>/<slug>, so the hardcoded path below stopped
+# existing. Worse, the old code only WARNED and carried on, so the real
+# failure surfaced later as a confusing "missing aflow_agl.csv" from
+# 36_prepare_gamma_dataset.py. Searching for the file that actually matters is
+# robust to whatever Kaggle names the folder next.
+INPUT_ROOT = "/kaggle/input"
+print("\\n/kaggle/input contains:",
+      sorted(os.listdir(INPUT_ROOT)) if os.path.isdir(INPUT_ROOT) else "NOTHING",
+      flush=True)
+
+AFLOW_INPUT = None
+for candidate in sorted(glob.glob(os.path.join(INPUT_ROOT, "*"))):
+    if not os.path.isdir(candidate):
+        continue
+    for root, _, files in os.walk(candidate):
+        if "aflow_agl.csv" in files:
+            # The directory that HOLDS the csv, not the top-level mount:
+            # pointing at the mount root makes the recursive POSCAR walk
+            # succeed while the direct join for aflow_agl.csv silently misses.
+            AFLOW_INPUT = root
+            print(f"found aflow_agl.csv in {{root}}", flush=True)
+            break
+    if AFLOW_INPUT:
+        break
+
+if AFLOW_INPUT is None:
+    listing = []
+    if os.path.isdir(INPUT_ROOT):
+        for root, dirs, files in os.walk(INPUT_ROOT):
+            listing.append(f"  {{root}}: {{sorted(dirs)[:8]}} {{sorted(files)[:8]}}")
+            if len(listing) > 25:
+                break
+    raise SystemExit(
+        "aflow_agl.csv not found anywhere under /kaggle/input.\\n"
+        "The dataset is either not attached or is mounted under an unexpected\\n"
+        "name. Check dataset_sources in kernel-metadata.json against\\n"
+        "`kaggle datasets list -m`. What IS mounted:\\n" + "\\n".join(listing))
+
+os.makedirs(os.path.join(WORK, "data_full", "aflow_structures"), exist_ok=True)
+for name in ("aflow_agl.csv", "aflow_soft.csv"):
+    src_p = os.path.join(AFLOW_INPUT, name)
+    if os.path.exists(src_p):
+        shutil.copy(src_p, os.path.join(WORK, "data_full", name))
+n_pos = 0
+for root, _, files in os.walk(AFLOW_INPUT):
+    for fn in files:
+        if fn.endswith(".poscar"):
+            shutil.copy(os.path.join(root, fn),
+                        os.path.join(WORK, "data_full", "aflow_structures", fn))
+            n_pos += 1
+print(f"\\nAFLOW dataset: {{n_pos}} structures copied from {{AFLOW_INPUT}}", flush=True)
 
 # --- Build the AFLOW gamma dataset ----------------------------------------
 # 36_prepare_gamma_dataset.py turns the copied POSCARs plus aflow_agl.csv
@@ -563,6 +598,22 @@ def main():
     }
     with open(os.path.join(BUILD_DIR, "kernel-metadata.json"), "w") as fh:
         json.dump(metadata, fh, indent=2)
+
+    # Compile the generated kernel before anyone can push it. The template is a
+    # format string containing Python source, so it is parsed twice - once when
+    # this builder is read, once on Kaggle - and one lost backslash turns an
+    # escape into a real newline. That file is only parsed for the first time on
+    # Kaggle, which costs eight minutes and a GPU slot to discover. It happened
+    # once, on build_aflow_recipe_kernel.py.
+    #
+    # This catches SYNTAX errors only - it compiles to bytecode, it does not run
+    # the code. A missing dataset or a bad path still fails remotely.
+    import py_compile
+    try:
+        py_compile.compile(kernel_path, doraise=True)
+    except py_compile.PyCompileError as exc:
+        raise SystemExit(f"generated kernel does not compile:\n{exc}")
+    print("generated kernel compiles OK")
 
     size_kb = os.path.getsize(kernel_path) / 1024
     print(f"Built kernel for {username}/{KERNEL_SLUG}")
