@@ -215,6 +215,12 @@ def main():
     parser.add_argument("--n-conv", type=int, default=3)  # number of graph-convolution layers
     parser.add_argument("--n-h", type=int, default=1)  # number of fully-connected layers after pooling
     # Splits
+    parser.add_argument("--train-subsample", type=int, default=None,
+                        help="train on only N of the training crystals, leaving "
+                             "val/test untouched. Default None = use all of them, "
+                             "which is bit-identical to this script's behaviour "
+                             "before the flag existed. Used to ask whether a model "
+                             "is limited by data quantity.")
     parser.add_argument("--train-ratio", type=float, default=0.7)  # fraction of crystals assigned to training
     parser.add_argument("--val-ratio", type=float, default=0.15)  # fraction assigned to validation (rest = test)
     parser.add_argument("--seed", type=int, default=42,
@@ -259,6 +265,28 @@ def main():
     # must share one split, so the held-out test set stays held out for all.
     train_idx, val_idx, test_idx = split_indices(
         len(dataset), args.train_ratio, args.val_ratio, args.split_seed)
+
+    # --train-subsample shrinks the TRAINING set only, leaving val and test
+    # exactly as they were. That is the whole point: to ask "is this model
+    # limited by how much data it has?", the held-out sets must not move, or
+    # the answer is confounded with a different test set.
+    #
+    # Defaults to None, in which case nothing below runs and this script
+    # behaves bit-identically to every baseline it has ever produced.
+    #
+    # The subset is drawn with the SPLIT seed, not the init seed, so every
+    # ensemble member trains on the same crystals and differs only in
+    # initialisation - the same reasoning that makes them share one split.
+    if args.train_subsample:
+        if args.train_subsample > len(train_idx):
+            sys.exit(f"--train-subsample {args.train_subsample} exceeds the "
+                     f"{len(train_idx)} available training crystals")
+        rng = np.random.RandomState(args.split_seed)
+        train_idx = [train_idx[i] for i in
+                     rng.permutation(len(train_idx))[:args.train_subsample]]
+        print(f"--train-subsample: training on {len(train_idx)} of the "
+              f"available crystals (val/test untouched)")
+
     print(f"Split: {len(train_idx)} train / {len(val_idx)} val / {len(test_idx)} test\n")
 
     # num_workers>0 pays off on a GPU box, where collating batches on the main

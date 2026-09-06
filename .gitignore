@@ -147,3 +147,7 @@ kaggle/output_aflow_recipe/
 # gamma_labels.csv and graphs.pt is a hard link to gamma_graphs.pt. Rebuilt in
 # seconds; committing it would duplicate ~240 MB of cache in git.
 data_full/aflow_matbench_layout/
+
+# Same idea for the matbench subset size test.
+kaggle/build_matbench_subset/
+kaggle/output_matbench_subset/
