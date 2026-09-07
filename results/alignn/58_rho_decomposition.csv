@@ -1,0 +1,19 @@
+scope,comparison,spearman_rho,n,note
+"PINK set (1,213)","ALIGNN vs CGCNN-ens  [both matbench, derived gamma]",0.9473014199148815,1213,the original high-agreement reference
+GNoME (33k),"ALIGNN vs CGCNN-ens  [both matbench, derived gamma]",0.9240232391731988,33053,"THE CONTROL: population changed, partner type did not"
+GNoME (33k),"ALIGNN vs round 9    [AFLOW, trained gamma]",0.7232946443116837,33053,step 57's headline
+GNoME (33k),"CGCNN-ens vs round 9 [AFLOW, trained gamma]",0.691861313554222,33053,round 9 vs the OTHER matbench model
+GNoME swap,A vs B  ALIGNN(derived g) vs r9(trained g),0.7232690059348398,33053,"the headline, reconstructed"
+GNoME swap,A vs C  ALIGNN(derived g) vs r9(DERIVED g),0.72495218592763,33053,MODULI alone
+GNoME swap,A vs E  ALIGNN(derived g) vs ALIGNN(r9 g),0.9772289414932621,33053,GAMMA alone
+GNoME component,K   ALIGNN vs round 9,0.7877112808174117,33053,bulk modulus rank agreement
+GNoME component,G   ALIGNN vs round 9,0.8195422277952089,33053,shear modulus rank agreement
+GNoME component,gamma  derived(ALIGNN) vs round-9 head,-0.027563322639098067,33053,near zero: the head does not track the physics-derived gamma at all
+spread,kappa PINK  ALIGNN,,1213,sd_log10=0.5943
+spread,kappa PINK  CGCNN-ens,,1213,sd_log10=0.6163
+spread,kappa GNoME ALIGNN,,33053,sd_log10=0.5691
+spread,kappa GNoME CGCNN-ens,,33053,sd_log10=0.5834
+spread,kappa GNoME round 9,,33053,sd_log10=0.3501
+spread,gamma derived(ALIGNN),,33053,sd_log10=0.0859
+spread,gamma derived(r9 moduli),,33053,sd_log10=0.0415
+spread,gamma round-9 head,,33053,sd_log10=0.0118
