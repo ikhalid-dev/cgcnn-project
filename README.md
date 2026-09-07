@@ -516,8 +516,22 @@ The correlation and ratio error move the right way, and 54% of the K/G-differenc
 to be decorrelation rather than either modulus's own noise — but the total κ_L MAE gain (rounds
 2–6, `scripts/cgcnn/31_train_joint.py` / `32_ensemble_joint.py`) did not clear statistical
 significance on this test set. Seven rounds of architecture, loss-weighting and soft-material
-augmentation variants never moved **recall@10%** — the fraction of the true lowest-κ decile the
-model actually recovers, the metric that matters for screening — off 70.1%.
+augmentation variants never produced a gain worth having in **recall@10%** — the fraction of the
+true lowest-κ decile the model actually recovers, the metric that matters for screening.
+
+Fingerprinting the saved prediction vectors (`scripts/cgcnn/47_missed_decile_stability.py`)
+collapses the 34 roster entries to **26 distinct** runs, across which recall spans **64.0–70.7%**.
+The best of them — round 7's `+AFLOW α=0.4` arm at 70.7% — edges the round-1 baseline's 70.1% by
+0.6 points, which is noise, not a result. *(An earlier version of this paragraph said the metric
+never moved "off 70.1%". It moved; it just never improved. Eight of the 34 entries were also
+byte-identical duplicates of others, which is part of why it looked constant.)*
+
+One caveat on every recall figure in this section: they are scored against this project's own κ_L
+reference, which `scripts/cgcnn/48_agl_kappa_target.py` later showed is **circular** — it ranks
+predicted κ against a target built from the same Slack chain and the same derived γ, so γ cancels
+and a model with a genuinely better γ scores worse. Re-scoring against AFLOW-AGL's independent κ_L
+lowers recall@10% by ~20 points. The rounds are comparable to *each other*, not to any AGL-scored
+number.
 
 **The real lever turned out to be γ itself, not the moduli.** Matbench has no measured γ at all —
 every number in the pipeline above *derives* γ from the predicted K/G ratio through an empirical
