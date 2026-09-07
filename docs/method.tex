@@ -6,6 +6,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
+\usepackage{array}   % >{\raggedright} column modifier, used by the training-rounds table
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{tikz}
@@ -881,6 +882,163 @@ without \texttt{python -u} a healthy remote run is indistinguishable from a hung
 one. And \texttt{torch.load} changed its \texttt{weights\_only} default in torch
 2.6, so every load of our own artifacts sets it explicitly; otherwise code that
 works locally fails on the newer torch of a hosted GPU runtime.
+
+% =====================================================================
+\section{The training rounds}
+
+The scripts, commit messages and result filenames in this project refer to
+numbered ``rounds'' of training work. The numbering is a working convention
+rather than anything the code enforces, and until now it existed only in those
+scattered references. The table below reconstructs it from the surviving
+artifacts --- the \texttt{history\_*}/\texttt{summary\_*} files in
+\texttt{results/cgcnn/}, the roster in
+\texttt{47\_missed\_decile\_stability.py}, and the scripts' own docstrings ---
+so that later sections can say ``round 9'' without the reader having to
+excavate it.
+
+Rounds 1--7 are trained on matbench and scored on its 1{,}648-crystal held-out
+split. Rounds 8--9 move to AFLOW, and are \emph{not} comparable to the rows
+above them: different labels, different conventions, different held-out
+crystals.
+
+\begin{table}[h]
+\centering
+\footnotesize
+\caption{The nine training rounds. ``Outcome'' quotes each round's own headline
+figure; see the caveats below before comparing them across rows.}
+\begin{tabular}{@{}c>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{1.7cm}>{\raggedright\arraybackslash}p{4.15cm}>{\raggedright\arraybackslash}p{4.4cm}@{}}
+\toprule
+\# & Script & Trained on & What changed & Outcome \\
+\midrule
+1 & \texttt{02\_train} & matbench & Baseline: one network per modulus, three
+  seeds each, averaged in log space & \KV{} 0.0630, \GV{} 0.0781 MAE
+  $\log_{10}$ --- the reference every later round is measured against \\[2pt]
+2 & \texttt{31\_train\_\allowbreak{}joint} & matbench & Shared trunk, two heads; ratio
+  reparameterisation as an independent switch, $(K,G)$ vs $(G,K/G)$
+  & MAE $\log_{10}(K/G)$ $0.0993 \to 0.0887$ \\[2pt]
+3 & \texttt{31} + sweep & matbench & Loss functions and a hyperparameter sweep:
+  AdamW, dropout, edge features, SWA, weight decay & Huber won, and is the loss
+  every later round uses \\[2pt]
+4 & \texttt{31}/\texttt{32} & matbench & Huber joint at three seeds; the first
+  joint ensemble & recall@10\% 70.1\%, identical to the round-1 baseline \\[2pt]
+5 & \texttt{31}/\texttt{32} & matbench & Scaled to eight seeds, forming three
+  ensembles A/B/C & Ensembles 68.9--70.1\%; established the seed spread \\[2pt]
+6 & \multicolumn{4}{l}{\emph{No surviving artifacts --- see the caveat box
+  below. Recorded as a gap, not reconstructed.}} \\[2pt]
+7 & \texttt{31}/\texttt{32}, \texttt{35\_merge\_\allowbreak{}aflow} & matbench; matbench
+  $+$ 737 soft AFLOW & Third head, $\log_{10}\gamma$. Soft-material weighting
+  $\kappa^{-\alpha}$ at $\alpha \in \{0, 0.4\}$, crossed with the two training
+  sets & $\gamma$ head works on AFLOW's 1{,}022-crystal slice: $\gamma$ MAE
+  $0.36 \to 0.19$, $r\ 0.33 \to 0.57$. Best recall 70.7\%
+  ($+$AFLOW, $\alpha{=}0.4$) \\[2pt]
+8 & \texttt{38\_train\_\allowbreak{}gamma\_\allowbreak{}transfer} & matbench $\to$ AFLOW & Two-stage
+  transfer: freeze the matbench trunk, train only the $\gamma$ head on AFLOW
+  & \textbf{Worse.} Attributed at the time to a matbench/AFLOW
+  ``elastic-convention offset''; \S13 shows that framing was wrong \\[2pt]
+9 & \texttt{37\_train\_\allowbreak{}gamma} & AFLOW 5{,}563 & Round 7's recipe retrained
+  single-stage on the full AFLOW set, three seeds & recall@10\%
+  $19.0 \to 43.4/45.8/39.8\%$. But it underfits (train MAE on $K$ 0.103), and
+  its $\gamma$ head collapsed to near-constant \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\keybox{Four things this table must not be read as saying}{%
+\textbf{Round 6 is a genuine gap.} No \texttt{history\_*}, \texttt{summary\_*}
+or prediction file carries an \texttt{r6} tag, and no script or document
+describes one. The project README refers to ``rounds 2--6'' collectively as a
+block of joint architecture, loss-weighting and augmentation variants, so round
+6 was most likely one such variant that was run and not kept. It is left blank
+rather than invented.
+
+\textbf{The recall@10\% column is on the superseded target.} Every recall figure
+for rounds 1--7 is scored against this project's own in-house $\kappa_L$
+reference, which was later found to be \emph{circular} --- it ranks predicted
+$\kappa$ against a target built by the same Slack chain and the same derived
+$\gamma$, so $\gamma$ cancels and a model with a genuinely better $\gamma$
+scores worse. Re-scoring against AFLOW-AGL's independent $\kappa_L$ lowered
+recall@10\% by 20.5 points on average. The rows are comparable to \emph{each
+other}, not to any AGL-scored number.
+
+\textbf{``Seven rounds never moved recall off 70.1\%'' is not quite true.}
+That sentence appears in earlier drafts of this work. Fingerprinting the saved
+prediction vectors showed recall actually spans 64.0--70.7\% across the 26
+distinct runs, and round 7's $+$AFLOW $\alpha{=}0.4$ arm reaches 70.7\%,
+marginally \emph{above} the baseline. The conclusion --- that no round produced
+a gain worth having --- stands; the constant 70.1\% does not.
+
+\textbf{One number is unresolved.} \texttt{31\_train\_joint.py}'s docstring
+quotes the separate models' residual correlation as $+0.297$, while the
+README's table reports separate $+0.263$ against joint $+0.297$. The two cannot
+both be right. The table above therefore quotes round 2 by its
+MAE~$\log_{10}(K/G)$ improvement, which is consistent across both sources.}
+
+% =====================================================================
+\section{What the two label sources actually disagree about}
+
+Round 8's failure was attributed to an ``elastic-convention offset'' between
+matbench and AFLOW, and a single number --- $|\Delta \log_{10} G| = 0.1085$ ---
+was hard-coded into four scripts as \emph{the} cross-source label noise.
+Re-measuring it from the raw label files
+(\texttt{59\_cross\_source\_\allowbreak{}label\_noise.py}) corrects three
+things.
+
+\textbf{It is not a convention difference.} AFLOW's own columns are
+\texttt{ael\_bulk\_modulus\_vrh} and \texttt{ael\_shear\_modulus\_vrh}: AEL is
+the \emph{method}, a strain-based elastic library, and it reports VRH averages
+exactly as matbench does. Both numbers are the same physical quantity from two
+different DFT workflows, so the disagreement is workflow --- $k$-points, strain
+magnitude, relaxation tolerance, functional --- not definition.
+
+\textbf{0.1085 is the soft subset's number, not the general one.} On the full
+overlap the disagreement is roughly half as large, and it is centred scatter
+rather than a shift: subtracting the mean offset changes the MAE by $0.6\%$.
+The distribution is heavy-tailed --- median $|\Delta|$ is $0.024$ against an
+MAE of $0.054$, with $p_{99} = 0.43$ --- so most compounds agree to $\sim$5\%
+and a minority disagree by factors near three.
+
+\begin{table}[h]
+\centering
+\footnotesize
+\caption{Cross-source disagreement in $G$, by population and match rule. The
+soft-subset rows bracket the 0.1085 the project had been quoting; the full
+overlap does not come close to it.}
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+Population & Match rule & $n$ & $|\Delta \log_{10} G|$ & bias \\
+\midrule
+AFLOW full (5{,}563) & formula        & 2{,}637 & 0.0612 & $-0.0032$ \\
+AFLOW full (5{,}563) & formula+atoms  & 2{,}666 & 0.0539 & $-0.0056$ \\
+AFLOW soft subset    & formula        &    455  & 0.1122 & $-0.0440$ \\
+AFLOW soft subset    & formula+atoms  &    450  & 0.1044 & $-0.0466$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{The soft subset's offset is a selection artifact.}
+\texttt{aflow\_soft.csv} is selected because \emph{AFLOW} reports a small
+modulus, which over-represents AFLOW's own downward errors. Slicing the
+unselected full overlap by each source in turn makes this explicit: selecting
+on AFLOW $G < 20$ gives a bias of $-0.027$, selecting on matbench $G < 20$
+gives $+0.030$. The sign follows whichever source did the selecting, which is
+regression to the mean, not a property of either database.
+
+\keybox{The consequence for the ``labels set the floor'' claim}{%
+Step 49 divided the soft subset's $0.1085$ by the whole-test-set model error
+$0.0781$ to get $1.39$, and concluded that the labels rather than the network
+set the accuracy floor. The two halves describe different crystals, so that
+ratio was never like-for-like. Population-matched it is $0.0539/0.0781 = 0.69$
+on the full set and $0.1044/0.1033 = 1.01$ on the soft set, and per stiffness
+band the model's own error exceeds the label disagreement in \emph{all} of them
+(ratios $0.68$--$0.86$). On the moduli the network, not the labels, is the
+weaker half.
+
+This does \emph{not} rehabilitate AGL's Gr\"uneisen parameter. That comparison
+runs the other way --- $\gamma$'s disagreement is many times the error its head
+achieves --- and correcting the moduli baseline downward makes $\gamma$ look
+worse by comparison, not better. Note also that the $\gamma$ figure rests on 43
+Table~1 crystals, a third population again, so it remains indicative rather
+than like-for-like.}
 
 % =====================================================================
 \section{Limitations and next steps}

@@ -51,10 +51,27 @@ heads' outputs and destroy stage 1's work.
 
 A KNOWN CONFOUND, STATED UP FRONT
 ----------------------------------
-Matbench (VRH) and AFLOW (AEL) moduli disagree by 0.1085 log10 in G on
-tightly-matched shared compounds. Stage 1 learns matbench's convention;
-stage 2 evaluates on AFLOW crystals. So the frozen moduli heads carry a
-systematic offset on the evaluation set, and ABSOLUTE kappa will suffer.
+Matbench and AFLOW moduli disagree on tightly-matched shared compounds, so the
+frozen moduli heads carry that disagreement onto the evaluation set and
+ABSOLUTE kappa will suffer.
+
+Two corrections to how this used to be described, both from step 59:
+
+  * NOT a convention difference. AFLOW's own columns are
+    `ael_bulk_modulus_vrh` / `ael_shear_modulus_vrh` - AEL is the METHOD, and
+    it reports VRH averages exactly as matbench does. Both numbers are the same
+    physical quantity from two different DFT workflows, so the disagreement is
+    workflow (k-points, strain magnitude, relaxation tolerance, functional),
+    not definition. The phrase "elastic-convention offset" that this project
+    used to attach to this paragraph was wrong.
+
+  * NOT 0.1085, and mostly NOT an offset. That figure is the SOFT SUBSET's;
+    on the full 2,666-compound overlap the disagreement is 0.0539 with a mean
+    offset of -0.006 - i.e. centred, heavy-tailed scatter, and subtracting a
+    constant improves it by 0.6%, which is nothing. The soft subset's apparent
+    -0.047 offset is a selection artifact: aflow_soft.csv is selected because
+    AFLOW says the crystal is soft, which over-represents AFLOW's downward
+    errors, and the bias flips to +0.030 if matbench does the selecting.
 
 The comparison this script exists to make is unaffected: derived gamma and
 predicted gamma are computed from the SAME predicted moduli, so any convention

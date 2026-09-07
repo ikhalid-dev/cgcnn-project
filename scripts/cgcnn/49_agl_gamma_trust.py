@@ -38,15 +38,34 @@ WHAT IS COMPUTED
 
 THE CALIBRATION, SPELLED OUT
 ------------------------------
-The established comparison for the moduli is:
+The moduli comparison, corrected by step 59. An earlier version of this script
+quoted a single ratio:
 
-    AFLOW AEL vs matbench VRH, 555 matched compounds   |d log10 G| = 0.1085
-    the model's own held-out error                     |d log10 G| = 0.0781
-                                                       ratio        1.39
+    AFLOW vs matbench, 555 matched compounds   |d log10 G| = 0.1085
+    the model's own held-out error                          0.0781
+                                                  ratio     1.39
 
-A ratio above 1 means the label noise is larger than the error the model is
-trying to achieve - i.e. the labels, not the network, set the floor. The same
-ratio is computed here for gamma, using the gamma head's own measured error
+and concluded from it that "the labels, not the network, set the floor".
+THAT WAS WRONG, for a reason worth stating plainly: the 0.1085 numerator was
+measured on the SOFT SUBSET only, while the 0.0781 denominator is a
+whole-test-set number. Measured on matched populations:
+
+    full population   0.0539 / 0.0781 = 0.69
+    soft population   0.1044 / 0.1033 = 1.01
+
+Per stiffness band the model's own error exceeds the label disagreement in ALL
+of them (ratios 0.68-0.86), so on the moduli the network, not the labels, is
+the weaker half. Step 59 also showed the soft subset's apparent -0.047 offset
+is a selection artifact - aflow_soft.csv is chosen because AFLOW says the
+crystal is soft, which over-represents AFLOW's downward errors, and the bias
+flips sign if matbench does the selecting instead.
+
+None of this rehabilitates AGL gamma. The comparison below uses the LARGER
+(soft-matched, 1.01) of the two valid moduli ratios, which is the hardest
+baseline for the gamma claim to beat; gamma still loses to it by a wide margin,
+so the conclusion of this script is unchanged and now rests on a like-for-like
+comparison. The same ratio is computed here for gamma, using the gamma head's
+own measured error
 from results/cgcnn/summary_37_r9_full_s*.json (`mae_gamma`, which 37 computes
 in ABSOLUTE gamma units - so the conversion to log10 is done explicitly on
 this sample's own gamma distribution rather than assumed).
@@ -75,8 +94,16 @@ CONFIG = {
     "aggregate": "median",          # how to collapse multiple AFLOW entries sharing one key
     # Reference numbers for the calibration paragraph, from this project's own
     # measurements. Kept here so they can be updated in one place.
-    "ref_dlog10_G_cross_source": 0.1085,   # AFLOW AEL vs matbench VRH, 555 matched compounds
-    "ref_dlog10_G_model_error": 0.0781,    # the moduli model's own held-out test MAE
+    # Cross-source label noise on G, and the model error to compare it against.
+    # Step 59 re-measured these from the raw label files and found the value
+    # this script used to hard-code (0.1085) is the SOFT SUBSET's number, while
+    # the 0.0781 it was divided by is a WHOLE-TEST-SET number - two different
+    # populations, so the old 1.39 ratio was not a like-for-like comparison.
+    # Both populations are kept here, each with its own matching model error.
+    "ref_G_soft_cross_source": 0.1044,   # aflow_soft.csv overlap, n=450, formula+atoms
+    "ref_G_soft_model_error":  0.1033,   # ensemble held-out MAE on the same G range
+    "ref_G_full_cross_source": 0.0539,   # full matbench/AFLOW overlap, n=2,666
+    "ref_G_full_model_error":  0.0781,   # ensemble held-out MAE, whole test set
 }
 # =============================================================================
 
@@ -276,12 +303,20 @@ def main():
                   f"{float(np.mean(head_mae_derived)):.3f} absolute "
                   f"({float(np.mean(head_mae_derived)) / (med_g * np.log(10.0)):.4f} log10)")
         ratio_gamma = ref["mean_abs_diff_log10_gamma"] / head_log
-        ratio_G = cfg["ref_dlog10_G_cross_source"] / cfg["ref_dlog10_G_model_error"]
+        # Two valid, population-matched ratios. The comparison below uses the
+        # LARGER one, so the gamma verdict is stated against the most
+        # favourable moduli baseline rather than the most convenient.
+        ratio_G_full = cfg["ref_G_full_cross_source"] / cfg["ref_G_full_model_error"]
+        ratio_G_soft = cfg["ref_G_soft_cross_source"] / cfg["ref_G_soft_model_error"]
+        ratio_G = max(ratio_G_full, ratio_G_soft)
         print()
         print(f"    {'quantity':<34}{'label noise':>13}{'model error':>13}{'ratio':>8}")
-        print(f"    {'shear modulus G (established)':<34}"
-              f"{cfg['ref_dlog10_G_cross_source']:>13.4f}"
-              f"{cfg['ref_dlog10_G_model_error']:>13.4f}{ratio_G:>8.2f}")
+        print(f"    {'shear modulus G (full population)':<34}"
+              f"{cfg['ref_G_full_cross_source']:>13.4f}"
+              f"{cfg['ref_G_full_model_error']:>13.4f}{ratio_G_full:>8.2f}")
+        print(f"    {'shear modulus G (soft population)':<34}"
+              f"{cfg['ref_G_soft_cross_source']:>13.4f}"
+              f"{cfg['ref_G_soft_model_error']:>13.4f}{ratio_G_soft:>8.2f}")
         print(f"    {'gamma (this script)':<34}"
               f"{ref['mean_abs_diff_log10_gamma']:>13.4f}{head_log:>13.4f}{ratio_gamma:>8.2f}")
         print()
@@ -344,8 +379,9 @@ def main():
     # Panel 2: the calibration, as one bar chart in shared log10 units.
     ax = axes[1]
     names, vals, cols = [], [], []
-    names.append("G: cross-source noise"); vals.append(cfg["ref_dlog10_G_cross_source"]); cols.append(ORANGE)
-    names.append("G: model error");        vals.append(cfg["ref_dlog10_G_model_error"]);  cols.append(BLUE)
+    # full population, so the bar pair is like-for-like (see step 59)
+    names.append("G: cross-source noise"); vals.append(cfg["ref_G_full_cross_source"]); cols.append(ORANGE)
+    names.append("G: model error");        vals.append(cfg["ref_G_full_model_error"]);  cols.append(BLUE)
     names.append("$\\gamma$: exp vs AGL"); vals.append(ref["mean_abs_diff_log10_gamma"]); cols.append(ORANGE)
     if head_mae_abs:
         names.append("$\\gamma$: head error"); vals.append(head_log); cols.append(BLUE)
