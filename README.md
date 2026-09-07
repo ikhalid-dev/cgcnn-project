@@ -504,18 +504,36 @@ not just the number: one shared trunk forks into 2 or 3 small heads (log₁₀(G
 from round 7 on — log₁₀(γ)), so a trunk mistake shows up in every head at once and the two moduli
 errors correlate again instead of adding.
 
-Measured on the 1,648-crystal matbench test set (paired bootstrap across 3 independent ensembles):
+Measured on the 1,648-crystal matbench test set, all three configurations on the identical split:
 
-| | separate models | joint (shared trunk) |
-|---|---|---|
-| residual correlation, err(K) vs err(G) | +0.263 | +0.297 |
-| MAE log₁₀(K/G) | 0.0993 | 0.0887 |
-| κ_L MAE attributable to the moduli | 0.2065 | 0.1897 |
+| | separate,<br>1 model each | separate,<br>3-model ens. | **joint r4,<br>3-model ens.** |
+|---|---|---|---|
+| residual correlation, err(K) vs err(G) | +0.263 | +0.297 | **+0.457** |
+| MAE log₁₀(K) | 0.0696 | **0.0630** | 0.0694 |
+| MAE log₁₀(G) | 0.0836 | **0.0781** | 0.0836 |
+| MAE log₁₀(K/G) — *the target* | 0.0993 | 0.0887 | **0.0811** |
+| κ_L MAE attributable to the moduli | 0.2065 | 0.1897 | **0.1868** |
 
-The correlation and ratio error move the right way, and 54% of the K/G-difference error turns out
-to be decorrelation rather than either modulus's own noise — but the total κ_L MAE gain (rounds
-2–6, `scripts/cgcnn/31_train_joint.py` / `32_ensemble_joint.py`) did not clear statistical
-significance on this test set. Seven rounds of architecture, loss-weighting and soft-material
+> **Correction (2026-09-07).** An earlier version of this table had two columns labelled "separate
+> models" and "joint (shared trunk)" holding +0.263 and +0.297. Both of those are *separate*-model
+> numbers — the single model and the 3-model ensemble respectively — so the table did not contain
+> the joint model at all. They were read out of `31_train_joint.py`'s own three-column comparison
+> (`this run | 1 model each | 3-model ens.`) with the wrong two columns taken. Every figure above is
+> recomputed from the saved prediction files by `scripts/cgcnn/60_resolve_residual_corr.py`.
+
+The mechanism works, and works harder than the old table credited it with: the joint model raises
+the residual correlation **1.5×** over the separate ensemble (+0.457 vs +0.297) and gives the best
+log₁₀(K/G) of any configuration (0.0811). The other two joint ensembles agree: r5 ens B +0.410 /
+0.0810, r5 ens C +0.442 / 0.0813. What it gives up is individual accuracy — its K and G
+sit at the *single* separate model's level, not the ensemble's, because three joint models cannot
+match three models each specialised on one target.
+
+Those two effects very nearly cancel in κ_L: 0.1868 against the separate ensemble's 0.1897. So the
+original conclusion stands unchanged — the total κ_L MAE gain (rounds 2–6,
+`scripts/cgcnn/31_train_joint.py` / `32_ensemble_joint.py`) did not clear statistical significance
+on this test set — but it stands for a more interesting reason than the old table suggested: not
+because the shared trunk failed to decorrelate, but because the decorrelation it buys is paid for
+in per-modulus accuracy. Seven rounds of architecture, loss-weighting and soft-material
 augmentation variants never produced a gain worth having in **recall@10%** — the fraction of the
 true lowest-κ decile the model actually recovers, the metric that matters for screening.
 

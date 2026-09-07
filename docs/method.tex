@@ -915,7 +915,9 @@ figure; see the caveats below before comparing them across rows.}
   $\log_{10}$ --- the reference every later round is measured against \\[2pt]
 2 & \texttt{31\_train\_\allowbreak{}joint} & matbench & Shared trunk, two heads; ratio
   reparameterisation as an independent switch, $(K,G)$ vs $(G,K/G)$
-  & MAE $\log_{10}(K/G)$ $0.0993 \to 0.0887$ \\[2pt]
+  & Both arms beat the baseline: MAE $\log_{10}(K/G)$ $0.0993 \to 0.091$,
+  residual correlation $+0.263 \to +0.39$ ($K,G$) / $+0.46$ ($G,K/G$),
+  3 seeds each \\[2pt]
 3 & \texttt{31} + sweep & matbench & Loss functions and a hyperparameter sweep:
   AdamW, dropout, edge features, SWA, weight decay & Huber won, and is the loss
   every later round uses \\[2pt]
@@ -967,11 +969,23 @@ distinct runs, and round 7's $+$AFLOW $\alpha{=}0.4$ arm reaches 70.7\%,
 marginally \emph{above} the baseline. The conclusion --- that no round produced
 a gain worth having --- stands; the constant 70.1\% does not.
 
-\textbf{One number is unresolved.} \texttt{31\_train\_joint.py}'s docstring
-quotes the separate models' residual correlation as $+0.297$, while the
-README's table reports separate $+0.263$ against joint $+0.297$. The two cannot
-both be right. The table above therefore quotes round 2 by its
-MAE~$\log_{10}(K/G)$ improvement, which is consistent across both sources.}
+\textbf{One number looked unresolved, and is now settled.}
+\texttt{31\_train\_joint.py}'s docstring quoted the separate models' residual
+correlation as $+0.297$ while the README's table reported separate $+0.263$
+against joint $+0.297$. Recomputing from the saved predictions
+(\texttt{60\_resolve\_\allowbreak{}residual\_corr.py}) shows the docstring is
+right: $+0.263$ and $+0.297$ are \emph{both} separate-model numbers, the single
+model and the 3-model ensemble. The README's table therefore contained no joint
+model at all --- it had taken the second and third columns of
+\texttt{31}'s own correctly-labelled \texttt{this run | 1 model each | 3-model
+ens.} output and relabelled them ``separate'' and ``joint''. The joint model's
+real residual correlation is $+0.457$, $1.5\times$ the separate ensemble's, and
+its MAE~$\log_{10}(K/G)$ of $0.0811$ is the best of any configuration --- so the
+shared trunk worked better than the record claimed. It buys that by giving up
+per-modulus accuracy ($K$ and $G$ land at the single model's level, not the
+ensemble's), the two nearly cancel in $\kappa_L$ ($0.1868$ vs $0.1897$), and
+the original ``did not clear significance'' conclusion survives for a better
+reason than was written down. The README table is corrected.}
 
 % =====================================================================
 \section{What the two label sources actually disagree about}
