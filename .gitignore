@@ -151,3 +151,20 @@ data_full/aflow_matbench_layout/
 # Same idea for the matbench subset size test.
 kaggle/build_matbench_subset/
 kaggle/output_matbench_subset/
+
+# Per-seed Kaggle staging for the ALIGNN ensemble
+# (kaggle/build_alignn_ensemble_kernel.py). Same reasoning as the build dirs
+# above: each is regenerated from source, holds a base64 copy of the bundle,
+# and one seed's staging must never touch another's.
+kaggle/build_alignn_s*/
+
+# CIFs extracted from the gitignored GNoME archive by
+# scripts/cgcnn/62_extract_cifs.py - scratch, regenerated in seconds.
+# dft/cifs/ is deliberately NOT ignored: those 18 are a fixed deliverable that
+# someone without the 446 MB archive still needs. Hence the LEADING SLASH -
+# a bare `cifs/` matches at any depth and would swallow dft/cifs/ too.
+/cifs/
+
+# Self-contained structure viewers written by notebooks/show_structure.ipynb -
+# each embeds a 525 KB copy of 3Dmol.js and is regenerated on demand.
+notebooks/view_*.html

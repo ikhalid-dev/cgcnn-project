@@ -1,0 +1,330 @@
+#!/usr/bin/env python3
+"""
+Build the Kaggle kernel that trains ALIGNN on a GPU.
+=====================================================
+
+    python kaggle/build_alignn_kernel.py        # writes kaggle/build_alignn/
+
+WHY A SEPARATE KERNEL FROM build_kernel.py
+-------------------------------------------
+Same reasoning as colab/PINK_ALIGNN_colab.py vs colab/PINK_CGCNN_colab.py:
+different bundle (scripts/11+12, not 01b+02+03+05), different install
+(alignn, not just pymatgen/matminer), different runtime (~2.5h on a P100
+for both targets vs. six shorter CGCNN models). A shared template would be
+harder to read than two short ones. kernel-metadata.json lands in its own
+kaggle/build_alignn/ directory so pushing this kernel never clobbers the
+CGCNN one's build state - run_alignn_kernel.py points at this directory
+specifically, not kaggle/run_kernel.py's.
+
+WHY A FRESH RUN, NOT A RESUME FROM THE COLAB CHECKPOINTS
+------------------------------------------------------------
+This project already has local checkpoints (colab/alignn_output/checkpoints/)
+from the Colab run this kernel replaces - bulk_modulus_kv finished all 150
+epochs there, shear_modulus_gv reached epoch 8. Embedding them the way the
+source bundle is embedded (base64 in the kernel .py) would add roughly 130 MB
+of base64 text to the kernel source; Kaggle's dataset-upload mechanism
+(`dataset_sources`) is the right way to move files that large, but that is a
+new API surface (kaggle datasets create/version) this project has not used
+before, on top of a resume path only ever tested on Colab. A P100 finishes
+both targets from scratch in a few hours, comfortably inside Kaggle's kernel
+time limit and its 30 GPU-hour weekly quota - simpler and lower-risk than
+getting an untested resume-via-dataset-upload path right under time
+pressure. If Kaggle also turns out to be flaky, revisit this trade-off then.
+
+WHY THIS KERNEL CONTINUES PAST A FAILED TARGET
+----------------------------------------------------
+The ORIGINAL colab/alignn_gpu_driver.py raised SystemExit on the first
+target's failure and hid the real Python traceback - the exact bug that
+motivated adding "log both stdout and stderr" to run_alignn_cli.py's show()
+helper. This kernel is written the way that driver now works after the fix:
+one target failing does not block the other, and the real traceback prints
+in the kernel's own log either way.
+"""
+
+import base64
+import io
+import json
+import os
+import zipfile
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SEED = int(os.environ.get("ALIGNN_SEED", "42"))   # one kernel per seed
+BUILD_DIR = os.path.join(PROJECT_ROOT, "kaggle", f"build_alignn_s{SEED}")
+
+# See build_kernel.py's own comment: the URL slug comes from the TITLE, not
+# the id sent - keep them derived from one string so status/output calls
+# never 404 against a slug that silently drifted from the title.
+KERNEL_TITLE = f"PINK ALIGNN ensemble seed {SEED}"
+KERNEL_SLUG = KERNEL_TITLE.lower().replace(" ", "-")
+
+# cgcnn_scratch/ and scripts/01b + 02_train are bundled even though ALIGNN
+# never uses their models directly - scripts/11 and 12 both import them via
+# importlib purely to reuse load_benchmark()/split_indices()/pick_device(),
+# but importing a module runs ALL of its top-level code too, including their
+# own `from cgcnn_scratch.data import ...` - confirmed the hard way once
+# already on the Colab notebook (ModuleNotFoundError) before this comment
+# existed there; bundled here from the start rather than rediscovering it.
+# (local_path, archive_path) pairs - local follows this project's own
+# scripts/cgcnn|alignn/ split, archive stays flat (what KERNEL_TEMPLATE's own
+# run() calls below refer to it as), so the remotely-executed template needed
+# zero changes for the cgcnn/alignn reorganisation.
+BUNDLE = [
+    ("cgcnn_scratch/__init__.py", "cgcnn_scratch/__init__.py"),
+    ("cgcnn_scratch/data.py", "cgcnn_scratch/data.py"),
+    ("cgcnn_scratch/model.py", "cgcnn_scratch/model.py"),
+    ("cgcnn_scratch/atom_init.json", "cgcnn_scratch/atom_init.json"),
+    ("scripts/cgcnn/01b_prepare_full_dataset.py", "scripts/cgcnn/01b_prepare_full_dataset.py"),
+    ("scripts/cgcnn/02_train.py", "scripts/cgcnn/02_train.py"),
+    ("scripts/alignn/11_prepare_alignn_data.py", "scripts/alignn/11_prepare_alignn_data.py"),
+    ("scripts/alignn/12_train_alignn.py", "scripts/alignn/12_train_alignn.py"),
+]
+
+
+def build_bundle_b64():
+    """Zip the source files and base64 them so the kernel is self-contained."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for local, arcname in BUNDLE:
+            path = os.path.join(PROJECT_ROOT, local)
+            if not os.path.exists(path):
+                raise SystemExit(f"missing bundle file: {local}")
+            archive.write(path, arcname)
+    return base64.b64encode(buffer.getvalue()).decode("ascii")
+
+
+KERNEL_TEMPLATE = '''#!/usr/bin/env python3
+"""
+PINK / ALIGNN - train bulk and shear modulus models on the full matbench set.
+
+Generated by kaggle/build_alignn_kernel.py - do not edit here, edit the
+generator.
+
+Trains ALIGNN on bulk_modulus_kv and shear_modulus_gv, on the SAME
+train/val/test split the CGCNN ensemble used (computed once via this
+project's own split_indices(), not ALIGNN's own differently-seeded split),
+and leaves both results directories in /kaggle/working/results for download.
+"""
+
+import base64
+import io
+import os
+import shutil
+import subprocess
+import sys
+import time
+import zipfile
+
+# Work in /kaggle/temp: scratch, NOT captured as kernel output - only
+# results/ is copied to /kaggle/working at the end, so the matbench download
+# and the ALIGNN line-graph cache are not downloaded for nothing.
+WORK = "/kaggle/temp/pink_alignn"
+OUT = "/kaggle/working"
+
+BUNDLE_B64 = "{bundle_b64}"
+
+TARGETS = ("bulk_modulus_kv", "shear_modulus_gv")
+SEED = {seed}
+
+# Matches colab/alignn_gpu_driver.py's production COMMON_ARGS exactly - the
+# same run, just launched from Kaggle instead of Colab.
+COMMON_ARGS = ["--epochs", "150", "--batch-size", "64", "--learning-rate", "0.001",
+              "--alignn-layers", "4", "--gcn-layers", "4", "--hidden-features", "256",
+              "--embedding-features", "64", "--n-early-stopping", "30", "--device", "cuda",
+              "--seed", str(SEED)]
+
+
+def run(args, cwd=WORK, check=True):
+    """Run a step, streaming output live.
+
+    -u because Python block-buffers stdout when it is not a terminal - a
+    150-epoch run prints only a few KB, and without this the log stays empty
+    until a model finishes, indistinguishable from a hung kernel.
+    """
+    print("$", " ".join(args), flush=True)
+    # PYTHONPATH belt-and-braces: the bundled scripts insert their own
+    # PROJECT_ROOT, but only if it resolved correctly. Setting it here means an
+    # `import cgcnn_scratch` works regardless.
+    child_env = dict(os.environ)
+    child_env["PYTHONPATH"] = cwd + os.pathsep + child_env.get("PYTHONPATH", "")
+    result = subprocess.run([sys.executable, "-u"] + args, cwd=cwd, env=child_env)
+    if check and result.returncode:
+        raise SystemExit(f"FAILED (exit {{result.returncode}}): {{' '.join(args)}}")
+    return result.returncode
+
+
+print("=" * 62, flush=True)
+print("ENVIRONMENT", flush=True)
+print("=" * 62, flush=True)
+import torch
+print("torch      :", torch.__version__, flush=True)
+print("cuda avail :", torch.cuda.is_available(), flush=True)
+if not torch.cuda.is_available():
+    raise SystemExit("No GPU. Check kernel-metadata.json's machine_shape.")
+
+print("gpu        :", torch.cuda.get_device_name(0), flush=True)
+
+# is_available() IS NOT ENOUGH. A GPU whose compute capability the installed
+# torch was never compiled for still reports available=True AND a correct
+# device name; it only fails on the first real kernel launch, minutes in,
+# with "no kernel image is available for execution on the device". A P100
+# (sm_60) does exactly this against Kaggle's torch 2.10+cu128, which is built
+# for sm_70..sm_120. This kernel already asks for a T4 (sm_75), so the guard
+# is insurance rather than a fix - but if machine_shape is ever changed, this
+# fails in seconds instead of wasting the whole run.
+capability = torch.cuda.get_device_capability(0)
+arch_list = torch.cuda.get_arch_list()
+print("capability :", f"sm_{{capability[0]}}{{capability[1]}}", flush=True)
+print("torch archs:", arch_list, flush=True)
+if f"sm_{{capability[0]}}{{capability[1]}}" not in arch_list:
+    raise SystemExit(
+        f"GPU is sm_{{capability[0]}}{{capability[1]}} but this torch build only "
+        f"supports {{arch_list}}. Change machine_shape in "
+        f"kaggle/build_alignn_kernel.py (T4 = sm_75 works).")
+try:
+    # The definitive test: allocate and reduce on the device for real.
+    _probe = (torch.ones(64, device="cuda") * 2).sum().item()
+    assert _probe == 128.0, _probe
+    print("cuda probe : OK", flush=True)
+except Exception as exc:
+    raise SystemExit(f"GPU present but unusable - a real CUDA op failed: {{exc}}")
+
+# alignn pulls in jarvis-tools automatically; pymatgen/matminer are needed
+# separately because scripts/11 reuses 01b_prepare_full_dataset.py's
+# load_benchmark(), which fetches matbench through matminer.
+print("\\ninstalling pymatgen + matminer + alignn...", flush=True)
+subprocess.run([sys.executable, "-m", "pip", "install", "-q",
+                "pymatgen", "matminer", "alignn"], check=True)
+
+# --- Unpack the embedded source -------------------------------------------
+os.makedirs(WORK, exist_ok=True)
+with zipfile.ZipFile(io.BytesIO(base64.b64decode(BUNDLE_B64))) as archive:
+    archive.extractall(WORK)
+print("\\nunpacked:", sorted(os.listdir(WORK)), flush=True)
+
+# --- Convert matbench to ALIGNN's format + compute the shared split -------
+print("\\n" + "=" * 62, flush=True)
+print("DATA PREP", flush=True)
+print("=" * 62, flush=True)
+run(["scripts/alignn/11_prepare_alignn_data.py"])
+
+# --- Train both targets, one failing does not block the other -------------
+print("\\n" + "=" * 62, flush=True)
+print("TRAINING", flush=True)
+print("=" * 62, flush=True)
+start = time.time()
+target_ok = {{}}
+for target in TARGETS:
+    t0 = time.time()
+    print("\\n" + "=" * 62, flush=True)
+    print(f"{{target}}   [{{(time.time() - start) / 60:.0f}} min elapsed]", flush=True)
+    print("=" * 62, flush=True)
+    out_dir = os.path.join(WORK, "results", f"alignn_{{target}}_s{{SEED}}")
+    returncode = run(["scripts/alignn/12_train_alignn.py", "--target", target,
+                      "--out-dir", out_dir] + COMMON_ARGS, check=False)
+    target_ok[target] = (returncode == 0)
+    status_word = "done" if returncode == 0 else f"FAILED (exit {{returncode}})"
+    print(f">>> {{target}} {{status_word}} in {{(time.time() - t0) / 60:.1f}} min", flush=True)
+    if returncode:
+        print(f"!! {{target}} failed - see the traceback above. "
+             f"Continuing to the next target.", flush=True)
+
+n_ok = sum(target_ok.values())
+print(f"\\n{{n_ok}}/{{len(TARGETS)}} targets succeeded in "
+     f"{{(time.time() - start) / 60:.0f}} min total", flush=True)
+
+# --- Hand the results back --------------------------------------------------
+os.makedirs(os.path.join(OUT, "results"), exist_ok=True)
+for target, ok in target_ok.items():
+    src = os.path.join(WORK, "results", f"alignn_{{target}}_s{{SEED}}")
+    if not os.path.isdir(src):
+        continue
+    shutil.copytree(src, os.path.join(OUT, "results", f"alignn_{{target}}_s{{SEED}}"),
+                    dirs_exist_ok=True)
+
+print("\\n" + "=" * 62, flush=True)
+print("OUTPUT", flush=True)
+print("=" * 62, flush=True)
+for root, _, files in os.walk(os.path.join(OUT, "results")):
+    for name in sorted(files):
+        path = os.path.join(root, name)
+        print(f"  {{os.path.getsize(path) / 1e3:9.1f}} KB  {{name}}", flush=True)
+
+if n_ok < len(TARGETS):
+    raise SystemExit(f"PIPELINE PARTIAL: only {{n_ok}}/{{len(TARGETS)}} targets "
+                     f"succeeded - see the per-target failures logged above.")
+print("\\nPIPELINE COMPLETE", flush=True)
+'''
+
+
+def main():
+    os.makedirs(BUILD_DIR, exist_ok=True)
+
+    from kaggle.api.kaggle_api_extended import KaggleApi
+    api = KaggleApi()
+    api.authenticate()
+    username = api.config_values.get("username")
+    if not username:
+        raise SystemExit("Could not determine the Kaggle username.")
+
+    kernel_path = os.path.join(BUILD_DIR, f"pink_alignn_s{SEED}.py")
+    with open(kernel_path, "w") as fh:
+        fh.write(KERNEL_TEMPLATE.format(bundle_b64=build_bundle_b64(), seed=SEED))
+
+    metadata = {
+        "id": f"{username}/{KERNEL_SLUG}",
+        "title": KERNEL_TITLE,
+        "code_file": f"pink_alignn_s{SEED}.py",
+        "language": "python",
+        "kernel_type": "script",
+        "is_private": True,
+        # See build_kernel.py's own comment for why both of the next two
+        # fields matter: enable_gpu alone is silently ignored, and an image
+        # pinned to this kernel's first (possibly CPU) run stays CPU-only on
+        # every later push unless the pin is explicitly cleared.
+        #
+        # T4, NOT P100: confirmed live (2026-08-10) that Kaggle's current
+        # default PyTorch build (2.10.0+cu128) only ships compiled kernels
+        # for CUDA capability 7.0-12.0. The P100 is capability 6.0 (Pascal)
+        # and crashes on the very first forward pass with "CUDA error: no
+        # kernel image is available for execution on the device" - not a
+        # config mistake, an actual hardware/PyTorch-version incompatibility
+        # introduced on Kaggle's side sometime after build_kernel.py's own
+        # P100 choice was made. T4 is Turing (capability 7.5), inside the
+        # supported range.
+        "enable_gpu": True,
+        "machine_shape": "NvidiaTeslaT4",
+        "docker_image_pinning_type": "latest",
+        "enable_internet": True,
+        "dataset_sources": [],
+        "competition_sources": [],
+        "kernel_sources": [],
+    }
+    with open(os.path.join(BUILD_DIR, "kernel-metadata.json"), "w") as fh:
+        json.dump(metadata, fh, indent=2)
+
+    # Compile the generated kernel before anyone can push it. The template is a
+    # format string containing Python source, so it is parsed twice - once when
+    # this builder is read, once on Kaggle - and one lost backslash turns an
+    # escape into a real newline. That file is only parsed for the first time on
+    # Kaggle, which costs eight minutes and a GPU slot to discover. It happened
+    # once, on build_aflow_recipe_kernel.py.
+    #
+    # This catches SYNTAX errors only - it compiles to bytecode, it does not run
+    # the code. A missing dataset or a bad path still fails remotely.
+    import py_compile
+    try:
+        py_compile.compile(kernel_path, doraise=True)
+    except py_compile.PyCompileError as exc:
+        raise SystemExit(f"generated kernel does not compile:\n{exc}")
+    print("generated kernel compiles OK")
+
+    size_kb = os.path.getsize(kernel_path) / 1024
+    print(f"Built kernel for {username}/{KERNEL_SLUG}")
+    print(f"  {kernel_path}  ({size_kb:.0f} KB)")
+    print(f"  {BUILD_DIR}/kernel-metadata.json")
+    print("\nPush and watch it with:")
+    print("  python kaggle/run_alignn_kernel.py")
+
+
+if __name__ == "__main__":
+    main()

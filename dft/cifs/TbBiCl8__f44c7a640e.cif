@@ -1,0 +1,36 @@
+# generated using pymatgen
+data_TbBiCl8
+_symmetry_space_group_name_H-M   'P 1'
+_cell_length_a   7.08642078
+_cell_length_b   7.09112749
+_cell_length_c   8.78510022
+_cell_angle_alpha   92.76871459
+_cell_angle_beta   92.45436501
+_cell_angle_gamma   119.19776077
+_symmetry_Int_Tables_number   1
+_chemical_formula_structural   TbBiCl8
+_chemical_formula_sum   'Tb1 Bi1 Cl8'
+_cell_volume   383.79925949
+_cell_formula_units_Z   1
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Tb  Tb0  1  0.169140  0.830637  0.999992  1
+  Bi  Bi1  1  0.830592  0.169598  0.000006  1
+  Cl  Cl2  1  0.900754  0.894448  0.175184  1
+  Cl  Cl3  1  0.508750  0.139512  0.175207  1
+  Cl  Cl4  1  0.145910  0.523592  0.175110  1
+  Cl  Cl5  1  0.612454  0.613244  0.441093  1
+  Cl  Cl6  1  0.387446  0.386860  0.558907  1
+  Cl  Cl7  1  0.861086  0.490323  0.824773  1
+  Cl  Cl8  1  0.477392  0.853483  0.824913  1
+  Cl  Cl9  1  0.106473  0.098303  0.824817  1
