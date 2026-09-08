@@ -175,26 +175,6 @@ half.}
 \end{dividerframe}
 
 % -----------------------------------------------------------------------------
-
-% ---------------------------------------------------------------- PINK FIG 1
-\begin{frame}
-\SlideHeader{03b \textperiodcentered\ THE PIPELINE}{The paper's own Figure 1}
-
-\begin{center}
-\includegraphics[width=0.83\linewidth]{figures/paper_fig1_workflow.png}
-\end{center}
-
-\vspace{-2pt}
-{\sffamily\scriptsize
-Reproduced from Liu \textit{et al.}, \textit{J.\ Mater.\ Inf.} 2025, 5, 12
-(CC BY 4.0). \textbf{Blue} is the input CIF; \textbf{yellow} the only learned
-step, CGCNN predicting $B$ and $G$; \textbf{purple and green} the closed-form
-physics; \textbf{red} the answer. The boxed equation is the one this project
-reports --- note $\kappa_L \propto e^{-\gamma}$, an \emph{exponential}
-dependence on the Gr\"uneisen parameter, which is why $\gamma$ dominates so
-much of what follows.}
-\end{frame}
-
 \begin{frame}
 \SlideHeader{04 \textperiodcentered\ CRYSTAL TO GRAPH}{Meet the crystal: rock-salt NaCl}
 
@@ -352,70 +332,6 @@ throughout atomistic machine learning, not something specific to CGCNN.}
 \end{frame}
 
 % -----------------------------------------------------------------------------
-
-% ------------------------------------------------------- ALIGNN LINE GRAPH
-\begin{frame}
-\SlideHeader{09b \textperiodcentered\ CRYSTAL TO GRAPH}{A second architecture sees one more thing: angles}
-
-\begin{center}
-\includegraphics[width=0.97\linewidth]{figures/nacl_alignn_graphs.png}
-\end{center}
-
-\vspace{-2pt}
-{\sffamily\scriptsize
-The same NaCl file, at \textbf{ALIGNN's own} graph settings --- cutoff 5.0 \AA,
-max 12 neighbours, read from the trained model's config. \textbf{B} is the atom
-graph built above, where CGCNN stops. \textbf{C} is the \emph{line graph}: every
-bond becomes a node, and two bonds sharing an atom are joined by an edge that
-carries the angle between them.}
-\end{frame}
-
-\begin{frame}
-\SlideHeader{09c \textperiodcentered\ CRYSTAL TO GRAPH}{What the line graph costs, and buys}
-
-\begin{columns}[T]
-\column{0.44\linewidth}
-{\sffamily\footnotesize
-Counted on the real file, not estimated:}
-
-\vspace{4pt}
-{\sffamily\small
-\begin{tabular}{@{}lr@{}}
-\toprule
-NaCl, one unit cell & \\
-\midrule
-atoms (nodes of $\mathcal{G}$) & 8 \\
-bonds (edges of $\mathcal{G}$) & 96 \\
-\textbf{angles (edges of $\mathcal{L}$)} & \textbf{528} \\
-\bottomrule
-\end{tabular}}
-
-\vspace{5pt}
-{\sffamily\footnotesize
-Each atom keeps 12 neighbours, so it contributes 12 bond-nodes and
-$\binom{12}{2} = 66$ angles. Over 8 atoms: \textbf{5.5$\times$ more edges than
-the atom graph}.}
-
-\column{0.52\linewidth}
-\Card{6.2cm}{CardBg}{CardRule}{%
-  \sffamily\footnotesize
-  \textbf{Why bonds have to become nodes}\\[3pt]
-  A message-passing layer updates a node from its neighbours, so the only
-  geometry a message can carry on $\mathcal{G}$ is the bond \emph{length}. An
-  angle belongs to a \emph{pair} of bonds --- there is nowhere on $\mathcal{G}$
-  to attach it.\\[3pt]
-  On $\mathcal{L}$ a pair of bonds \emph{is} an edge, which is exactly where a
-  feature lives.}
-
-\vspace{4pt}
-{\sffamily\scriptsize\color{Muted}
-Angles enter as $\cos\theta_{jik}$ on a radial basis, as distances do.}
-\end{columns}
-
-\Takeaway{Shear modulus is a bond-\emph{bending} property. CGCNN infers it from
-lengths alone; ALIGNN is handed the angles --- and wins on both moduli.}
-\end{frame}
-
 \begin{frame}
 \SlideHeader{09 \textperiodcentered\ CRYSTAL TO GRAPH}{Assembling one training example}
 
@@ -735,24 +651,6 @@ collection define the training set.}
 \end{frame}
 
 % -----------------------------------------------------------------------------
-
-% ------------------------------------------------------------- PINK FIG 4
-\begin{frame}
-\SlideHeader{17b \textperiodcentered\ OUR DATA}{What the training set looks like --- the paper's Figure 4}
-
-\begin{center}
-\includegraphics[width=0.74\linewidth]{figures/pink_fig4_dataset_stats.png}
-\end{center}
-
-\vspace{-4pt}
-{\sffamily\scriptsize
-\textbf{Each panel is titled with the population it describes.} A/B use the
-1{,}213 CIFs we hold locally; the 10{,}987 training \emph{structures} are not
-available offline, so C/D use formulas and atom counts. Cubic dominates, as in
-the paper --- and the soft tail in the moduli is thin, which is exactly the
-region the screen targets.}
-\end{frame}
-
 \begin{frame}
 \SlideHeader{18 \textperiodcentered\ OUR DATA}{Three models, averaged}
 
@@ -925,53 +823,6 @@ precisely the ultralow-$\kappa$ regime PINK targets.}
 \end{frame}
 
 % -----------------------------------------------------------------------------
-
-\begin{frame}
-\SlideHeader{23b \textperiodcentered\ RESULTS}{The same two plots, for ALIGNN}
-
-\begin{columns}[T]
-\column{0.49\linewidth}
-\begin{center}
-\includegraphics[width=0.84\linewidth]{../results/alignn/parity_K_VRH_alignn.png}
-\end{center}
-\column{0.49\linewidth}
-\begin{center}
-\includegraphics[width=0.84\linewidth]{../results/alignn/parity_G_VRH_alignn.png}
-\end{center}
-\end{columns}
-
-\vspace{2pt}
-{\sffamily\scriptsize
-Same crystals and split as the CGCNN slides above. Bulk \textbf{0.0539},
-shear \textbf{0.0725} --- beating the CGCNN \emph{ensemble} from a \emph{single}
-model. One negative modulus is left visible: ALIGNN trains on raw GPa.}
-\end{frame}
-
-\begin{frame}
-\SlideHeader{23c \textperiodcentered\ RESULTS}{Where each architecture's errors live}
-
-\begin{columns}[T]
-\column{0.49\linewidth}
-\begin{center}
-\includegraphics[width=\linewidth]{../results/cgcnn/residuals_G_VRH_ens.png}
-\end{center}
-{\sffamily\scriptsize\color{Muted}\centering CGCNN ensemble, shear}
-\column{0.49\linewidth}
-\begin{center}
-\includegraphics[width=\linewidth]{../results/alignn/residuals_G_VRH_alignn.png}
-\end{center}
-{\sffamily\scriptsize\color{Muted}\centering ALIGNN, shear}
-\end{columns}
-
-\vspace{2pt}
-{\sffamily\scriptsize
-Both fan out below $\sim$30 GPa. Stratified by true $\kappa_L$ the softest
-quintile has MAE $\log_{10}(G) = 0.134$ against $0.057$ for the stiffest --- a
-factor of 2.4, in \emph{both} architectures. \textbf{The weakness is shared, so
-it is not architectural}: it is the thin soft tail of the training set, and it
-sits exactly where the screen operates.}
-\end{frame}
-
 \begin{frame}
 \SlideHeader{24 \textperiodcentered\ RESULTS}{Ensembling, and how it trains}
 
@@ -1122,102 +973,6 @@ even a little moves $\kappa_L$ by a lot.}
 \end{frame}
 
 % -----------------------------------------------------------------------------
-
-% ------------------------------------------------------- EQUATIONS 1 TO 8
-\begin{frame}
-\SlideHeader{27b \textperiodcentered\ PHYSICS}{Equations 1--3 --- from moduli to sound}
-
-{\sffamily\scriptsize
-The two predicted moduli fix how fast sound travels, and phonon speed is what
-sets thermal conductivity.}
-
-\vspace{3pt}
-\begin{align}
-v_l &= \sqrt{\frac{K + \tfrac{4}{3}G}{\rho}} &&\text{longitudinal wave speed} \\[2pt]
-v_t &= \sqrt{\frac{G}{\rho}} &&\text{transverse wave speed} \\[2pt]
-v_s &= \left[\frac{1}{3}\left(\frac{1}{v_l^{3}} + \frac{2}{v_t^{3}}\right)\right]^{-1/3}
-   &&\text{averaged sound velocity}
-\end{align}
-
-\vspace{2pt}
-\begin{center}
-{\sffamily\scriptsize
-\begin{tabular}{@{}llll@{}}
-\toprule
-sym & meaning & unit & \\
-\midrule
-$K$, $G$ & bulk, shear modulus \emph{(predicted)} & GPa & \\
-$\rho$ & mass density \emph{(from the CIF)} & g\,cm$^{-3}$ & \\
-$v_l, v_t, v_s$ & sound velocities & m\,s$^{-1}$ & \\
-\bottomrule
-\end{tabular}}
-\end{center}
-
-\vspace{1pt}
-{\sffamily\scriptsize\color{Muted}
-Eq.~3 averages three acoustic branches --- one longitudinal, two transverse.}
-\end{frame}
-
-\begin{frame}
-\SlideHeader{27c \textperiodcentered\ PHYSICS}{Equations 4--6 --- Debye temperature and Gr\"uneisen}
-
-\begin{align}
-\Theta_D &= \frac{h}{k_B}\left(\frac{3}{4\pi V}\right)^{1/3} v_s
-   &&\text{Debye temperature} \\[2pt]
-\nu &= \frac{(v_l/v_t)^2 - 2}{2\,(v_l/v_t)^2 - 2} &&\text{Poisson's ratio} \\[2pt]
-\gamma &= \frac{3\,(1 + \nu)}{2\,(2 - 3\nu)} &&\text{Gr\"uneisen parameter}
-\end{align}
-
-\vspace{2pt}
-\begin{center}
-{\sffamily\scriptsize
-\begin{tabular}{@{}llllll@{}}
-\toprule
-sym & meaning & unit & sym & meaning & unit \\
-\midrule
-$h$ & Planck const. & J\,s & $\Theta_D$ & Debye temp. & K \\
-$k_B$ & Boltzmann const. & J\,K$^{-1}$ & $\nu$ & Poisson's ratio & --- \\
-$V$ & vol.\ per atom \emph{(CIF)} & \AA$^3$ & $\gamma$ & Gr\"uneisen & --- \\
-\bottomrule
-\end{tabular}}
-\end{center}
-
-\vspace{1pt}
-{\sffamily\scriptsize
-\textbf{Eq.~6 matters most:} $\gamma$ is \emph{derived} from the same $K$, $G$.}
-\end{frame}
-
-\begin{frame}
-\SlideHeader{27d \textperiodcentered\ PHYSICS}{Equations 7--8 --- two routes to \texorpdfstring{$\kappa_L$}{kappa}}
-
-\begin{align}
-\kappa_L^{\text{Slack}} &=
-  \frac{A(\gamma)\,\bar{M}\,V^{1/3}\,\Theta_D^{3}}{\gamma^{2}\,T\,N},
-  \qquad A(\gamma) = \frac{2.43\times10^{-8}}{1 - \dfrac{0.514}{\gamma} + \dfrac{0.228}{\gamma^{2}}} \\[3pt]
-\kappa_L^{\text{cal}} &= \frac{G\,v_s\,V^{1/3}}{N\,T}\;e^{-\gamma}
-  \qquad\text{\sffamily\scriptsize (the boxed equation in the paper's Figure 1)}
-\end{align}
-
-\vspace{1pt}
-\begin{center}
-{\sffamily\scriptsize
-\begin{tabular}{@{}llllll@{}}
-\toprule
-sym & meaning & unit & sym & meaning & unit \\
-\midrule
-$\bar{M}$ & mean atomic mass & amu & $T$ & temperature, 300 & K \\
-$N$ & atoms per cell & --- & $\kappa_L$ & conductivity & W\,m$^{-1}$K$^{-1}$ \\
-\bottomrule
-\end{tabular}}
-\end{center}
-
-\vspace{1pt}
-{\sffamily\scriptsize
-\textbf{This project reports $\kappa_L^{\text{cal}}$}, whose $\gamma$ dependence
-is \emph{exponential}, not the $\gamma^{-2}$ of the Slack form --- so swapping
-$\gamma$ rescales it by $e^{\gamma_{\text{old}} - \gamma_{\text{new}}}$.}
-\end{frame}
-
 \begin{frame}
 \SlideHeader{28 \textperiodcentered\ PHYSICS}{How sure is the model? Monte Carlo uncertainty}
 
@@ -1614,88 +1369,6 @@ model-specific noise.}
 \end{frame}
 
 % -----------------------------------------------------------------------------
-
-% ------------------------------------------- CLASSIFYING WHAT CAME OUT
-
-\begin{frame}
-\SlideHeader{40a \textperiodcentered\ THE SCREEN}{The same candidates, four different answers}
-
-\begin{center}
-\includegraphics[width=0.84\linewidth]{figures/kappa_dist_all_models.png}
-\end{center}
-
-\vspace{-3pt}
-{\sffamily\scriptsize
-Every model scores the identical 33{,}053 candidates through the identical
-physics --- only $K$ and $G$ differ. The low-$\kappa$ counts are
-\textbf{16{,}130} (CGCNN), \textbf{14{,}711} (ALIGNN), \textbf{17{,}034} (tree)
-and \textbf{7{,}262} (round 9). Three models agree closely; round 9 sits far
-right and calls less than half as many. It is the outlier, not the correction.}
-\end{frame}
-
-\begin{frame}
-\SlideHeader{40b \textperiodcentered\ THE SCREEN}{Classifying the candidates: elements}
-
-\begin{center}
-\includegraphics[width=0.86\linewidth]{figures/elements_all_models.png}
-\end{center}
-
-\vspace{-3pt}
-{\sffamily\scriptsize
-Enrichment is how often candidates containing an element are called
-low-$\kappa$, over that model's own base rate; 1.0 means no preference. Lines
-are binned medians. \textbf{Cs, Rb, K and the halogens Br, Cl, F sit high;
-O and N sit lowest} --- which Equations 1--3 predict directly, since a low $G$
-gives a low $v_s$ and so a low $\kappa_L$. \textbf{All four models agree on the
-shape}; round 9 (grey) is the one that diverges, at the electronegative end.}
-\end{frame}
-
-\begin{frame}
-\SlideHeader{40c \textperiodcentered\ THE SCREEN}{Classifying the candidates: structural families}
-
-\begin{center}
-\includegraphics[width=0.88\linewidth]{figures/families_all_models.png}
-\end{center}
-
-\vspace{-3pt}
-{\sffamily\scriptsize
-Non-oxides dominate, but \emph{how} much depends on the model: 68\% (CGCNN),
-61\% (ALIGNN), 73\% (tree), 31\% (round 9). \textbf{The family ordering is
-stable across all four; the absolute rate is not.}}
-\end{frame}
-
-\begin{frame}
-\SlideHeader{40d \textperiodcentered\ THE SCREEN}{What we chose to send to DFT}
-
-\begin{center}
-\includegraphics[width=0.84\linewidth]{figures/dft_validation_set.png}
-\end{center}
-
-\vspace{-3pt}
-{\sffamily\scriptsize
-18 materials, three arms, all $\leq$ 10 atoms. \textbf{A} consensus low, all four
-models agree \textbf{B} adjudication --- three say low, one says high, and only
-DFT can settle it \textbf{C} negative control, all four say stiff. Without arm C
-a confirmed arm A would mean little. Start with \textbf{MoBr$_5$Cl}: 7 atoms,
-$Cm$, the sharpest disagreement in the screen.}
-\end{frame}
-
-\begin{frame}
-\SlideHeader{40e \textperiodcentered\ THE SCREEN}{Every model this project has trained}
-
-\begin{center}
-\includegraphics[width=0.80\linewidth]{figures/model_comparison.png}
-\end{center}
-
-\vspace{-3pt}
-{\sffamily\scriptsize
-Bars are absent where a model was never trained on that dataset --- not zero,
-not measured. \textbf{The composition-only tree beats the CGCNN on AFLOW}
-(0.0592 vs 0.1154) while losing on matbench. That is underfitting, not a limit
-of graph networks: the network's \emph{training} error on AFLOW, 0.103, exceeds
-the tree's \emph{test} error.}
-\end{frame}
-
 \begin{frame}
 \SlideHeader{40 \textperiodcentered\ THE SCREEN}{New: which candidates do we actually trust?}
 
@@ -1873,35 +1546,6 @@ this closely --- more evidence for a real signal, not architecture noise.}
 \end{frame}
 
 % -----------------------------------------------------------------------------
-
-% --------------------------------------------- WHAT CANNOT BE REPRODUCED
-\begingroup
-\setbeamercolor{background canvas}{bg=Navy}
-\begin{frame}[plain]
-\vspace{0.9cm}
-\begin{center}
-{\color{SlideAmber}\bfseries\sffamily\large PAPER FIGURES 9 AND 10}\\[8pt]
-{\color{white}\bfseries\headingfont\fontsize{25}{30}\selectfont
-  What we cannot reproduce}\\[12pt]
-\begin{minipage}{0.80\linewidth}
-{\color{Subtle}\sffamily\footnotesize
-The paper's last two figures are \textbf{DFT phonon calculations} on
-Ag$_3$Te$_4$X --- primitive structures, phonon dispersions, then $\kappa_L$
-against temperature, cumulative $\kappa_L$, specific heat, mode group
-velocities, scattering phase space and scattering rates.\\[8pt]
-Producing them needs a full DFT plus finite-displacement phonon workflow with
-\textbf{third-order force constants}, on materials this project has never
-computed --- days of DFT per material, and a different toolchain from anything
-here.\\[8pt]
-{\color{white}No stand-in is drawn for them.} They are the same missing
-ground-truth gap the 18-material DFT set exists to start closing, and the
-elastic tensors in that set are the cheap first step toward exactly this kind
-of calculation.}
-\end{minipage}
-\end{center}
-\end{frame}
-\endgroup
-
 \begin{frame}
 \SlideHeader{45 \textperiodcentered\ CLOSING}{Summary}
 
