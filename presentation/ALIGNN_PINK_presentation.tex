@@ -264,8 +264,7 @@ edges. This is exactly what CGCNN builds, and where CGCNN stops. \quad
 $\mathcal{G}$ becomes a \emph{node}, and two bonds sharing an atom are joined by
 an edge that carries the angle between them.}
 
-\Takeaway{The line graph is a graph \emph{of the bonds}. Its edges are angles ---
-which is how a message-passing network gets access to three-body geometry.}
+\Takeaway{The line graph is a graph \emph{of the bonds}; its edges are angles.}
 \end{frame}
 
 % =============================================================================
@@ -278,13 +277,33 @@ which is how a message-passing network gets access to three-body geometry.}
 \end{center}
 
 \vspace{-2pt}
+\vspace{-2pt}
+\begin{columns}[T]
+\column{0.44\linewidth}
 {\sffamily\scriptsize
 Computed from \texttt{nacl.cif} at \textbf{ALIGNN's own} settings --- cutoff
-5.0 \AA, max 12 neighbours, read from the trained model's config. \textbf{8
-atoms, 96 bond edges, 528 angle edges:} each atom keeps 12 neighbours and so
-contributes $\binom{12}{2} = 66$ angles. \textbf{The line graph carries
-5.5$\times$ more edges than the atom graph} --- that is what seeing angles
-costs.}
+5.0 \AA, max 12 neighbours, from the trained model's config.
+
+\vspace{3pt}
+A \textbf{bond is two things at once}: an \emph{edge} of $\mathcal{G}$, a
+\emph{node} of $\mathcal{L}$.}
+
+\column{0.53\linewidth}
+{\sffamily\scriptsize
+\begin{tabular}{@{}llll@{}}
+\toprule
+ & node & edge & edge feature \\
+\midrule
+$\mathcal{G}$ & atom (8) & bond (96) & length $r_{ij}$ \\
+$\mathcal{L}$ & bond (96) & angle (528) & angle $\theta_{jik}$ \\
+\bottomrule
+\end{tabular}}
+
+\vspace{3pt}
+{\sffamily\scriptsize
+12 nbrs $\rightarrow \binom{12}{2} = 66$ angles, $8 \times 66 = 528$, so
+$528/96 = \mathbf{5.5\times}$ the edges. Panel \textbf{C} shows site 0 only.}
+\end{columns}
 \end{frame}
 
 \begin{frame}
@@ -409,20 +428,17 @@ carries no uncertainty interval and its own best number is untested.}
 
 % =============================================================================
 \begin{frame}
-\SlideHeader{09 \textperiodcentered\ THE DATA}{The training set --- PINK's Figure 4, our version}
+\SlideHeader{09 \textperiodcentered\ THE DATA}{The training set --- PINK's Figure 4}
 
 \begin{center}
-\includegraphics[width=0.74\linewidth]{figures/pink_fig4_dataset_stats.png}
+\includegraphics[width=0.70\linewidth]{figures/pink_fig4_dataset_stats.png}
 \end{center}
 
 {\sffamily\footnotesize
-The matbench elastic benchmark: \textbf{10{,}987 crystals} with DFT-computed
-$K_{VRH}$ and $G_{VRH}$, split 70/15/15 at \texttt{split\_seed = 42} into
-7{,}691 train / 1{,}648 validation / 1{,}648 test. Both moduli are strongly
-right-skewed, which is why everything here is trained on $\log_{10}$.}
-
-\Takeaway{The soft tail in panel B is thin --- and it is exactly the region the
-whole screen is aimed at. That imbalance shows up again in Part 3 and Part 7.}
+matbench: \textbf{10{,}987 crystals}, split 70/15/15 at
+\texttt{split\_seed = 42}; both moduli right-skewed, hence $\log_{10}$.
+\textbf{The soft tail in panel B is thin --- and it is exactly where the screen
+operates.}}
 \end{frame}
 
 % =============================================================================
@@ -432,20 +448,18 @@ whole screen is aimed at. That imbalance shows up again in Part 3 and Part 7.}
 \begin{columns}[T]
 \column{0.49\linewidth}
 \begin{center}
-\includegraphics[width=\linewidth]{../results/cgcnn/parity_K_VRH_ens.png}
+\includegraphics[width=0.82\linewidth]{../results/cgcnn/parity_K_VRH_ens.png}
 \end{center}
 \column{0.49\linewidth}
 \begin{center}
-\includegraphics[width=\linewidth]{../results/cgcnn/parity_G_VRH_ens.png}
+\includegraphics[width=0.82\linewidth]{../results/cgcnn/parity_G_VRH_ens.png}
 \end{center}
 \end{columns}
 
 \vspace{2pt}
 {\sffamily\footnotesize
-The 3-model ensemble on the 1{,}648 held-out crystals.
-Bulk: MAE $\KEnsMae$ $\log_{10}$, $R^2 = \KEnsRtwo$, \KEnsGpa\ GPa.
-Shear: MAE $\GEnsMae$, $R^2 = \GEnsRtwo$, \GEnsGpa\ GPa.
-Both beat the paper's own stated ``MAE $<13$'' in raw GPa.}
+3-model ensemble, 1{,}648 held-out crystals. Bulk $\KEnsMae$, shear
+$\GEnsMae$ MAE $\log_{10}$.}
 \end{frame}
 
 % =============================================================================
@@ -455,24 +469,19 @@ Both beat the paper's own stated ``MAE $<13$'' in raw GPa.}
 \begin{columns}[T]
 \column{0.49\linewidth}
 \begin{center}
-\includegraphics[width=\linewidth]{../results/alignn/parity_K_VRH_alignn.png}
+\includegraphics[width=0.80\linewidth]{../results/alignn/parity_K_VRH_alignn.png}
 \end{center}
 \column{0.49\linewidth}
 \begin{center}
-\includegraphics[width=\linewidth]{../results/alignn/parity_G_VRH_alignn.png}
+\includegraphics[width=0.80\linewidth]{../results/alignn/parity_G_VRH_alignn.png}
 \end{center}
 \end{columns}
 
 \vspace{2pt}
 {\sffamily\footnotesize
-Same crystals, same axes. Bulk: MAE 0.0539, $R^2 = 0.920$. Shear: 0.0725,
-$R^2 = 0.901$.
-
-\vspace{2pt}
-\textbf{One honest artefact, left visible:} ALIGNN predicted a \emph{negative}
-bulk modulus ($-0.57$ GPa) for one soft validation crystal whose true value is
-2 GPa. That is a real edge-case failure on soft materials, and it is the reason
-the axis is stretched. It was left in rather than clipped.}
+Same crystals and axes. Bulk 0.0539 ($R^2 = 0.920$), shear 0.0725
+($R^2 = 0.901$). \textbf{Artefact left visible:} one \emph{negative} bulk
+modulus, which a log-space model cannot produce.}
 \end{frame}
 
 % =============================================================================
@@ -564,9 +573,7 @@ $v_l, v_t, v_s$ & sound velocities & m\,s$^{-1}$ \\
 \end{tabular}}
 \end{center}
 
-\vspace{1pt}
-{\sffamily\scriptsize\color{Muted}
-Eq.~3 averages three acoustic branches --- one longitudinal, two transverse.}
+
 \end{frame}
 
 \begin{frame}
@@ -633,9 +640,10 @@ $e^{\gamma_{\text{old}} - \gamma_{\text{new}}}$.}
 \SlideHeader{14 \textperiodcentered\ PHYSICS}{The Slack chain --- no free parameters}
 
 \begin{center}
-\begin{tikzpicture}[node distance=5mm,
+\scalebox{0.685}{%
+\begin{tikzpicture}[node distance=4mm,
   box/.style={rounded corners=4pt, fill=CardBg, draw=CardRule, line width=0.7pt,
-              text width=2.6cm, align=center, inner sep=5pt,
+              text width=2.45cm, align=center, inner sep=5pt,
               font=\sffamily\scriptsize\color{SlideInk}},
   arr/.style={font=\color{SlideBlue}\small}]
   \node[box] (b1) {$K$, $G$\\ {\color{Muted}predicted}};
@@ -650,7 +658,7 @@ $e^{\gamma_{\text{old}} - \gamma_{\text{new}}}$.}
   \node[box, below=8mm of b3, fill=AmberBg, draw=AmberRule] (g)
        {Gr\"uneisen $\gamma$ \\ {\color{Muted}from $\nu$}};
   \draw[->, SlideAmber, line width=0.7pt] (g) -- (b5.south west);
-\end{tikzpicture}
+\end{tikzpicture}}
 \end{center}
 
 \vspace{2pt}
@@ -709,7 +717,7 @@ variance --- and here bias dominates.}
 \begin{columns}[T]
 \column{0.55\linewidth}
 \begin{center}
-\includegraphics[width=\linewidth]{../results/cgcnn/63_experimental_vs_predicted.png}
+\includegraphics[width=0.72\linewidth]{../results/cgcnn/63_experimental_vs_predicted.png}
 \end{center}
 \column{0.41\linewidth}
 {\sffamily\footnotesize
@@ -729,8 +737,7 @@ W\,m$^{-1}$K$^{-1}$ --- so everything is scored in $\log_{10}$.}
   the PINK paper \dotfill 0.227}
 \end{columns}
 
-\Takeaway{Taken at face value we look twice as bad as the paper. On equal
-footing we match it. The next slide is why.}
+\Takeaway{At face value we look twice as bad; on equal footing we match it.}
 \end{frame}
 
 % =============================================================================
@@ -766,9 +773,7 @@ Our moduli were never the problem: shear modulus and sound velocity agree with
 the paper's own tabulated values at $r \approx 0.99$.}
 \end{columns}
 
-\Takeaway{This took real investigation to find. It is not something the paper
-states, and reporting the 0.427 alone would have been misleading in both
-directions.}
+\Takeaway{The paper does not state this; it took investigation to find.}
 \end{frame}
 
 % =============================================================================
@@ -815,7 +820,7 @@ tested, not assumed.}
 \begin{columns}[T]
 \column{0.52\linewidth}
 \begin{center}
-\includegraphics[width=\linewidth]{../results/cgcnn/kappa_validation.png}
+\includegraphics[width=0.74\linewidth]{../results/cgcnn/kappa_validation.png}
 \end{center}
 \column{0.44\linewidth}
 {\sffamily\footnotesize
@@ -832,7 +837,7 @@ tighter than CGCNN's own agreement with the paper's pretrained model
   \sffamily\footnotesize
   Two independently trained architectures, sharing only the data, the split and
   the physics, converging this closely on final $\kappa_L$ is evidence the
-  pipeline finds a physical signal rather than architecture-specific noise.}
+  pipeline finds physical signal.}
 \end{columns}
 \end{frame}
 
@@ -895,9 +900,8 @@ Part 7 and should be recomputed before it is quoted in a paper.}
 \vspace{2pt}
 {\sffamily\scriptsize
 $\kappa_L$ distribution and crystal-system breakdown of the screened pool.
-Element enrichment tells the clearest physical story: halogens 1.4--1.9$\times$
-enriched among low-$\kappa$ candidates, oxygen 0.27$\times$ depleted --- soft
-heavy halide lattices against tight oxide bonding.}
+Halogens are 1.4--1.9$\times$ enriched among low-$\kappa$ candidates, oxygen
+0.27$\times$ depleted.}
 \end{frame}
 
 % =============================================================================
@@ -907,7 +911,7 @@ heavy halide lattices against tight oxide bonding.}
 \begin{columns}[T]
 \column{0.52\linewidth}
 \begin{center}
-\includegraphics[width=\linewidth]{../results/alignn/57_alignn_vs_r9_gnome.png}
+\includegraphics[width=0.70\linewidth]{../results/alignn/57_alignn_vs_r9_gnome.png}
 \end{center}
 \column{0.44\linewidth}
 {\sffamily\footnotesize
@@ -926,9 +930,7 @@ identical, so nothing downstream can leak a difference.}
 
 \vspace{4pt}
 {\sffamily\scriptsize\color{Muted}
-65 candidates hit ALIGNN's $\sim$10$^{-3}$ GPa regression floor --- a degenerate
-output that reads as a spectacular discovery. Flagged and excluded, not ranked
-first.}
+65 hit ALIGNN's $\sim$10$^{-3}$ GPa regression floor --- flagged, excluded.}
 \end{columns}
 \end{frame}
 
@@ -1123,15 +1125,10 @@ whole-test-set model error to argue the labels set the accuracy floor.}
   Per stiffness band the \emph{model's} error exceeds the label disagreement in
   \textbf{all four}.}
 
-\vspace{4pt}
-{\sffamily\scriptsize
-Also: the soft subset's apparent offset is a \emph{selection artefact} --- the
-bias flips sign depending on which source did the selecting.}
+
 \end{columns}
 
-\Takeaway{The network, not the labels, is the weaker half --- so there is real
-headroom left. And ``AEL vs VRH'' is not a convention difference: both sources
-report VRH.}
+\Takeaway{The network, not the labels, is the weaker half.}
 \end{frame}
 
 % =============================================================================
@@ -1206,8 +1203,7 @@ A published table had labelled the first two columns ``separate'' and
 1.5$\times$ the ensemble's.}
 \end{columns}
 
-\Takeaway{The mechanism worked, and is paid for in per-modulus accuracy ---
-the two nearly cancel in $\kappa_L$ (0.1868 vs 0.1897).}
+\Takeaway{The mechanism worked; it is paid for in per-modulus accuracy.}
 \end{frame}
 
 \PartSlide{EIGHT}{What happens next}{The one experiment that closes the gap}
@@ -1253,8 +1249,8 @@ elastic tensor on a 6--10 atom cell is a handful of static calculations.
 Quasi-harmonic Debye $\kappa$ then follows from the same tensor almost free.
 
 \vspace{3pt}
-\textbf{Start with MoBr$_5$Cl} --- 7 atoms, $Cm$, and the sharpest disagreement
-in the whole screen: ALIGNN 0.028 against round 9's 4.524, a factor of 162.}
+\textbf{Start with MoBr$_5$Cl} --- 7 atoms, $Cm$: ALIGNN 0.028 vs round 9's
+4.524, a factor of 162.}
 \end{frame}
 
 % =============================================================================
