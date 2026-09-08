@@ -9,7 +9,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo "Regenerating figures and metrics.tex from results/metrics_summary.csv..."
-python3 make_figures.py
+PY=/Users/mac/miniconda3/envs/ml_env/bin/python
+"$PY" make_figures.py \
+  && "$PY" make_alignn_figures.py \
+  && "$PY" make_pink_figures.py
 
 echo "Compiling (pass 1/2)..."
 xelatex -interaction=nonstopmode -halt-on-error CGCNN_presentation.tex > build.log 2>&1 \
