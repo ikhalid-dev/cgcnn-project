@@ -1,0 +1,287 @@
+% The Monte Carlo uncertainty method, written out.
+% Build with:  cd docs && pdflatex monte_carlo_method.tex && pdflatex monte_carlo_method.tex
+%
+% Companion to notebooks/monte_carlo_explained.ipynb, which runs the same method
+% line by line. This document carries the mathematics; the notebook carries the
+% executable version and verifies it reproduces the pipeline exactly.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[colorlinks=true,linkcolor=linknavy,urlcolor=linknavy]{hyperref}
+\emergencystretch=3em
+
+\definecolor{linknavy}{HTML}{2A78D6}
+\definecolor{inkSoft}{HTML}{52514E}
+\definecolor{boxbg}{HTML}{F4F6FA}
+\definecolor{boxrule}{HTML}{C9D6EA}
+\definecolor{warnbg}{HTML}{FDF3E7}
+\definecolor{warnrule}{HTML}{E3B778}
+
+\newcommand{\keybox}[2]{%
+  \par\vspace{6pt}\noindent
+  \fcolorbox{boxrule}{boxbg}{%
+    \begin{minipage}{0.965\linewidth}\vspace{4pt}
+    {\bfseries #1}\par\vspace{3pt}#2\vspace{5pt}
+    \end{minipage}}\par\vspace{6pt}}
+
+\newcommand{\warnbox}[2]{%
+  \par\vspace{6pt}\noindent
+  \fcolorbox{warnrule}{warnbg}{%
+    \begin{minipage}{0.965\linewidth}\vspace{4pt}
+    {\bfseries #1}\par\vspace{3pt}#2\vspace{5pt}
+    \end{minipage}}\par\vspace{6pt}}
+
+\title{\vspace{-1.4cm}Monte Carlo uncertainty on a predicted\\ lattice thermal conductivity}
+\author{The method used in this project, written out}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-0.8cm}
+
+\noindent
+\textit{Companion to} \texttt{notebooks/monte\_carlo\_explained.ipynb}, \textit{which
+implements every equation below and verifies it reproduces}
+\texttt{scripts/cgcnn/07\_predict\_kappa.py} \textit{exactly.}
+
+% =====================================================================
+\section{The problem}
+
+The pipeline predicts two elastic moduli and turns them into a lattice thermal
+conductivity through a chain of closed-form relations:
+
+\begin{align}
+v_l &= \sqrt{\frac{K + \tfrac{4}{3}G}{\rho}}, \qquad
+v_t = \sqrt{\frac{G}{\rho}}, \qquad
+v_s = \left[\frac{1}{3}\left(\frac{1}{v_l^{3}} + \frac{2}{v_t^{3}}\right)\right]^{-1/3} \\[4pt]
+\nu &= \frac{(v_l/v_t)^2 - 2}{2(v_l/v_t)^2 - 2}, \qquad
+\gamma = \frac{3(1+\nu)}{2(2-3\nu)} \\[4pt]
+\kappa_L &= \frac{G\,v_s\,V^{1/3}}{N\,T}\,e^{-\gamma}
+\end{align}
+
+Every one of these is exact. But $K$ and $G$ are \emph{predictions}, and a prediction has
+an uncertainty. The question is what that uncertainty does to $\kappa_L$.
+
+\subsection{Why the textbook answer does not work here}
+
+The standard tool is the \emph{delta method}: linearise about the prediction and combine
+partial derivatives,
+\[
+\sigma_{\kappa}^2 \;\approx\;
+\left(\frac{\partial \kappa_L}{\partial K}\right)^{\!2}\sigma_K^2 +
+\left(\frac{\partial \kappa_L}{\partial G}\right)^{\!2}\sigma_G^2 .
+\]
+This is a first-order Taylor expansion, and it is only as good as the assumption that
+$\kappa_L$ is close to linear over the width of the uncertainty. Ours is not. Reading the
+chain from the inside out: $K$ and $G$ enter $v_l/v_t$ as a ratio under square roots; that
+ratio enters $\nu$ through a rational function; $\nu$ enters $\gamma$ through another
+rational function with $(2-3\nu)$ in the denominator; and $\gamma$ then enters
+\emph{exponentially}. Composing four non-linear steps and expecting a linear response over
+a $\pm 15\%$ input range is not reasonable, and the derivatives themselves are unpleasant
+to write down correctly.
+
+\keybox{The Monte Carlo alternative}{Instead of differentiating the function, evaluate it
+many times on inputs drawn to represent the uncertainty, and look at the spread of the
+outputs. No derivatives, no linearity assumption, and the answer becomes exact as the
+number of draws grows. The cost is arithmetic, which is cheap.}
+
+% =====================================================================
+\section{What the uncertainty is, and where it comes from}
+
+The moduli come from an \textbf{ensemble}: three networks trained from different random
+initialisations on the same data and split. For crystal $i$ they produce three values,
+whose mean is the prediction and whose standard deviation is the uncertainty. Both are
+computed on $\log_{10}$ of the modulus, because that is the space the networks are trained
+in:
+\[
+\mu_{K,i} = \log_{10} \hat{K}_i,
+\qquad
+\sigma_{K,i} = \operatorname{sd}\big(\log_{10} K_i^{(1)}, \log_{10} K_i^{(2)}, \log_{10} K_i^{(3)}\big),
+\]
+and likewise for $G$. In this project's 1{,}213-crystal prediction set the median
+$\sigma_K$ is $0.0235$ and the median $\sigma_G$ is $0.0295$, i.e.\ roughly $5$--$7\%$
+multiplicative uncertainty.
+
+% =====================================================================
+\section{The method}
+
+\subsection{Step 1 --- draw}
+
+For each crystal $i$ and each sample $j = 1 \dots M$,
+\begin{align}
+\log_{10} K_i^{(j)} &= \mu_{K,i} + \sigma_{K,i}\, z^{(j)}_{K,i},
+&& z_{K} \sim \mathcal{N}(0,1) \\
+\log_{10} G_i^{(j)} &= \mu_{G,i} + \sigma_{G,i}\, z^{(j)}_{G,i},
+&& z_{G} \sim \mathcal{N}(0,1)
+\end{align}
+then $K_i^{(j)} = 10^{\log_{10} K_i^{(j)}}$ and similarly for $G$. This is the
+location--scale construction: a standard normal scaled by $\sigma$ and shifted by $\mu$ is
+distributed $\mathcal{N}(\mu, \sigma^2)$.
+
+Two modelling choices are embedded here and both deserve to be stated rather than assumed.
+
+\medskip
+\noindent\textbf{Why a normal distribution.} Three members give a mean and a spread and
+essentially no information about shape. Among all distributions with a given mean and
+variance, the normal is the maximum-entropy choice --- the one that adds the least
+unwarranted structure.
+
+\medskip
+\noindent\textbf{Why $z_K$ and $z_G$ are independent.} The $K$ ensemble and the $G$
+ensemble are separately seeded runs sharing no weights and no random state, so nothing
+links their draws. \emph{This is the weakest assumption in the method.} Both ensembles see
+the same crystal, and a crystal that is hard for one is plausibly hard for the other; a
+positive correlation between the two errors would widen the true interval beyond what this
+produces.
+
+\subsection{Step 2 --- propagate}
+
+Every sampled pair goes through the \emph{same} function used for the point estimate:
+\[
+\kappa_{L,i}^{(j)} = f\!\left(K_i^{(j)},\, G_i^{(j)};\; V_i, \rho_i, \bar{M}_i, N_i\right),
+\]
+where $f$ is equations (1)--(3) and the structural quantities are held \textbf{fixed}: they
+are read from the CIF, not predicted, so they carry no uncertainty of this kind.
+
+Because the point estimate and the interval come from the same $f$, they are consistent by
+construction rather than by a separate approximation --- the median of the samples cannot
+drift away from the reported central value for reasons of method.
+
+\subsection{Step 3 --- summarise}
+
+With $M$ values of $\kappa_L$ per crystal, report the empirical quantiles
+\[
+p_{05,i} = Q_{0.05}\big(\{\kappa_{L,i}^{(j)}\}\big), \quad
+p_{50,i} = Q_{0.50}\big(\cdot\big), \quad
+p_{95,i} = Q_{0.95}\big(\cdot\big).
+\]
+
+\keybox{Why quantiles, and not mean $\pm 2\sigma$}{The input distribution is symmetric; the
+output is not. On the worked example in the notebook (LaGa) the median sits at
+$4.48$~W\,m$^{-1}$K$^{-1}$, with $2.31$ down to $p_{05}$ and $4.68$ up to $p_{95}$ --- the
+upper half of the interval is twice the lower. A symmetric interval would misstate the
+answer in both directions. Quantiles assume nothing about shape.}
+
+% =====================================================================
+\section{Why everything happens in $\log_{10}$}
+
+This is the design choice that is easiest to overlook and most consequential.
+
+\medskip
+\noindent\textbf{The error is multiplicative.} The networks are trained on
+$\log_{10}(\text{modulus})$ against a log-space loss, so their error is naturally a
+percentage, not a number of GPa. An error of $12$~GPa is catastrophic on a $20$~GPa crystal
+and negligible on a $400$~GPa one; an error of $15\%$ means the same thing on both.
+Sampling in log space encodes that correctly.
+
+\medskip
+\noindent\textbf{Negative moduli become impossible.} Since $10^x > 0$ for every real $x$, a
+log-space draw can never be non-positive. Sampling additively in GPa can, and does: on this
+project's softest crystal (Rb, $\hat{K} = 2.01$~GPa, $\sigma_K = 0.1285$), an
+equivalent-width additive draw of 20{,}000 samples produced 5 negative moduli. A negative
+modulus is unphysical, and it makes $\sqrt{G/\rho}$ undefined --- the Monte Carlo would
+fail on exactly the soft crystals the screen exists to find.
+
+% =====================================================================
+\section{How many samples}
+
+Monte Carlo error falls as $M^{-1/2}$, so accuracy is cheap but improves slowly. This
+project uses $M = 2000$. Measured convergence on the worked crystal, against a
+20{,}000-sample reference:
+
+\begin{center}
+\begin{tabular}{@{}rrr@{}}
+\toprule
+$M$ & $p_{05}$ & $p_{95}$ \\
+\midrule
+50      & 2.466 & 8.517 \\
+250     & 2.039 & 9.199 \\
+1{,}000 & 2.234 & 9.316 \\
+\textbf{2{,}000} & \textbf{2.172} & \textbf{9.160} \\
+5{,}000 & 2.155 & 9.356 \\
+20{,}000 & 2.169 & 9.339 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+At $M = 2000$, $p_{05}$ is within $0.13\%$ and $p_{95}$ within $1.92\%$ of the reference.
+Both are far smaller than the interval itself, which spans a factor of $4.2$. Increasing
+$M$ further would refine a number whose real uncertainty is dominated by something else
+entirely --- which is the subject of the next section.
+
+% =====================================================================
+\section{The interval is too narrow, and by how much}
+
+Everything above is arithmetically correct and still produces an interval that is badly
+overconfident. This is the most important result in this document.
+
+Step 25 of the pipeline tested it on the held-out set, where the true DFT moduli are known,
+and asked: of the crystals where the method claimed $X\%$ confidence, what fraction did the
+interval actually contain?
+
+\begin{center}
+\begin{tabular}{@{}rrrrr@{}}
+\toprule
+nominal & \multicolumn{2}{c}{$K_{\mathrm{VRH}}$} & \multicolumn{2}{c}{$G_{\mathrm{VRH}}$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+ & raw & recalibrated & raw & recalibrated \\
+\midrule
+0.5 & 0.234 & 0.496 & 0.214 & 0.512 \\
+0.8 & 0.414 & 0.789 & 0.394 & 0.811 \\
+\textbf{0.9} & \textbf{0.508} & 0.895 & \textbf{0.479} & 0.909 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+A nominal $90\%$ interval covers about $\mathbf{50\%}$ of true values.
+
+\subsection{Why}
+
+The Monte Carlo faithfully propagates the ensemble's \emph{disagreement}. But disagreement
+is only the variance component of the error:
+\[
+\mathbb{E}\big[(\hat{y}-y)^2\big] \;=\; \underbrace{\big(\mathbb{E}[\hat{y}]-y\big)^2}_{\text{bias}^2} \;+\; \underbrace{\operatorname{Var}(\hat{y})}_{\text{what the ensemble sees}} .
+\]
+Three networks with the same architecture, the same training data and the same split share
+their blind spots. When all three are wrong in the same direction, the bias term is large
+and the variance term is small --- the ensemble agrees with itself, the sampled spread is
+narrow, and the method reports high confidence in a wrong answer. Measured here, member
+disagreement runs $4$--$6\times$ smaller than the true error.
+
+\warnbox{The generalisable lesson}{\textbf{An ensemble's spread is a lower bound on its
+uncertainty, never the whole of it.} It must be calibrated against held-out truth before it
+is quoted as a confidence interval. Rescaling $\sigma$ by a factor fitted on validation data
+restores $\sim$90\% coverage out of sample (right-hand columns above) --- but the factor has
+to be measured, and it is level-dependent: roughly $4.2\times$ at nominal $0.8$ and
+$7.0\times$ at $0.9$. Applying that correction to this project's DFT shortlist collapsed
+almost every ``tight'' confidence label to ``wide''.}
+
+% =====================================================================
+\section{Summary}
+
+\begin{center}
+\begin{tabular}{@{}p{0.13\linewidth}p{0.40\linewidth}p{0.40\linewidth}@{}}
+\toprule
+step & what happens & why \\
+\midrule
+draw & $M = 2000$ pairs from $\mathcal{N}(\mu, \sigma^2)$ in $\log_{10}$ space & the error is multiplicative, and $10^x$ cannot be negative \\[4pt]
+propagate & every pair through the same $f$ as the point estimate & no linearisation, no derivatives; interval consistent with the central value by construction \\[4pt]
+summarise & the $5$th, $50$th and $95$th percentiles & the output is skewed although the input was symmetric \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+And the caveat that outweighs the rest: this propagates \emph{variance} only. Uncorrected,
+the interval covers about half of what it claims.
+
+\end{document}
