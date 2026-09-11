@@ -168,3 +168,6 @@ kaggle/build_alignn_s*/
 # Self-contained structure viewers written by notebooks/show_structure.ipynb -
 # each embeds a 525 KB copy of 3Dmol.js and is regenerated on demand.
 notebooks/view_*.html
+
+# Raw terminal session dump from `script` - 2 MB of escape sequences, not source
+typescript

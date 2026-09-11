@@ -1,0 +1,8 @@
+mp_id,formula,spacegroup,e_above_hull,K_mp,G_mp,has_elastic
+mp-3203099,Be3AlFeB,R3m,0.0,,,False
+mp-3240194,Be4BIr,R3m,0.0,,,False
+mp-3209282,Cs4MnZnTe4,I222,0.0,,,False
+mp-3210580,Cs4Sb4PdPt,C2/m,0.0,,,False
+mp-3206624,CsRbSe3,Cmc2_1,0.0,,,False
+mp-3230146,NaBC7,Amm2,0.0,,,False
+mp-3202562,ZrPbBr6,R3,0.0,,,False
