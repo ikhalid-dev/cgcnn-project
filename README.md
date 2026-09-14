@@ -930,3 +930,82 @@ constant looked convincing: it is true where it was measured and nowhere else.
 **Quote the population with the constant** — the same lesson the sibling
 gamma project's audit reached on the same day, about a different number.
 
+### Step 61 — the DFT validation set, designed rather than ranked
+
+Every result in this project is model-vs-model or model-vs-database. No
+candidate has ever been checked against a calculation this project ran itself,
+and a reviewer's first question about any discovery claim is *"did you verify
+any of them?"*
+
+Step 61 picks what to compute — **18 crystals, 162 atoms in total** — and it is a
+designed experiment, not a top-N list, because the ten lowest predicted κ is the
+wrong set. Step 16 established the winner's-curse problem: argmin over 33,000
+noisy predictions selects for noise as much as for merit.
+
+```
+arm                     n   what it tests
+A: consensus low        8   is the pipeline right when all four models agree?
+                            ranked by the MOST PESSIMISTIC model, not the lowest
+                            prediction, so one confident model cannot carry a row
+B: adjudication         6   the disagreement: ALIGNN and the tree say K ~ 5-8 GPa,
+                            round 9 says K ~ 67-135 GPa
+C: negative control     4   crystals the models call ordinary - a set that can only
+                            confirm is not an experiment
+```
+
+### Step 64 — arm B settled without running any DFT
+
+Arm B existed to resolve a factor-of-fifteen disagreement about stiffness. Step
+64 asks whether the answer is already public: the Materials Project publishes
+DFT elastic tensors, and while it does not contain these exact GNoME crystals,
+it contains plenty of the same **chemistry**.
+
+```
+formula     ALIGNN K    round 9 K    max real K, same chemistry   round 9 exceeds all real
+MoBr5Cl         5.5        127.6                      26.36                        YES
+ZrPbBr6         5.0         66.6                      26.36                        YES
+TbBiCl8         7.5         88.1                      26.36                        YES
+YBiCl8          6.9         87.4                      26.36                        YES
+WBrCl3          6.6        135.5                      26.36                        YES
+Pt2ICl7         4.8        124.6                      26.36                        YES
+```
+
+**Round 9 is refuted on all six, and ALIGNN falls inside the real range on all
+six.** The stiffest metal halide anyone has computed in these chemical systems
+reaches 26.4 GPa; round 9 predicts up to 135 GPa. That is not a
+close call, and it cost no DFT at all.
+
+**So arm B can be dropped from the calculation queue** — six of eighteen
+crystals, a third of the planned cost, freed by looking up what is already
+known. And it corroborates step 51 from a completely independent direction:
+where round 9 and the tree/ALIGNN side disagree, round 9 is wrong.
+
+### Step 63 — against measured conductivity, the one place with real ground truth
+
+PINK's Table 1 is the only source of **measured** κ_L available here: 45 of its
+46 materials (mp-3490/GaP is deprecated in Materials Project, so 45 is the
+ceiling, not a sampling choice).
+
+```
+mean |log10 error| against experiment, 45 materials
+this project, derived gamma      0.427
+this project, equal footing      0.226
+PINK's own published numbers     0.227
+```
+
+**On an equal footing this project matches the published pipeline** — 0.226
+against 0.227 — and the derived-γ variant is roughly twice as wrong, which is
+the same γ problem steps 49 and 59 identify from other angles.
+
+Two honest limits on this comparison, both of which must travel with it:
+
+- **43 of the 45 materials are in matbench training.** Only 2 are unseen, and
+  two materials cannot support a generalisation claim. The table shows the
+  pipeline reproduces measured values on data the models have largely seen.
+- Step 63 was written expecting ALIGNN to win, since it beat the CGCNN ensemble
+  on both moduli and was the only improvement to survive step 50's re-scoring.
+  It does not: **the CGCNN ensemble is the better model on all 45 rows**. A
+  better moduli predictor did not produce a better conductivity, which is worth
+  a sentence in any write-up — the Slack stage sits between them and does not
+  pass improvements through cleanly.
+
