@@ -1009,3 +1009,81 @@ Two honest limits on this comparison, both of which must travel with it:
   a sentence in any write-up — the Slack stage sits between them and does not
   pass improvements through cleanly.
 
+### Steps 40 and 41 — what GNoME does and does not contain
+
+Step 40 sorts every result by structural family rather than by which script
+wrote it. The table it produces answers a question nobody had asked directly:
+
+```
+family                                   GNoME candidates   of which low-kappa   in matbench train
+non-oxide                                          21,580                6,723              6,197
+complex oxide (4 elements)                          4,972                  184                 82
+complex oxide (5 elements)                          3,296                   33                  2
+other oxide (mixed-anion / molecular-ion)            2,811                  253                360
+```
+
+**And it exposed a gap that step 41 then chased: GNoME's 33,118 candidates
+contain ZERO ABO3 perovskites** — and zero rock-salt, zero fluorite. That is
+not an accident of filtering. GNoME's discovery method hunts novel multi-cation
+substitutions, so well-known simple structures are already in the reference hull
+and never come back as "new". Perovskites exist in this project only as
+*training* data — 300 in matbench, 120 in AFLOW — never screened.
+
+Step 41 screens JARVIS-DFT's perovskites to close that gap. **The result is
+empty: 0 perovskites pass the low-κ threshold.** A null, and a useful one — the
+family most associated with thermoelectrics produces no candidates under this
+pipeline's own criteria, so the absence in GNoME costs nothing.
+
+### Step 45 — the composition baseline over the whole screen
+
+Step 43 established the composition-only tree is not a straw man. Step 45 runs
+it across all 17,099 screened candidates and annotates every downstream CSV
+with its prediction, so any candidate list carries both the network's κ and the
+baseline's side by side. That is what made step 46's confusion — and step 51's
+adjudication — possible at all: without a second opinion on every row there is
+nothing to disagree with.
+
+### Step 54 — the tree control that makes step 55 valid
+
+Step 55's claim is that the CGCNN's loss on AFLOW is about the labels, not the
+data volume. That is only answerable if the **tree** is measured at both sizes
+too; comparing a 3,894-trained network against a 7,691-trained tree would
+confound exactly the thing being tested.
+
+```
+matbench, MAE log10          3,894 crystals   7,691 crystals
+random forest, K_VRH               0.0935           0.0868
+xgboost, K_VRH                     0.0916           0.0883
+random forest, G_VRH               0.1196           0.1061
+```
+
+Halving the data costs the trees about 0.006 in MAE. **That is the scale of the
+size effect, and it is far smaller than the 0.056 gap between CGCNN and tree on
+AFLOW** — which is what licenses step 55's conclusion.
+
+### Step 56 — are the two datasets comparable at all?
+
+Steps 43, 44 and 53 all rest on one cross-dataset comparison, and that
+comparison is only safe if matbench and AFLOW are alike. If AFLOW were simply
+noisier or narrower, "the network fails on AFLOW" would be a statement about the
+data, not the model.
+
+```
+dataset    target   n        target spread   polymorph groups   within-formula spread
+matbench   K_VRH    10,987        0.369            18%                  0.0813
+AFLOW      K_VRH     5,563        0.335            21%                  0.0486
+matbench   G_VRH    10,987        0.372            18%                  0.0961
+AFLOW      G_VRH     5,563        0.365            21%                  0.0961
+```
+
+**Mostly comparable, with one real difference.** The target spreads are close
+(0.369 vs 0.335 on K), and both have a fifth of their entries in polymorph
+groups. But **AFLOW's within-formula spread on K is 1.7x SMALLER** — 0.0486 against
+matbench's 0.0813. Same-formula polymorphs in AFLOW have more nearly identical
+bulk moduli.
+
+That cuts the opposite way to the comfortable explanation: AFLOW's K labels are
+*more* self-consistent, not less, so the network's failure there cannot be
+blamed on noisier targets. On G the two are indistinguishable (0.0961 vs
+0.0961), and the network loses on G as well.
+
