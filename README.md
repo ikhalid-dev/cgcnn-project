@@ -476,7 +476,7 @@ Three times the training for a gain that does not clear zero on K and barely doe
 recording, because ensembling is the reflex move and here it is close to free of benefit — the
 CGCNN side needed its ensemble far more than ALIGNN does.
 
-**Step 57/58 — does the agreement survive a change of population?** Spearman rho between models,
+**Steps 57 and 58 — does the agreement survive a change of population?** Spearman rho between models,
 on the 33,053-crystal GNoME screen rather than the 1,213-crystal PINK set:
 
 | comparison | rho | n |
@@ -740,3 +740,117 @@ matbench/AFLOW convention gap layered on top. The trained-γ pipeline flags mark
 overall, which is the expected direction: a noisier γ estimate systematically lets more materials
 slip under the threshold. `results/cgcnn/39_gnome_screen_all_gamma.csv` carries both pipelines'
 κ_L side by side for every candidate, so the disagreement is inspectable, not asserted.
+
+---
+
+## Steps 50–55: what survived a corrected ruler
+
+*Written up 2026-09-15. These steps ran weeks ago and their results sat in
+`results/cgcnn/` without reaching this document — an audit
+(`scripts/audit_results.py`) found eighteen such steps, and this is the first
+batch.*
+
+### Step 50 — re-measuring every model family, after the metric was found circular
+
+Step 48 established that the metric this project had always quoted was
+**circular**: recall@10% ranked predicted κ against a reference κ that was this
+project's own Slack formula on matbench's true moduli, with γ derived from those
+moduli by the same Poisson relation the prediction side uses. Both sides called
+`slack_factors`, so the physics cancelled and γ cancelled completely — **a model
+predicting a better γ scored worse.**
+
+Step 48 fixed the target but only re-scored the CGCNN roster. Every other
+performance claim in this project — ALIGNN "beats the CGCNN ensemble", the
+composition-only tree baseline, seven rounds of architecture work — had been
+made with the broken ruler. Step 50 re-measures all of them against AFLOW-AGL's
+κ, with bootstrap intervals.
+
+**Of 29 runs compared against the separate-ensemble baseline:**
+
+```
+significantly different on Spearman rho     10 of 29
+significantly different on recall@10        1 of 29
+significant on BOTH                         1 of 29
+```
+
+**Almost nothing separates the architectures once the ruler is straight.** The
+baseline's own recall@10 of 65.9% is not beaten by any run in the table; ALIGNN
+takes the best Spearman (0.874 against 0.847) and that is one of the ten rho
+differences that clears zero. Seven rounds of architecture work, re-measured
+honestly, mostly vanish into the intervals.
+
+That is the single most important result in this project, and it was
+undocumented.
+
+### Step 51 — the standoff, settled
+
+Step 46 left a contradiction it could not resolve. On the 218 GNoME crystals
+queued for DFT:
+
+```
+old pipeline (matbench, derived gamma)   218/218 call kappa <= 1
+composition-only tree baseline (AFLOW)   191/218
+round-9 CGCNN (AFLOW, trained gamma)      19/218
+```
+
+The composition-only tree sides with the shortlist; the model built to improve
+on it rejects almost all of it. GNoME has no ground truth, so nothing there
+could adjudicate — and DFT time was about to be spent on a list one of the
+project's own models rejects.
+
+**Step 51 moves the question to crystals that DO have labels** — 835 of them,
+93 genuinely low-κ — and scores both models head to head:
+
+```
+F1, round-9 CGCNN        0.400
+F1, composition tree     0.646
+difference               -0.246   95% CI [-0.352, -0.146]   DECISIVE
+```
+
+**The tree wins, decisively, and the shortlist should be believed.** A
+composition-only decision tree beats the graph network that was built to
+supersede it, on the one question that mattered for spending DFT time.
+
+### Steps 53 and 55 — why the tree wins: the network never learned
+
+Steps 43/44 found the tree beating CGCNN on AFLOW and diagnosed **underfitting**
+rather than a real advantage — round 9's *training* error was worse than the
+tree's *test* error. A model that cannot fit data it has already seen has not
+been out-generalised; it never learned.
+
+Step 52 removed all three suspected causes at once (dropout, huber loss, three
+heads on one trunk) by retraining with the matbench recipe. Step 53 is the
+verdict:
+
+```
+target   arm              train    test    test/train
+K_VRH    round 9          0.117   0.134      1.15
+K_VRH    matbench recipe  0.088   0.115      1.31
+K_VRH    random forest    0.029   0.063      2.15
+K_VRH    xgboost          0.037   0.059      1.59
+```
+
+**The recipe helped and did not close the gap** — 0.134 → 0.115 on K, against
+the tree's 0.059. And the ratios tell the story: the trees sit at 1.6–2.1, the
+healthy signature of a model that fits its training data and then gives some of
+it back on held-out crystals. The CGCNNs sit at 1.15–1.31, which looks like
+good generalisation and is actually the fingerprint of a model that never fit
+anything.
+
+**Step 55 removes the last excuse — dataset size.** Trained on 3,894 crystals
+from each source, the same count:
+
+```
+dataset    target   CGCNN    tree    label floor   CGCNN/floor   winner
+matbench   K_VRH    0.080   0.092        0.081          0.99    CGCNN
+AFLOW      K_VRH    0.115   0.059        0.049          2.38    TREE
+matbench   G_VRH    0.103   0.116        0.096          1.08    CGCNN
+AFLOW      G_VRH    0.155   0.101        0.096          1.61    TREE
+```
+
+**The same architecture, the same size, opposite verdicts.** On matbench the
+CGCNN reaches its label floor (ratio 0.99) and beats the tree. On AFLOW it sits
+at 2.4x the floor and loses. So the failure is not the architecture and not the
+amount of data — **it is something about AFLOW's labels**, which step 59's
+cross-source noise analysis takes up.
+
