@@ -453,6 +453,45 @@ Both targets trained the full 150 epochs (no early stop), 158 minutes total. The
 with the architectural motivation above: ALIGNN's line graph gives it bond *angles*, information
 CGCNN's convolution structurally cannot see, and both moduli depend on more than bond lengths alone.
 
+**The comparison above has no interval, and this project's own rule says two numbers side by side
+are not a comparison.** Step 18 supplies it — three ALIGNN seeds, paired bootstrap on the same
+1,648 held-out crystals:
+
+| target | ALIGNN 3-ens | CGCNN 3-ens | paired gap | 95% CI | verdict |
+|---|---|---|---|---|---|
+| Bulk modulus K | 0.0534 | 0.0630 | -0.0097 | [-0.0124, -0.0069] | **real** |
+| Shear modulus G | 0.0708 | 0.0781 | -0.0073 | [-0.0100, -0.0046] | **real** |
+
+So the headline survives being measured properly: **ALIGNN beats the CGCNN ensemble on both
+targets, with intervals that clear zero.**
+
+**And a second finding that is easy to miss — ensembling ALIGNN itself barely helps:**
+
+```
+K   3 seeds vs 1        -0.0005   CI [-0.0018, +0.0007]   spans zero, NOT measurable
+G   3 seeds vs 1        -0.0018   CI [-0.0033, -0.0002]   marginal
+```
+
+Three times the training for a gain that does not clear zero on K and barely does on G. Worth
+recording, because ensembling is the reflex move and here it is close to free of benefit — the
+CGCNN side needed its ensemble far more than ALIGNN does.
+
+**Step 57/58 — does the agreement survive a change of population?** Spearman rho between models,
+on the 33,053-crystal GNoME screen rather than the 1,213-crystal PINK set:
+
+| comparison | rho | n |
+|---|---|---|
+| ALIGNN vs CGCNN-ens, PINK set — the original reference | 0.947 | 1,213 |
+| ALIGNN vs CGCNN-ens, GNoME — **the control**: population changed, partner type did not | 0.924 | 33,053 |
+| ALIGNN vs round 9 (AFLOW-trained, learned gamma) | 0.723 | 33,053 |
+| CGCNN-ens vs round 9 | 0.692 | 33,053 |
+
+The control is what makes this readable: two matbench models still agree at rho = 0.92 on
+the new population, so the drop to 0.72 against round 9 is **not** a population effect — it is
+the training set and the gamma treatment. Two models that agree almost perfectly on one screen can
+disagree materially on another, and the reason is what they were fitted to, not where they were
+applied.
+
 **Where this actually ran: Kaggle, not Colab, and not on the GPU tier `kaggle/build_kernel.py`
 originally picked.** The Colab session training this in parallel was lost to VM pruning three times
 in one evening (see `colab/run_alignn_cli.py`'s own docstring for the checkpoint/resume system that
