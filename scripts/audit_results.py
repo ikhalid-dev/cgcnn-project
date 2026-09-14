@@ -87,8 +87,12 @@ def check_drift(text):
 
 def check_orphans(text):
     steps = set()
-    for pat in (r'step\s+(\d+)', r'round\s+(\d+)', r'/(\d+)_', r'fig(\d+)',
-                r'\b(\d+)_[a-z]'):
+    # PLURALS and lists matter: "Steps 57 and 58" was reported as an orphan
+    # purely because the pattern required "step" + whitespace + digits, which
+    # misses both the "s" and the second number after "and".
+    for pat in (r'steps?\s+(\d+)', r'rounds?\s+(\d+)', r'/(\d+)_',
+                r'fig(\d+)', r'\b(\d+)_[a-z]',
+                r'steps?\s+\d+\s+and\s+(\d+)', r'steps?\s+\d+[-–](\d+)'):
         steps.update(int(m) for m in re.findall(pat, text, re.I))
     by_step, unnumbered = {}, []
     for f in sorted(RESULTS.rglob("*")):

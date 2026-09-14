@@ -854,3 +854,79 @@ at 2.4x the floor and loses. So the failure is not the architecture and not the
 amount of data — **it is something about AFLOW's labels**, which step 59's
 cross-source noise analysis takes up.
 
+### Steps 43 and 44 — the composition-only baseline, and what it does to the DFT list
+
+Every accuracy number in this project came from a network that sees the full 3D
+structure. Step 43 asks what a model reaches with **composition alone** — no
+geometry at all — on the same splits:
+
+```
+matbench test, MAE log10(GPa)      K_VRH    G_VRH
+random forest                      0.0868   0.1062
+xgboost                            0.0879   0.1128
+decision tree                      0.1157   0.1476
+CGCNN 3-ensemble, for reference    0.0630   0.0781
+```
+
+**On matbench the network earns its complexity** — it beats every tree on both
+targets. That is the result this project was built on, and it holds.
+
+Step 44 turns the composition model into a low-κ screen on AFLOW, which is the
+question that decides where DFT time goes:
+
+```
+threshold kappa <= 1 W/m/K, 835 crystals, 93 truly low
+precision 0.697   recall 0.570   F1 0.627
+```
+
+That F1 is what step 51 later puts head to head against round 9 — and round 9
+loses to it.
+
+### Step 49 — is AFLOW-AGL's gamma trustworthy? No, and the bias is large
+
+Round 9's γ head learns from AFLOW-AGL's tabulated `agl_gruneisen`, which is not
+measured: it comes from a quasi-harmonic Debye-Grüneisen fit. Against
+experimental γ on 43 matched crystals:
+
+```
+Pearson r                      0.248
+Spearman rho                   0.175
+mean |difference|              0.978
+bias, AGL minus experiment     +0.978
+median experimental gamma      1.06
+```
+
+**AGL's γ is biased high by almost exactly 1.0 against a median experimental γ
+of 1.06 — roughly double the truth, and barely correlated with it.** The γ
+head reaches MAE 0.143 against that target, so it learns its training
+signal well; the signal is the problem. The sibling MLIP-gamma project reached
+the same conclusion from the other direction, and together they are the argument
+for computing γ from phonons rather than tabulating it.
+
+### Step 59 — which population the label-noise constant came from
+
+Several scripts quote one number for the disagreement between this project's two
+label sources, and use it as the noise floor. Step 59 asks where it came from:
+
+```
+population       source disagreement (G)   model error   noise / model error
+as quoted                    0.1085        0.0781                1.39
+full matched                 0.0539        0.0781                0.69
+soft subset                  0.1044        0.1033                1.01
+```
+
+**The quoted constant is the SOFT subset's disagreement, and it was being used
+as if it described the whole dataset.** That decides whether the project can
+claim it has reached the label-noise floor:
+
+- against the quoted number the model's error sits **below** the noise — the
+  comfortable reading, *"we are saturated, nothing more to gain"*
+- against the **full matched** population the noise is 0.0539 and the model's
+  error 0.0781 is **1.45x larger** — there is headroom, and the ceiling
+  story does not hold
+
+On the soft subset the two are equal (1.01), which is exactly why the
+constant looked convincing: it is true where it was measured and nowhere else.
+**Quote the population with the constant** — the same lesson the sibling
+gamma project's audit reached on the same day, about a different number.
+
