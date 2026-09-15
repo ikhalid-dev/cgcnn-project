@@ -19,9 +19,12 @@
 % content cannot overflow itself - it grows to fit, by construction.
 
 \usepackage{fontspec}
-\setmainfont{Avenir Next}
-\setsansfont{Avenir Next}
-\newfontfamily\headingfont{Georgia}
+% Ligatures=TeX is what turns "---" into an em dash and `` '' into quotes.
+% Without it fontspec passes them through literally, and 15 slide titles were
+% printing three hyphens.
+\setmainfont{Avenir Next}[Ligatures=TeX]
+\setsansfont{Avenir Next}[Ligatures=TeX]
+\newfontfamily\headingfont{Georgia}[Ligatures=TeX]
 \newfontfamily\monofont{Menlo}
 
 \usepackage{tikz}

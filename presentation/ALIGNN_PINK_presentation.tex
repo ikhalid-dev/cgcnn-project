@@ -1230,9 +1230,9 @@ the single thing blocking any discovery claim.}
 \AccentCard{3.6cm}{SlideAmber}{%
   \sffamily\scriptsize
   \textbf{Arm B --- adjudication}\\[3pt]
-  Three models say low, round 9 says high. GNoME has no ground truth; DFT
-  settles it.\\[3pt]
-  6 of 214 eligible}
+  Three models said low, round 9 said high. \textbf{Settled without DFT} ---
+  next slide but one.\\[3pt]
+  6 queued, \textbf{0 now needed}}
 \column{0.31\linewidth}
 \AccentCard{3.6cm}{Muted}{%
   \sffamily\scriptsize
@@ -1249,14 +1249,14 @@ elastic tensor on a 6--10 atom cell is a handful of static calculations.
 Quasi-harmonic Debye $\kappa$ then follows from the same tensor almost free.
 
 \vspace{3pt}
-\textbf{Start with MoBr$_5$Cl} --- 7 atoms, $Cm$: ALIGNN 0.028 vs round 9's
-4.524, a factor of 162.}
+\textbf{Start with Rb$_4$MnBeTe$_4$} --- 10 atoms, $I222$: the lowest of the
+eight at 0.214 W/m/K, with all four models inside a factor of 2.9.}
 \end{frame}
 
 % =============================================================================
 
 \begin{frame}
-\SlideHeader{29b \textperiodcentered\ NEXT}{The 18 materials, and what each arm asks}
+\SlideHeader{29b \textperiodcentered\ NEXT}{The 18 we queued, and why six are gone}
 
 \begin{center}
 \includegraphics[width=0.84\linewidth]{figures/dft_validation_set.png}
@@ -1264,15 +1264,16 @@ Quasi-harmonic Debye $\kappa$ then follows from the same tensor almost free.
 
 \vspace{-3pt}
 {\sffamily\scriptsize
-Four models per material, all cells $\leq$ 10 atoms. Amber band = the
-adjudication arm, where three models say low and round 9 says high --- only DFT
-settles those. Green = consensus low, grey = negative control. Start with
-\textbf{MoBr$_5$Cl}: ALIGNN 0.028 against round 9's 4.524, the sharpest
-disagreement in the screen.}
+Four models per material, cells $\leq$ 10 atoms. Green = consensus low,
+amber = adjudication, grey = negative control.
+\textcolor{SlideAmber}{\textbf{The amber arm no longer needs DFT:}} round 9's
+predicted $K$ exceeds \emph{every} real measured $K$ for those chemistries,
+ALIGNN's sits inside it. Six runs removed by a database query --- the next slide
+is what we are asking for.}
 \end{frame}
 
 \begin{frame}
-\SlideHeader{29c \textperiodcentered\ NEXT}{The shortlist, as it stands after step 64}
+\SlideHeader{29c \textperiodcentered\ THE ASK}{The ask: 8 calculations, plus 4 controls}
 
 \begin{center}
 {\sffamily\scriptsize
@@ -1294,23 +1295,24 @@ Cs$_{4}$MnZnTe$_{4}$ & \texttt{a679a9434e} & 10 & I222 & 13.4 & 7.5 & \textbf{0.
 \end{tabular}}
 \end{center}
 
-\vspace{2pt}
+\vspace{1pt}
 {\sffamily\scriptsize
-\textcolor{SlideGreen}{\textbf{Eight candidates, not eighteen.}} Step 64 removed
-the six adjudication materials without any DFT: round 9's predicted $K$ exceeds
-\emph{every} real measured $K$ for those chemistries, while ALIGNN's sits inside
-the real range. The four negative controls stay as controls.
-
-\vspace{3pt}
-\textbf{$\kappa$ is ALIGNN's}, not an average of the four --- averaging across a
-refuted model produces a number no model believes. \textbf{Spread} is
+\textcolor{SlideGreen}{\textbf{Eight candidates, not eighteen}} --- step 64
+removed the six adjudication materials with a database query, no DFT. The four
+negative controls stay.
+\textbf{$\kappa$ is ALIGNN's}, not an average of four: averaging across a
+refuted model gives a number no model believes. \textbf{Spread} is
 $\kappa_{\max}/\kappa_{\min}$ across the four, and it separates the arms by
-itself: these eight span 1.3--2.9$\times$, the six dropped ones 89--162$\times$.
+itself --- these eight span 1.3--2.9$\times$, the six dropped ones
+89--162$\times$.
 
-\vspace{3pt}
-\textcolor{Muted}{Source: \texttt{results/cgcnn/66\_dft\_queue\_slide.csv}
-(full table with status and reason in \texttt{66\_dft\_queue.csv}).
-Start with \textbf{Rb$_4$MnBeTe$_4$}, the lowest predicted.}}
+\vspace{4pt}
+\textbf{Cost:} a finite-strain elastic tensor on a 6--10 atom cell --- a handful
+of static calculations, not a phonon workflow. \textbf{Decision:} eight soft
+\emph{and} four stiff controls validates the screen on ground truth for the
+first time; everything soft means the pipeline calls everything soft and the
+screen fails. \textcolor{SlideGreen}{\textbf{Either outcome is a result.}}}
+
 \end{frame}
 
 \begin{frame}
@@ -1366,7 +1368,7 @@ Producing them needs a full DFT plus finite-displacement phonon workflow with
 computed --- days of DFT per material, and a different toolchain from anything
 here.\\[8pt]
 {\color{white}No stand-in is drawn for them.} They are the same missing
-ground-truth gap the 18-material DFT set exists to start closing.}
+ground-truth gap the 12-crystal DFT set exists to start closing.}
 \end{minipage}
 \end{center}
 \end{frame}
