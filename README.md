@@ -750,6 +750,49 @@ slip under the threshold. `results/cgcnn/39_gnome_screen_all_gamma.csv` carries 
 (`scripts/audit_results.py`) found eighteen such steps, and this is the first
 batch.*
 
+### Step 66 — the DFT queue as it actually stands
+
+Step 61 built an 18-material queue in three arms; step 64 then settled one whole
+arm without running anything. The presentation still shows the original 18 and
+tells the audience "only DFT settles those", which is no longer true. Step 66
+produces the current queue and the prediction that should be believed for each
+material.
+
+```
+QUEUE     8   arm A, four models agree it is ultralow - the actual candidates
+CONTROL   4   arm C, stiff by every model - guards against a pipeline that
+              calls everything soft
+DROPPED   6   arm B, round 9 refuted by step 64 without any DFT
+```
+
+**The live queue, ranked by the believable prediction:**
+
+```
+formula      atoms  spacegroup   K_alignn  G_alignn   kappa_ALIGNN   model spread
+Rb4MnBeTe4      10   I222           17.2      5.6         0.214          2.9x
+CsRbSe3         10   Cmc2_1         10.7      4.8         0.235          2.3x
+Cs4CdHgSe4      10   I222           16.5      6.4         0.287          1.8x
+Cs4Sb4PdPt      10   C2/m           16.2      7.9         0.475          1.5x
+Cs4BeZnTe4      10   I222           16.1      7.6         0.487          1.3x
+Cs4MnBeTe4      10   I222           15.5      7.5         0.501          1.5x
+Cs4MgMnTe4      10   I222           13.1      7.0         0.513          1.6x
+Cs4MnZnTe4      10   I222           13.4      7.5         0.584          2.1x
+```
+
+**Why ALIGNN is the number quoted.** It is the best moduli model measured
+(MAE 0.0539 / 0.0725 log10, R2 0.920 / 0.901) and, on arm B, the only one whose
+predictions fall inside the range of real measured moduli for that chemistry.
+Round 9 appears in the CSV as the disagreement, never as the answer.
+
+**The model spread is the honest uncertainty, and it separates the arms
+cleanly.** The eight live candidates span 1.3x-2.9x across four models; the six
+dropped ones span **89x-162x**, which is what a refuted model looks like when it
+is still in the average. Reporting a mean across those four would have produced
+a number no model believes.
+
+`results/cgcnn/66_dft_queue.csv` (everything, with status and reason),
+`66_dft_queue_slide.csv` (the compact table for a slide), `66_dft_queue.png`.
+
 ### Step 65 — is the held-out test set really held out?
 
 The sibling project splits by **chemical system** and freezes the split to a

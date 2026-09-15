@@ -1,0 +1,9 @@
+formula,material_id,atoms,space_group,crystal_system,K_alignn,G_alignn,kappa_pred_ALIGNN,model_spread_x
+Rb4MnBeTe4,df6bc2655d,10,I222,orthorhombic,17.214,5.608,0.214,2.857
+CsRbSe3,5249fac9ad,10,Cmc2_1,orthorhombic,10.692,4.778,0.235,2.3
+Cs4CdHgSe4,1ef9dbf9a2,10,I222,orthorhombic,16.457,6.371,0.287,1.764
+Cs4Sb4PdPt,f0ceb2e700,10,C2/m,monoclinic,16.227,7.897,0.475,1.472
+Cs4BeZnTe4,0fd53e916f,10,I222,orthorhombic,16.095,7.561,0.487,1.346
+Cs4MnBeTe4,5a06b134b6,10,I222,orthorhombic,15.546,7.52,0.501,1.538
+Cs4MgMnTe4,997187ed8b,10,I222,orthorhombic,13.135,6.951,0.513,1.605
+Cs4MnZnTe4,a679a9434e,10,I222,orthorhombic,13.356,7.492,0.584,2.072
