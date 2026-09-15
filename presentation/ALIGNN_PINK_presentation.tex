@@ -1272,6 +1272,48 @@ disagreement in the screen.}
 \end{frame}
 
 \begin{frame}
+\SlideHeader{29c \textperiodcentered\ NEXT}{The shortlist, as it stands after step 64}
+
+\begin{center}
+{\sffamily\scriptsize
+\begin{tabular}{llccrrrr}
+\toprule
+\textbf{formula} & \textbf{GNoME id} & \textbf{atoms} & \textbf{space gp.} &
+\textbf{$K$} & \textbf{$G$} & \textbf{$\kappa_{\mathrm{lat}}$} & \textbf{spread}\\
+ & & & & \multicolumn{2}{c}{\scriptsize GPa, ALIGNN} & {\scriptsize W/m/K} & {\scriptsize across 4 models}\\
+\midrule
+Rb$_{4}$MnBeTe$_{4}$ & \texttt{df6bc2655d} & 10 & I222 & 17.2 & 5.6 & \textbf{0.214} & 2.9$\times$ \\
+CsRbSe$_{3}$ & \texttt{5249fac9ad} & 10 & Cmc2$_1$ & 10.7 & 4.8 & \textbf{0.235} & 2.3$\times$ \\
+Cs$_{4}$CdHgSe$_{4}$ & \texttt{1ef9dbf9a2} & 10 & I222 & 16.5 & 6.4 & \textbf{0.287} & 1.8$\times$ \\
+Cs$_{4}$Sb$_{4}$PdPt & \texttt{f0ceb2e700} & 10 & C2/m & 16.2 & 7.9 & \textbf{0.475} & 1.5$\times$ \\
+Cs$_{4}$BeZnTe$_{4}$ & \texttt{0fd53e916f} & 10 & I222 & 16.1 & 7.6 & \textbf{0.487} & 1.3$\times$ \\
+Cs$_{4}$MnBeTe$_{4}$ & \texttt{5a06b134b6} & 10 & I222 & 15.5 & 7.5 & \textbf{0.501} & 1.5$\times$ \\
+Cs$_{4}$MgMnTe$_{4}$ & \texttt{997187ed8b} & 10 & I222 & 13.1 & 7.0 & \textbf{0.513} & 1.6$\times$ \\
+Cs$_{4}$MnZnTe$_{4}$ & \texttt{a679a9434e} & 10 & I222 & 13.4 & 7.5 & \textbf{0.584} & 2.1$\times$ \\
+\bottomrule
+\end{tabular}}
+\end{center}
+
+\vspace{2pt}
+{\sffamily\scriptsize
+\textcolor{SlideGreen}{\textbf{Eight candidates, not eighteen.}} Step 64 removed
+the six adjudication materials without any DFT: round 9's predicted $K$ exceeds
+\emph{every} real measured $K$ for those chemistries, while ALIGNN's sits inside
+the real range. The four negative controls stay as controls.
+
+\vspace{3pt}
+\textbf{$\kappa$ is ALIGNN's}, not an average of the four --- averaging across a
+refuted model produces a number no model believes. \textbf{Spread} is
+$\kappa_{\max}/\kappa_{\min}$ across the four, and it separates the arms by
+itself: these eight span 1.3--2.9$\times$, the six dropped ones 89--162$\times$.
+
+\vspace{3pt}
+\textcolor{Muted}{Source: \texttt{results/cgcnn/66\_dft\_queue\_slide.csv}
+(full table with status and reason in \texttt{66\_dft\_queue.csv}).
+Start with \textbf{Rb$_4$MnBeTe$_4$}, the lowest predicted.}}
+\end{frame}
+
+\begin{frame}
 \SlideHeader{30 \textperiodcentered\ NEXT}{Where this can be published}
 
 \begin{columns}[T]
