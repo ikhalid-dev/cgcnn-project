@@ -750,6 +750,75 @@ slip under the threshold. `results/cgcnn/39_gnome_screen_all_gamma.csv` carries 
 (`scripts/audit_results.py`) found eighteen such steps, and this is the first
 batch.*
 
+### Step 65 — is the held-out test set really held out?
+
+The sibling project splits by **chemical system** and freezes the split to a
+JSON file. This project splits at **random** and stores the split inside each
+checkpoint. The reasonable question is whether the second arrangement leaks, and
+`scripts/cgcnn/65_leakage_audit.py` answers it by measurement.
+
+**1. The split is intact.** It lives as index lists in the checkpoint, which are
+indices into the graph cache's order — meaningful only while the cache and the
+label file are unchanged. Rebuilt and checked:
+
+```
+CGCNN predictions_K/G_VRH_ens.csv   10,987 rows   rebuilt split agrees 100.0%
+ALIGNN 18_alignn_ensemble_preds     3,296 rows    100.0% fall in the stored TEST split
+```
+
+The ALIGNN check is a cross-check rather than a tautology: that pipeline derives
+its split independently and lands on the same 1,648 crystals.
+
+**2. A random split does put twins on both sides.**
+
+```
+test crystals                                 1,648
+whose reduced formula ALSO appears in train     251  (15.2%)
+```
+
+**3. But a twin is a noisy hint, not a copy of the answer.** Same-formula pairs
+are polymorphs:
+
+```
+|Δlog10| to the same-formula training crystal
+  K_VRH   median 0.0405    54% are closer than the model's own MAE, 30% are >2x it
+  G_VRH   median 0.0746    47% are closer than the model's own MAE, 30% are >2x it
+```
+
+**4. So the overlap is worth nothing — it costs, if anything.**
+
+```
+model       target  group                        n      MAE
+ALIGNN ens  K       formula NOT seen in train  1397   0.0521
+ALIGNN ens  K       formula ALSO in train       251   0.0606   <- worse
+ALIGNN ens  K       ALL (the quoted number)    1648   0.0534
+                    optimism vs unseen-only          +0.0013  CI [-0.0029,+0.0211]
+CGCNN ens   K       ALL                        1648   0.0630   optimism +0.0008
+ALIGNN ens  G       ALL                        1648   0.0708   optimism +0.0007
+CGCNN ens   G       ALL                        1648   0.0781   optimism +0.0005
+```
+
+Crystals whose chemistry the model has seen are predicted **worse**, not better,
+because their polymorph twins have genuinely different moduli. A strictly
+grouped split would have given essentially the same headline.
+
+> **The verdict, stated so it can be quoted:** the random split is defensible
+> *here* because the formula does not fix the answer. It would not be defensible
+> on a target where it does — and the check is three minutes of compute, so
+> there is no excuse for asserting it instead of measuring it.
+
+**Where leakage IS present, and is disclosed rather than fixed:** the Table 1
+validation. 43 of those 45 materials are in matbench training — those rows are
+recall, not generalisation, and only 2 are genuinely unseen (MAE 0.196 / 0.172).
+That is stated wherever Table 1 appears.
+
+**The residual risk this audit does not remove:** the split is reconstructed
+from indices plus cache order rather than stored as ids, so a future rebuild of
+`graphs.pt` or `labels.csv` would silently shift provenance. Check 1 above is
+what would catch it; writing the test ids to JSON would prevent it.
+
+`results/cgcnn/65_leakage_audit.csv`, `65_leakage_audit.png`.
+
 ### Step 50 — re-measuring every model family, after the metric was found circular
 
 Step 48 established that the metric this project had always quoted was
