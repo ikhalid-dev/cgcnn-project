@@ -1249,8 +1249,8 @@ elastic tensor on a 6--10 atom cell is a handful of static calculations.
 Quasi-harmonic Debye $\kappa$ then follows from the same tensor almost free.
 
 \vspace{3pt}
-\textbf{Start with Rb$_4$MnBeTe$_4$} --- 10 atoms, $I222$: the lowest of the
-eight at 0.214 W/m/K, with all four models inside a factor of 2.9.}
+\textbf{Start with Cs$_4$MnBeTe$_4$} --- 10 atoms, $I222$: the lowest of the
+eight once a real Gr\"uneisen parameter replaces the shortcut, 0.465 W/m/K.}
 \end{frame}
 
 % =============================================================================
@@ -1277,41 +1277,46 @@ is what we are asking for.}
 
 \begin{center}
 {\sffamily\scriptsize
-\begin{tabular}{llccrrrr}
+\begin{tabular}{llcrrrrr}
 \toprule
-\textbf{formula} & \textbf{GNoME id} & \textbf{atoms} & \textbf{space gp.} &
-\textbf{$K$} & \textbf{$G$} & \textbf{$\kappa_{\mathrm{lat}}$} & \textbf{spread}\\
- & & & & \multicolumn{2}{c}{\scriptsize GPa, ALIGNN} & {\scriptsize W/m/K} & {\scriptsize across 4 models}\\
+\textbf{formula} & \textbf{GNoME id} & \textbf{space gp.} &
+\textbf{$K$} & \textbf{$G$} & $\kappa$ \textbf{shortcut} &
+$\kappa$ \textbf{real} $\gamma$ & \textbf{spread}\\
+ & & & \multicolumn{2}{c}{\scriptsize GPa, ALIGNN} & \multicolumn{2}{c}{\scriptsize W/m/K} & {\scriptsize 4 models}\\
 \midrule
-Rb$_{4}$MnBeTe$_{4}$ & \texttt{df6bc2655d} & 10 & I222 & 17.2 & 5.6 & \textbf{0.214} & 2.9$\times$ \\
-CsRbSe$_{3}$ & \texttt{5249fac9ad} & 10 & Cmc2$_1$ & 10.7 & 4.8 & \textbf{0.235} & 2.3$\times$ \\
-Cs$_{4}$CdHgSe$_{4}$ & \texttt{1ef9dbf9a2} & 10 & I222 & 16.5 & 6.4 & \textbf{0.287} & 1.8$\times$ \\
-Cs$_{4}$Sb$_{4}$PdPt & \texttt{f0ceb2e700} & 10 & C2/m & 16.2 & 7.9 & \textbf{0.475} & 1.5$\times$ \\
-Cs$_{4}$BeZnTe$_{4}$ & \texttt{0fd53e916f} & 10 & I222 & 16.1 & 7.6 & \textbf{0.487} & 1.3$\times$ \\
-Cs$_{4}$MnBeTe$_{4}$ & \texttt{5a06b134b6} & 10 & I222 & 15.5 & 7.5 & \textbf{0.501} & 1.5$\times$ \\
-Cs$_{4}$MgMnTe$_{4}$ & \texttt{997187ed8b} & 10 & I222 & 13.1 & 7.0 & \textbf{0.513} & 1.6$\times$ \\
-Cs$_{4}$MnZnTe$_{4}$ & \texttt{a679a9434e} & 10 & I222 & 13.4 & 7.5 & \textbf{0.584} & 2.1$\times$ \\
+CsRbSe$_{3}^{*}$ & \texttt{5249fac9ad} & Cmc2$_1$ & 10.7 & 4.8 & 0.235 & \textbf{0.259} & 2.3$\times$ \\
+Cs$_{4}$MnBeTe$_{4}$ & \texttt{5a06b134b6} & I222 & 15.5 & 7.5 & 0.501 & \textbf{0.465} & 1.5$\times$ \\
+Cs$_{4}$CdHgSe$_{4}$ & \texttt{1ef9dbf9a2} & I222 & 16.5 & 6.4 & 0.287 & \textbf{0.500} & 1.8$\times$ \\
+Cs$_{4}$MgMnTe$_{4}$ & \texttt{997187ed8b} & I222 & 13.1 & 7.0 & 0.513 & \textbf{0.557} & 1.6$\times$ \\
+Cs$_{4}$BeZnTe$_{4}$ & \texttt{0fd53e916f} & I222 & 16.1 & 7.6 & 0.487 & \textbf{0.646} & 1.3$\times$ \\
+Cs$_{4}$MnZnTe$_{4}$ & \texttt{a679a9434e} & I222 & 13.4 & 7.5 & 0.584 & \textbf{0.783} & 2.1$\times$ \\
+Rb$_{4}$MnBeTe$_{4}$ & \texttt{df6bc2655d} & I222 & 17.2 & 5.6 & 0.214 & \textbf{0.888} & 2.9$\times$ \\
+Cs$_{4}$Sb$_{4}$PdPt$^{\dagger}$ & \texttt{f0ceb2e700} & C2/m & 16.2 & 7.9 & 0.475 & \textbf{---} & 1.5$\times$ \\
 \bottomrule
 \end{tabular}}
 \end{center}
 
 \vspace{1pt}
 {\sffamily\scriptsize
-\textcolor{SlideGreen}{\textbf{Eight candidates, not eighteen}} --- step 64
-removed the six adjudication materials with a database query, no DFT. The four
-negative controls stay.
-\textbf{$\kappa$ is ALIGNN's}, not an average of four: averaging across a
-refuted model gives a number no model believes. \textbf{Spread} is
-$\kappa_{\max}/\kappa_{\min}$ across the four, and it separates the arms by
-itself --- these eight span 1.3--2.9$\times$, the six dropped ones
-89--162$\times$.
+\textcolor{SlideGreen}{\textbf{Eight candidates, not eighteen}} --- step 64 removed
+the six adjudication materials with a database query, no DFT. All eight are 10-atom cells. \textbf{$\kappa$ is ALIGNN's}, never an average across a
+refuted model. \textbf{Spread} $=\kappa_{\max}/\kappa_{\min}$ over four models:
+these eight span 1.3--2.9$\times$, the six dropped ones 89--162$\times$.
 
-\vspace{4pt}
-\textbf{Cost:} a finite-strain elastic tensor on a 6--10 atom cell --- a handful
-of static calculations, not a phonon workflow. \textbf{Decision:} eight soft
-\emph{and} four stiff controls validates the screen on ground truth for the
-first time; everything soft means the pipeline calls everything soft and the
-screen fails. \textcolor{SlideGreen}{\textbf{Either outcome is a result.}}}
+\vspace{3pt}
+\textcolor{SlideGreen}{\textbf{Re-checked with a real $\gamma$}} from MLIP
+phonons, 5 GPU-minutes: every candidate stays below 1 W/m/K and every control
+above 20, so \textbf{the arms survive} a better $\gamma$ even though the order
+inside them does not.
+$^{*}$one imaginary mode, $^{\dagger}$symmetry analysis failed --- both need a
+structure check before DFT, found before any was spent.
+
+\vspace{3pt}
+\textbf{Cost:} a finite-strain elastic tensor on a 6--10 atom cell, not a phonon
+workflow. \textbf{Decision:} eight soft \emph{and} four stiff controls validates
+the screen on ground truth for the first time; everything soft means the
+pipeline calls everything soft. \textcolor{SlideGreen}{\textbf{Either outcome is
+a result.}}}
 
 \end{frame}
 
