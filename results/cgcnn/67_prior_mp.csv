@@ -1,0 +1,13 @@
+status,formula,chemsys,MP_in_chemsys,MP_same_formula,MP_with_elastic,best
+CONTROL,NaBC7,B-C-Na,3,1,0,mp-3230146 Amm2
+CONTROL,Be4BIr,B-Be-Ir,3,1,0,mp-3240194 R3m
+CONTROL,Be3AlFeB,Al-B-Be-Fe,1,1,0,mp-3203099 R3m
+CONTROL,Be4FeSi,Be-Fe-Si,1,0,0,
+QUEUE,Rb4MnBeTe4,Be-Mn-Rb-Te,0,0,0,
+QUEUE,CsRbSe3,Cs-Rb-Se,2,1,0,mp-3206624 Cmc2_1
+QUEUE,Cs4CdHgSe4,Cd-Cs-Hg-Se,2,0,0,
+QUEUE,Cs4Sb4PdPt,Cs-Pd-Pt-Sb,2,1,0,mp-3210580 C2/m
+QUEUE,Cs4BeZnTe4,Be-Cs-Te-Zn,0,0,0,
+QUEUE,Cs4MnBeTe4,Be-Cs-Mn-Te,0,0,0,
+QUEUE,Cs4MgMnTe4,Cs-Mg-Mn-Te,0,0,0,
+QUEUE,Cs4MnZnTe4,Cs-Mn-Te-Zn,4,1,0,mp-3209282 I222

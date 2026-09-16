@@ -1,0 +1,13 @@
+formula,mp_id,sg,e_hull,same_sg,props
+NaBC7,mp-3230146,Amm2,0.0,True,thermo
+Be4BIr,mp-3240194,R3m,0.0,True,thermo
+Be3AlFeB,mp-3203099,R3m,0.0,True,thermo
+Be4FeSi,,,,False,
+Rb4MnBeTe4,,,,False,
+CsRbSe3,mp-3206624,Cmc2_1,0.0,True,thermo
+Cs4CdHgSe4,,,,False,
+Cs4Sb4PdPt,mp-3210580,C2/m,0.0,True,thermo
+Cs4BeZnTe4,,,,False,
+Cs4MnBeTe4,,,,False,
+Cs4MgMnTe4,,,,False,
+Cs4MnZnTe4,mp-3209282,I222,0.0,True,thermo

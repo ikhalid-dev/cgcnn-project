@@ -1,0 +1,13 @@
+status,formula,gnome_id,space_group,chemsys,mp_entries_in_chemsys,mp_same_formula,mp_same_spacegroup,mp_id,mp_e_above_hull,mp_has_elastic
+CONTROL,NaBC7,dee8db3886,Amm2,B-C-Na,3,1,True,mp-3230146,0.0,0
+CONTROL,Be4BIr,9bc429a1fc,R3m,B-Be-Ir,3,1,True,mp-3240194,0.0,0
+CONTROL,Be3AlFeB,a209f791ac,R3m,Al-B-Be-Fe,1,1,True,mp-3203099,0.0,0
+CONTROL,Be4FeSi,abb586635b,F-43m,Be-Fe-Si,1,0,False,,,0
+QUEUE,Rb4MnBeTe4,df6bc2655d,I222,Be-Mn-Rb-Te,0,0,False,,,0
+QUEUE,CsRbSe3,5249fac9ad,Cmc2_1,Cs-Rb-Se,2,1,True,mp-3206624,0.0,0
+QUEUE,Cs4CdHgSe4,1ef9dbf9a2,I222,Cd-Cs-Hg-Se,2,0,False,,,0
+QUEUE,Cs4Sb4PdPt,f0ceb2e700,C2/m,Cs-Pd-Pt-Sb,2,1,True,mp-3210580,0.0,0
+QUEUE,Cs4BeZnTe4,0fd53e916f,I222,Be-Cs-Te-Zn,0,0,False,,,0
+QUEUE,Cs4MnBeTe4,5a06b134b6,I222,Be-Cs-Mn-Te,0,0,False,,,0
+QUEUE,Cs4MgMnTe4,997187ed8b,I222,Cs-Mg-Mn-Te,0,0,False,,,0
+QUEUE,Cs4MnZnTe4,a679a9434e,I222,Cs-Mn-Te-Zn,4,1,True,mp-3209282,0.0,0

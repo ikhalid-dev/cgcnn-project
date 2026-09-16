@@ -793,6 +793,54 @@ a number no model believes.
 `results/cgcnn/66_dft_queue.csv` (everything, with status and reason),
 `66_dft_queue_slide.csv` (the compact table for a slide), `66_dft_queue.png`.
 
+### Step 67 — is the answer already public?
+
+Step 64 cancelled six calculations by looking up what was already known. Step 67
+applies the same discipline to the survivors: before asking anyone for DFT time,
+check whether a published calculation already exists.
+
+```
+                                                        same formula
+status   formula      chemsys        MP entry      e_hull  + spacegroup  elastic
+CONTROL  NaBC7        B-C-Na         mp-3230146       0.0      yes          0
+CONTROL  Be4BIr       B-Be-Ir        mp-3240194       0.0      yes          0
+CONTROL  Be3AlFeB     Al-B-Be-Fe     mp-3203099       0.0      yes          0
+CONTROL  Be4FeSi      Be-Fe-Si       --                --      no           0
+QUEUE    Rb4MnBeTe4   Be-Mn-Rb-Te    --                --      no           0
+QUEUE    CsRbSe3      Cs-Rb-Se       mp-3206624       0.0      yes          0
+QUEUE    Cs4CdHgSe4   Cd-Cs-Hg-Se    --                --      no           0
+QUEUE    Cs4Sb4PdPt   Cs-Pd-Pt-Sb    mp-3210580       0.0      yes          0
+QUEUE    Cs4BeZnTe4   Be-Cs-Te-Zn    --                --      no           0
+QUEUE    Cs4MnBeTe4   Be-Cs-Mn-Te    --                --      no           0
+QUEUE    Cs4MgMnTe4   Cs-Mg-Mn-Te    --                --      no           0
+QUEUE    Cs4MnZnTe4   Cs-Mn-Te-Zn    mp-3209282       0.0      yes          0
+```
+
+**Not one of the twelve has a published elastic tensor.** The request does not
+duplicate existing work, and there is no shortcut available the way there was
+for arm B.
+
+**Six of the twelve exist in Materials Project** as structures — MP has ingested
+GNoME-derived entries, so they carry mp-ids in the 3.2M range. What they carry
+is a formation energy and nothing else: no elasticity, no phonons, no
+dielectric.
+
+**All six sit exactly on the convex hull** (`e_above_hull = 0.0`), which is an
+independent confirmation of GNoME's thermodynamic-stability claim from a second
+database. It says nothing about DYNAMIC stability — a different question, and
+the one our own phonon calculations answer. One of them, CsRbSe3, is on the hull
+in MP and returns an imaginary mode in our phonons: thermodynamically fine,
+mechanically not at a minimum.
+
+**Six have never been published in any form.** They exist only inside GNoME.
+
+A literature search on the specific compositions returns nothing for any of the
+twelve — expected, since these are generated structures, and the beryllide
+controls are equally absent. The nearest published work is on beryllium
+chalcogenides and elemental beryllium, which share no structure with ours.
+
+`results/cgcnn/67_prior_calculations.csv`.
+
 ### Step 65 — is the held-out test set really held out?
 
 The sibling project splits by **chemical system** and freezes the split to a
