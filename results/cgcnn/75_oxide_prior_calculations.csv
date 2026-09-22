@@ -1,0 +1,55 @@
+tier,formula,gnome_id,chemsys,mp_entries_in_chemsys,mp_same_formula,mp_id,mp_has_elastic
+A1: request,ReOF5,8973ebd0ca,F-O-Re,8,1,mp-3291242,0
+A1: request,Cs3MoO4,c6f76fa977,Cs-Mo-O,10,0,,0
+A1: request,Rb4Ru2Cl10O,043233727a,Cl-O-Rb-Ru,1,1,mp-3210352,0
+A1: request,Cs3MnO4F,384a044ec8,Cs-F-Mn-O,2,0,,0
+A1: request,KRb(CO3)2,6b5a97c315,C-K-O-Rb,0,0,,0
+A1: request,RbRe(Cl2O)2,7604343faf,Cl-O-Rb-Re,1,0,,0
+A1: request,Cs3RuO4,afb3e65ad8,Cs-O-Ru,4,0,,0
+A1: request,Cs7Nb(SO4)6,ee5a883006,Cs-Nb-O-S,3,1,mp-3259603,0
+A1: request,Rb5Au(BrO)2,33513b1219,Au-Br-O-Rb,1,1,mp-3216126,0
+A1: request,Cs6Si2S6O,c558a8d7d8,Cs-O-S-Si,2,1,mp-3304822,0
+A1: request,Cs2CoO4,25e23594f6,Co-Cs-O,10,0,,0
+A1: request,Rb2Ru(OF2)2,be0bfba1fd,F-O-Rb-Ru,0,0,,0
+A1: request,Cs3CoO4,2784255095,Co-Cs-O,10,1,mp-3323315,0
+A1: request,Rb3CoO4F,e7237b4838,Co-F-O-Rb,0,0,,0
+A1: request,AuS2BrO8,444f870b4a,Au-Br-O-S,0,0,,0
+A1: request,Cs4ZnNiO4,dc325ace66,Cs-Ni-O-Zn,0,0,,0
+A1: request,CsIrOF4,71a7d252f2,Cs-F-Ir-O,2,0,,0
+A1: request,Cs4Co2O5,6958302c86,Co-Cs-O,10,0,,0
+A1: request,Cs2KFeO4,17722d9b20,Cs-Fe-K-O,2,1,mp-3298744,0
+A1: request,Cs3NiO3,2a11cf7afe,Cs-Ni-O,3,1,mp-3316977,0
+A2: queued,MoPb3BrClO5,ebfd2d9fbb,Br-Cl-Mo-O-Pb,0,0,,0
+A2: queued,CsRb2AuO2,a5be6dd06b,Au-Cs-O-Rb,1,1,mp-3214763,0
+A2: queued,RbPtOF4,6eed44f84f,F-O-Pt-Rb,0,0,,0
+A2: queued,Cs4AsC3O11,56ad730aa1,As-C-Cs-O,0,0,,0
+A2: queued,LiHg2BrO2,8bfdaec6a6,Br-Hg-Li-O,1,1,mp-3204495,0
+A2: queued,Rb5Co(AuO)2,ef88803627,Au-Co-O-Rb,1,1,mp-3323828,0
+A2: queued,BaHg2(BrO)2,417a06e89b,Ba-Br-Hg-O,2,1,mp-3206141,0
+A2: queued,K2CNO6,3a03aea2fa,C-K-N-O,10,0,,0
+A2: queued,CsRb2AgO2,af4a5195a2,Ag-Cs-O-Rb,1,1,mp-3204065,0
+A2: queued,Fe3Br4O,40f30f3ad5,Br-Fe-O,1,0,,0
+A2: queued,Cs2CuAgO2,7b1eb74d1b,Ag-Cs-Cu-O,0,0,,0
+A2: queued,LiHg2ClO2,44efcb9791,Cl-Hg-Li-O,1,1,mp-3209816,0
+A2: queued,Cs2Ce(IO3)6,d6fc49fde4,Ce-Cs-I-O,1,1,mp-3295500,0
+A2: queued,K4Os2Cl10O,635c6436c7,Cl-K-O-Os,2,0,,0
+A2: queued,Fe3SbCl7O,7f7c43242a,Cl-Fe-O-Sb,3,0,,0
+A2: queued,CsK(CO3)2,598433b870,C-Cs-K-O,0,0,,0
+A2: queued,CsPtOF4,c06f34537b,Cs-F-O-Pt,0,0,,0
+A2: queued,Rb3NaCoO4,3243240f8a,Co-Na-O-Rb,5,1,mp-3323875,0
+A2: queued,Rb5SmO4,034b74021d,O-Rb-Sm,2,0,,0
+A2: queued,Cs3(AgO2)2,febf24690b,Ag-Cs-O,3,1,mp-3305811,0
+A2: queued,Cs6Si2AgO8,5807253c76,Ag-Cs-O-Si,1,0,,0
+A2: queued,Cs2KMnO4,1d52fd90b1,Cs-K-Mn-O,1,0,,0
+A2: queued,Rb5Ag(IO)2,1766baf641,Ag-I-O-Rb,1,1,mp-3211193,0
+A2: queued,Cs2KCrO4,b68c71dcbd,Cr-Cs-K-O,1,1,mp-3208461,0
+A2: queued,Rb2Pb(IO3)6,5eb18114f7,I-O-Pb-Rb,2,0,,0
+A2: queued,NbAg7(SO4)6,f761f91887,Ag-Nb-O-S,1,1,mp-3207697,0
+A2: queued,Lu(BrO3)3,ba819bb07b,Br-Lu-O,3,0,,0
+A2: queued,SnHg3(OF3)2,a7b97aa6f8,F-Hg-O-Sn,1,1,mp-3211723,0
+A2: queued,K3AgO3,be27978306,Ag-K-O,8,0,,0
+A2: queued,Fe3Hg(NO3)8,fa63c128cb,Fe-Hg-N-O,1,1,mp-3205697,0
+C: negative control,Be4BIr,9bc429a1fc,B-Be-Ir,3,1,mp-3240194,0
+C: negative control,Be4FeSi,abb586635b,Be-Fe-Si,1,0,,0
+C: negative control,Be3AlFeB,a209f791ac,Al-B-Be-Fe,1,1,mp-3203099,0
+C: negative control,NaBC7,dee8db3886,B-C-Na,3,1,mp-3230146,0
