@@ -1,0 +1,23 @@
+status,origin,formula,material_id,space_group,kappa_max_old,kappa_max_new,kappa_max_new_slack,gamma_mlip,clears_pink,clears_slack,reason
+QUEUE,step 61 queue,Cs4MnBeTe4,5a06b134b6,I222,0.5038771457327573,0.7087037717481418,0.7359192400662153,1.797302605164224,True,True,"kappa_max <= 1.0 with the real MLIP gamma, PINK Eq. (2)"
+QUEUE,step 61 queue,Cs4MgMnTe4,997187ed8b,I222,0.5126685958624798,0.8406993506692267,0.9434522799544144,1.545693632877618,True,True,"kappa_max <= 1.0 with the real MLIP gamma, PINK Eq. (2)"
+QUEUE,step 68 replacement,Cs4MnCdTe4,910e94a72d,I222,0.6881599170748891,0.9100613121516686,1.0157931377246934,1.5595270255064808,True,False,"kappa_max <= 1.0 with the real MLIP gamma, PINK Eq. (2)"
+QUEUE,step 61 queue,Cs4BeZnTe4,0fd53e916f,I222,0.4871665798619473,0.9280466963095332,1.0773352505273348,1.4711621913438206,True,False,"kappa_max <= 1.0 with the real MLIP gamma, PINK Eq. (2)"
+QUEUE,step 68 replacement,Cs3Rb(BeTe2)2,14f95d8a69,Cm,0.6843590837525706,0.9571826633423784,1.0942182848646225,1.5038183585887768,True,False,"kappa_max <= 1.0 with the real MLIP gamma, PINK Eq. (2)"
+QUEUE,step 68 replacement,Rb4NaAlTe4,62ce61668d,I222,0.6199529852031592,0.979188562857262,1.1312710661684868,1.4752843034954624,True,False,"kappa_max <= 1.0 with the real MLIP gamma, PINK Eq. (2)"
+CONTROL,step 61 queue,Be4BIr,9bc429a1fc,R3m,50.03195901277241,26.23705380853249,19.485093829699437,1.83706482615166,False,False,stiff by every model - guards against a pipeline that calls everything soft
+CONTROL,step 61 queue,Be4FeSi,abb586635b,F-43m,80.25088077604364,36.07831769318442,25.642582626370555,1.884921803847655,False,False,stiff by every model - guards against a pipeline that calls everything soft
+CONTROL,step 61 queue,Be3AlFeB,a209f791ac,R3m,79.73271797801091,40.89982139565059,35.789885495918256,1.76783292055436,False,False,stiff by every model - guards against a pipeline that calls everything soft
+CONTROL,step 61 queue,NaBC7,dee8db3886,Amm2,41.73422322396758,114.55735717991595,399.6201575224432,0.2762165419138253,False,False,stiff by every model - guards against a pipeline that calls everything soft
+DROPPED,step 61 queue,Cs4CdHgSe4,1ef9dbf9a2,I222,0.505724310394782,1.0565438399399,1.2664211632148754,1.409270586257229,False,False,kappa_max exceeds 1.0 once the real gamma replaces the Poisson shortcut
+DROPPED,step 68 replacement,Rb4MnCdTe4,296c97d8f0,I222,0.6418893241186076,1.3285118845531554,1.59648596275527,1.4041959074022294,False,False,kappa_max exceeds 1.0 once the real gamma replaces the Poisson shortcut
+DROPPED,step 61 queue,Cs4MnZnTe4,a679a9434e,I222,0.5844394720071708,1.346443976606105,1.7521669646327156,1.2760533066240074,False,False,kappa_max exceeds 1.0 once the real gamma replaces the Poisson shortcut
+DROPPED,step 68 replacement,Rb4MnHgTe4,ecc951fd60,I222,0.6410416453000747,1.8252673149686711,2.7907480131482085,1.080813323118596,False,False,kappa_max exceeds 1.0 once the real gamma replaces the Poisson shortcut
+DROPPED,step 68 replacement,CsRb(SnSe3)2,c52a96a2fb,P1,0.6284802254924792,2.149185121693104,3.678054799156707,0.9727933156910414,False,False,kappa_max exceeds 1.0 once the real gamma replaces the Poisson shortcut
+DROPPED,step 61 queue,Rb4MnBeTe4,df6bc2655d,I222,0.6102161362117273,2.486463116416342,5.81442050413175,0.7324925487233194,False,False,kappa_max exceeds 1.0 once the real gamma replaces the Poisson shortcut
+EXCLUDED,step 61 queue,CsRbSe3,5249fac9ad,,,,,,,,dynamically unstable: 1 imaginary modes
+EXCLUDED,step 61 queue,Cs4Sb4PdPt,f0ceb2e700,,,,,,,,phonon pipeline failed: SpglibCppError: Niggli reduction failed
+EXCLUDED,step 68 replacement,TeF9,0652a80331,,,,,,,,dynamically unstable: 5338 imaginary modes
+EXCLUDED,step 68 replacement,Cs4BiSb3Pt2,09d7a7615e,,,,,,,,dynamically unstable: 641 imaginary modes
+EXCLUDED,step 68 replacement,Cs3K(Bi2Pt)2,7b973aa5f3,,,,,,,,dynamically unstable: 724 imaginary modes
+EXCLUDED,step 68 replacement,Cs2Te(OF2)2,b52c3705f5,,,,,,,,dynamically unstable: 16 imaginary modes

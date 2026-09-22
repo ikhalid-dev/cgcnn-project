@@ -171,3 +171,8 @@ notebooks/view_*.html
 
 # Raw terminal session dump from `script` - 2 MB of escape sequences, not source
 typescript
+
+# matminer feature cache for the GNoME screen (step 71). ~11 MB, and fully
+# regenerable in ~75 min with --resume; the parquet parts are a restart
+# mechanism, not a result.
+data/screen_features/

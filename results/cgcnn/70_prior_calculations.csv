@@ -1,0 +1,11 @@
+status,formula,gnome_id,chemsys,mp_entries_in_chemsys,mp_same_formula,mp_id,mp_e_above_hull,mp_has_elastic
+QUEUE,Cs4MnBeTe4,5a06b134b6,Be-Cs-Mn-Te,0,0,,,0
+QUEUE,Cs4MgMnTe4,997187ed8b,Cs-Mg-Mn-Te,0,0,,,0
+QUEUE,Cs4MnCdTe4,910e94a72d,Cd-Cs-Mn-Te,1,1,mp-3200952,0.0,0
+QUEUE,Cs4BeZnTe4,0fd53e916f,Be-Cs-Te-Zn,0,0,,,0
+QUEUE,Cs3Rb(BeTe2)2,14f95d8a69,Be-Cs-Rb-Te,0,0,,,0
+QUEUE,Rb4NaAlTe4,62ce61668d,Al-Na-Rb-Te,1,1,mp-3201907,0.0,0
+CONTROL,Be4BIr,9bc429a1fc,B-Be-Ir,3,1,mp-3240194,0.0,0
+CONTROL,Be4FeSi,abb586635b,Be-Fe-Si,1,0,,,0
+CONTROL,Be3AlFeB,a209f791ac,Al-B-Be-Fe,1,1,mp-3203099,0.0,0
+CONTROL,NaBC7,dee8db3886,B-C-Na,3,1,mp-3230146,0.0,0
