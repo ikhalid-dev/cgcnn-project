@@ -1,6 +1,7 @@
-# Low-kappa_L DFT shortlist: 15 crystals + 4 controls
+# FINAL low-kappa_L DFT list: 15 crystals + 4 controls + 8 reserves
 
-Checked 2026-10-06 (final pre-DFT check, no problems found). Target: lattice thermal
+This is the final list; it replaces all earlier DFT lists. Checked 2026-10-06 (final
+pre-DFT check, no problems found). Target: lattice thermal
 conductivity kappa_L <= 1 W/m/K at 300 K. All numbers per crystal are in `index.csv`;
 the 4 high-kappa controls are in `controls/` (predicted 25-103 W/m/K - DFT should put
 them far above the 15, or the method is not separating low from high).
@@ -41,8 +42,8 @@ three independent predictors of the bulk (K) and shear (G) modulus.
 | `kappa_poisson_max3` | highest of the three `kappa_poisson_*` |
 | `kappa_direct` | direct ALIGNN, structure -> kappa_L, trained on 6,641 PhoNIX DFT values |
 
-`controls/index.csv` has the same model columns. `kappa_pred_slack_300K` there is the
-highest `kappa_mlip_*`.
+`controls/index.csv` and `reserves/index.csv` have the same model columns.
+`kappa_pred_slack_300K` in the controls file is the highest `kappa_mlip_*`.
 
 ## DFT setup notes
 
@@ -60,11 +61,11 @@ highest `kappa_mlip_*`.
   MF6- anions.
 - **If time is short:** #2/#3 and #9/#10 are Hf/Zr twins - run one of each pair first.
 
-## Reserves (CIFs in `../kappa_L_cifs/`)
+## Reserves (CIFs in `reserves/`, numbered in order of use)
 
-Use first: Cs2CuAgO2 (7b1eb74d1b), Fe3SbCl7O (7f7c43242a). The direct ALIGNN model calls
-LiHg2BrO2, Cs3(AgO2)2 and LiHg2ClO2 high (2.2-2.6 W/m/K); Cs3MnO4F, Cs2KFeO4 and
-Rb5Co(AuO)2 need rare oxidation states.
+All 8 are tier 1, like the 15. Use first: res_01 Cs2CuAgO2, res_02 Fe3SbCl7O. The
+direct ALIGNN model calls res_03-05 (LiHg2BrO2, Cs3(AgO2)2, LiHg2ClO2) high
+(2.2-2.6 W/m/K). res_06-08 (Cs3MnO4F, Cs2KFeO4, Rb5Co(AuO)2) need rare oxidation states.
 
 ## How the 15 were predicted low
 

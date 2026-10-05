@@ -46,14 +46,20 @@ OUTPUTS (rewritten in place: new columns added, existing ones untouched)
 -------
     dft/final_shortlist_15/index.csv            15 rows
     dft/final_shortlist_15/controls/index.csv   4 rows
-    ~/Desktop/final_shortlist_15_cifs.zip       the whole folder again, rebuilt
+    dft/final_shortlist_15/reserves/index.csv   8 rows, built here from step 91's table
+                                                and the reserve CIFs (moved in 2026-10-06)
+    ~/Desktop/final_shortlist_15_cifs.zip       the whole folder, zipped
+    ~/Desktop/final_shortlist_15/               the whole folder, unzipped copy
 
-RE-RUN ORDER: step 91 rewrites both index.csv files WITHOUT these columns, so
-if step 91 is ever re-run, run this step again afterwards.
+RE-RUN ORDER: step 91 rewrites the 15 and controls index.csv files WITHOUT
+these columns, so if step 91 is ever re-run, run this step again afterwards.
+(Step 91 can no longer run as-is: the older lists it read, dft/kappa_L_cifs/
+and dft/kappa_L_low_range/, were removed on 2026-10-06 and live in git history.)
 """
 
 import glob                              # lists files matching a pattern like "*.cif"
 import os
+import shutil                            # copies whole folders
 import zipfile                           # writes .zip archives
 # xgboost (used for newbase) crashes on this laptop if more than one OpenMP
 # thread runs. os.environ is the process's environment variables; it must be
@@ -71,6 +77,8 @@ OUT = os.path.join(ROOT, "dft", "final_shortlist_15")
 # os.path.expanduser turns "~" into the home folder (/Users/mac)
 DIRECT = os.path.expanduser("~/Desktop/transport_program/crosswork/data/05_dft_list_direct_klat.csv")
 ZIP = os.path.expanduser("~/Desktop/final_shortlist_15_cifs.zip")      # same zip step 91 makes
+DESK = os.path.expanduser("~/Desktop/final_shortlist_15")              # unzipped copy
+RES_DIR = os.path.join(OUT, "reserves")
 
 # sys.path = the folders Python searches on "import"; this lets us reuse earlier steps
 sys.path.insert(0, os.path.join(ROOT, "scripts", "cgcnn"))
@@ -191,6 +199,37 @@ def add_columns(path, before):
     return old, new[keep[:at] + NEW + keep[at:]]
 
 
+def build_reserves_index():
+    """Write reserves/index.csv: one row per reserve CIF, step 91's numbers.
+
+    The 8 reserve CIFs were moved into reserves/ by hand (git mv) when the older
+    lists were removed. This rebuilds their table from step 91's saved results
+    and checks each CIF really is the crystal its row says it is.
+    """
+    from pymatgen.core import Composition, Structure     # imported here: only this part needs it
+    s = pd.read_csv(os.path.join(RESULTS, "91_final_shortlist.csv"), dtype={"material_id": str})
+    r = s[s.decision.str.startswith("reserve")].copy()
+    files = glob.glob(os.path.join(RES_DIR, "*.cif"))
+    # the id is the last "__" part of each name: res_01__Cs2CuAgO2__7b1eb74d1b.cif -> 7b1eb74d1b
+    # (basename drops the folder; [:-4] drops ".cif"; split("__")[-1] takes the last piece)
+    by_id = {os.path.basename(f)[:-4].split("__")[-1]: f for f in files}
+    if set(by_id) != set(r.material_id):                 # a set ignores order, so this compares contents
+        raise SystemExit(f"reserve CIFs {sorted(by_id)} do not match step 91's {sorted(r.material_id)}")
+    for row in r.itertuples():
+        st = Structure.from_file(by_id[row.material_id])
+        if (len(st) != row.n_atoms or st.composition.reduced_formula
+                != Composition(row.formula).reduced_formula):
+            raise SystemExit(f"{by_id[row.material_id]} is not {row.formula} ({row.n_atoms} atoms)")
+    r["file"] = [os.path.basename(by_id[m]) for m in r.material_id]
+    # "reserve: tier 1, rare oxidation state" -> "tier 1, rare oxidation state"
+    r["reserve_reason"] = r.decision.str.replace("reserve: ", "", regex=False)
+    cols = ["file", "formula", "material_id", "n_atoms", "reserve_reason", "gamma_mlip",
+            "kappa_max3", "kappa_typical", "kappa_stress", "kappa_cahill"]
+    path = os.path.join(RES_DIR, "index.csv")
+    r.sort_values("file")[cols].to_csv(path, index=False)   # res_01, res_02, ... = order of use
+    return path
+
+
 def main():
     print("step 94 - model outputs into the supervisor's CSVs")
     sl_path = os.path.join(OUT, "index.csv")
@@ -212,12 +251,20 @@ def main():
     check("controls: highest kappa_mlip = kappa_pred_slack_300K",
           ct[[f"kappa_mlip_{m}" for m in MODELS]].max(axis=1), ct.kappa_pred_slack_300K)
 
-    # every check passed: write both files (index=False = no extra row-number column)
+    print("\nthe 8 reserves:")
+    rs_path = build_reserves_index()
+    rs_old, rs = add_columns(rs_path, before=None)
+    check("reserves: highest kappa_mlip = kappa_max3",
+          rs[[f"kappa_mlip_{m}" for m in MODELS]].max(axis=1), rs.kappa_max3)
+
+    # every check passed: write the files (index=False = no extra row-number column)
     sl.to_csv(sl_path, index=False)
     ct.to_csv(ct_path, index=False)
+    rs.to_csv(rs_path, index=False)
     print(f"\nwrote {sl_path}: {sl.shape[0]} rows x {sl.shape[1]} columns "
           f"({len(NEW)} new)")
     print(f"wrote {ct_path}: {ct.shape[0]} rows x {ct.shape[1]} columns")
+    print(f"wrote {rs_path}: {rs.shape[0]} rows x {rs.shape[1]} columns")
 
     # rebuild the Desktop zip so it carries the new CSVs (and the README).
     # "**" with recursive=True also looks inside sub-folders (controls/);
@@ -228,12 +275,22 @@ def main():
             z.write(f, arcname=os.path.join("final_shortlist_15", os.path.relpath(f, OUT)))
     print(f"wrote {ZIP}: {len(files)} files")
 
+    # and the same folder unzipped on the Desktop. copytree copies a folder with
+    # everything inside; dirs_exist_ok=True lets it write over an older copy
+    shutil.copytree(OUT, DESK, dirs_exist_ok=True)
+    # a file renamed or removed here would survive in the old Desktop copy: name any such file
+    rel = lambda root: {os.path.relpath(f, root) for f in
+                        glob.glob(os.path.join(root, "**", "*.*"), recursive=True)}
+    stale = sorted(rel(DESK) - rel(OUT))                 # "-" on sets = in the first, not the second
+    print(f"wrote {DESK}/ ({len(files)} files)"
+          + (f"  WARNING, old files not in the repo folder: {stale}" if stale else ""))
+
     # a compact view of the kappa columns, rounded for reading
     show = ["formula"] + [f"kappa_mlip_{m}" for m in MODELS] + ["kappa_max3"] \
         + [f"kappa_poisson_{m}" for m in MODELS] + ["kappa_poisson_max3", "kappa_direct"]
     short = {c: c.replace("kappa_", "").replace("CGCNN-ens", "CGCNN") for c in show}
     print("\nkappa_L at 300 K, W/m/K (mlip_* = MLIP-gamma chain, poisson_* = Poisson chain):")
-    print(pd.concat([sl[show], ct[[c for c in show if c in ct.columns]]])
+    print(pd.concat([sl[show], ct[[c for c in show if c in ct.columns]], rs[show]])
           .rename(columns=short).round(3).to_string(index=False))
 
 
