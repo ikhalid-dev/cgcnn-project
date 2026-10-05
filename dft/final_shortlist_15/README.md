@@ -26,6 +26,24 @@ them far above the 15, or the method is not separating low from high).
 Space groups: spglib, symprec 0.01. Supercells: smallest diagonal multiples of the cell AS
 GIVEN with every lattice vector >= 10 A - re-pick after standardising a slanted cell.
 
+## Model predictions in `index.csv`
+
+kappa values are kappa_L in W/m/K at 300 K. `<model>` = ALIGNN, CGCNN-ens, newbase, which are
+three independent predictors of the bulk (K) and shear (G) modulus.
+
+| Column | What it is |
+|---|---|
+| `K_GPa_<model>`, `G_GPa_<model>` | the model's predicted moduli, in GPa |
+| `kappa_mlip_<model>` | Slack model from those moduli + the MLIP phonon gamma (`gamma_mlip`) |
+| `kappa_max3` | highest of the three `kappa_mlip_*`, used for the ranking |
+| `kappa_typical`, `kappa_stress` | `kappa_max3` with gamma cut by 10% / 32%, floored at `kappa_cahill` |
+| `gamma_poisson_<model>`, `kappa_poisson_<model>` | gamma from the model's own Poisson ratio, and the Slack kappa with it |
+| `kappa_poisson_max3` | highest of the three `kappa_poisson_*` |
+| `kappa_direct` | direct ALIGNN, structure -> kappa_L, trained on 6,641 PhoNIX DFT values |
+
+`controls/index.csv` has the same model columns. `kappa_pred_slack_300K` there is the
+highest `kappa_mlip_*`.
+
 ## DFT setup notes
 
 - **Slanted cells:** #5, #7, #9, #10, #11 have one angle near 55 deg; #13 has gamma = 135.8 deg.
