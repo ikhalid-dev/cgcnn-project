@@ -1,0 +1,25 @@
+tier,formula,gnome_id,chemsys,mp_entries_in_chemsys,mp_same_formula,mp_id,mp_has_elastic
+A1: request,Cs4NbCrI12,d7e7d897af,Cr-Cs-I-Nb,0,0,,0
+A1: request,ReOF5,8973ebd0ca,F-O-Re,8,1,mp-3291242,0
+A1: request,Rb3As2I9,2756005b43,As-I-Rb,2,1,mp-3321257,0
+A1: request,Cs4NbSbI12,8636a4b743,Cs-I-Nb-Sb,0,0,,0
+A1: request,Cs3MoO4,c6f76fa977,Cs-Mo-O,10,0,,0
+A1: request,Rb4Ru2Cl10O,043233727a,Cl-O-Rb-Ru,1,1,mp-3210352,0
+A1: request,Cs6In2SnPbI12,8552f894e2,Cs-I-In-Pb-Sn,0,0,,0
+A1: request,Rb4HfPtI12,e8a9252cd6,Hf-I-Pt-Rb,1,1,mp-3209002,0
+A1: request,Rb4ZrPtI12,b7d6f18a56,I-Pt-Rb-Zr,1,1,mp-3204615,0
+A1: request,Rb2LiAu3I8,2c63b3272a,Au-I-Li-Rb,0,0,,0
+A1: request,Cs6GaTe4I,676c8d2b62,Cs-Ga-I-Te,1,1,mp-3208870,0
+A1: request,Cs3MnO4F,384a044ec8,Cs-F-Mn-O,2,0,,0
+A1: request,Cs6Sc3SbI18,9cf91cf920,Cs-I-Sb-Sc,0,0,,0
+A1: request,KRb(CO3)2,6b5a97c315,C-K-O-Rb,0,0,,0
+A1: request,Rb4PbSe4,b064925512,Pb-Rb-Se,2,1,mp-3205349,0
+A1: request,RbRe(Cl2O)2,7604343faf,Cl-O-Rb-Re,1,0,,0
+A1: request,Cs8K4Al(GaTe4)3,f1a1d4086d,Al-Cs-Ga-K-Te,0,0,,0
+A1: request,Cs13Rb3Pb16,0f774259b8,Cs-Pb-Rb,0,0,,0
+A1: request,Cs4K2AlGaTe6,1a8daa3b32,Al-Cs-Ga-K-Te,0,0,,0
+A1: request,Cs8Bi7Au,85412ce2ef,Au-Bi-Cs,2,0,,0
+C: negative control,Be4BIr,9bc429a1fc,B-Be-Ir,3,1,mp-3240194,0
+C: negative control,Be4FeSi,abb586635b,Be-Fe-Si,1,0,,0
+C: negative control,Be3AlFeB,a209f791ac,Al-B-Be-Fe,1,1,mp-3203099,0
+C: negative control,NaBC7,dee8db3886,B-C-Na,3,1,mp-3230146,0

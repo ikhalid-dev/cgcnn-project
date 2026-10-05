@@ -1,7 +1,15 @@
 #!/usr/bin/env python
 """
-Step 75 - a DFT queue from the 93 surviving oxides.
+Step 75 - a DFT queue from the surviving oxides.
 ================================================================================
+
+    SUPERSEDED BY STEP 81 (2026-10-05). This queue is oxides only, because when
+    it was written the halides had no real gamma. Step 81 merges both lists and
+    adds the amorphous-limit check. Request from 81_combined_dft_queue.csv, not
+    from this file. Kept because 81 reads its negative controls from here.
+
+    Also rebuilt on 2026-10-05: before then its input (step 74) still carried the
+    gamma from the buggy 0.001 THz frequency cutoff - 93 survivors, now 92.
 
     ml_env/bin/python scripts/cgcnn/75_oxide_dft_queue.py
     ml_env/bin/python scripts/cgcnn/75_oxide_dft_queue.py --skip-mp

@@ -128,6 +128,30 @@ def main():
                    for f in glob.glob(os.path.join(GAMMA_DIR, "01_gamma_phonon_gnome_*.csv"))
                    if not f.endswith("selected.csv")],
                   ignore_index=True).drop_duplicates("mp_id")
+
+    # ---- the FIXED-cutoff gammas override the banked ones -----------------
+    # The banked gammas above were computed with a 0.001 THz frequency cutoff,
+    # which leaves the near-Gamma modes - where mode gamma diverges as 1/omega -
+    # in the average. Steps 77/78 re-ran the 179 oxides that could matter at
+    # 0.3 THz. Where a recut exists it wins; `gamma_source` records which one
+    # each row used, so no reader has to guess.
+    #
+    # The 176 NOT recut all have kappa_max3 >= 1.52 on the old gamma, and the
+    # largest kappa DROP the fix produced anywhere was x0.953 - so none of them
+    # can reach the 1.0 gate. Leaving their old gamma cannot change the list.
+    rc = pd.concat([pd.read_csv(f, dtype={"mp_id": str}) for f in
+                    sorted(glob.glob(os.path.join(GAMMA_DIR,
+                                                  "01_gamma_phonon_oxide_recut_s0?.csv")))],
+                   ignore_index=True).drop_duplicates("mp_id")
+    # .map() looks each mp_id up in the recut table; ids with no recut get NaN,
+    # and .fillna() then falls back to the banked value for exactly those rows.
+    new_g = g.mp_id.map(rc.set_index("mp_id").gamma_c300)
+    new_st = g.mp_id.map(rc.set_index("mp_id").dynamically_stable)
+    g["gamma_source"] = np.where(new_g.notna(), "recut 0.3 THz", "banked 0.001 THz")
+    g["gamma_mlip"] = new_g.fillna(g.gamma_mlip)
+    g["dynamically_stable"] = new_st.fillna(g.dynamically_stable).astype(bool)
+    print(f"recut gammas applied: {int(new_g.notna().sum())} of {len(g)}")
+
     g = g[(g.status == "ok") & g.dynamically_stable
           & g.gamma_mlip.between(0, 10, inclusive="neither")]
     print(f"banked usable oxide gammas: {len(g)}")
@@ -139,7 +163,7 @@ def main():
                     dtype={"material_id": str})
     d = a.merge(s, on="material_id", suffixes=("", "_dup"))
     d = d[d["alignn_prediction_reliable"]]
-    d = d.merge(g[["mp_id", "gamma_mlip", "gamma_mlip_1000K", "n_imaginary"]],
+    d = d.merge(g[["mp_id", "gamma_mlip", "gamma_mlip_1000K", "n_imaginary", "gamma_source"]],
                 left_on="material_id", right_on="mp_id")
     print(f"of those, present in the scored screen: {len(d)}")
 
@@ -170,7 +194,7 @@ def main():
     d["survives"] = d.kappa_max3 <= THRESHOLD
     d = d.sort_values("kappa_max3")
 
-    cols = ["formula", "material_id", "Number of Atoms", "gamma_mlip"] + MB + \
+    cols = ["formula", "material_id", "Number of Atoms", "gamma_mlip", "gamma_source"] + MB + \
            ["kappa_max3", "kappa_min3", "binding3", "survives",
             "Kappa_alignn", "Kappa_cal (W m-1 K-1)", "has_oxygen"]
     cols = [c for c in cols if c in d.columns]
