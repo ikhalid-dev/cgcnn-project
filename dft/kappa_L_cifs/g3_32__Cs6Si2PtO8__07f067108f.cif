@@ -1,0 +1,43 @@
+# generated using pymatgen
+data_Cs6Si2PtO8
+_symmetry_space_group_name_H-M   'P 1'
+_cell_length_a   7.07010058
+_cell_length_b   7.34908286
+_cell_length_c   8.17904197
+_cell_angle_alpha   85.52435982
+_cell_angle_beta   89.10877085
+_cell_angle_gamma   68.76253482
+_symmetry_Int_Tables_number   1
+_chemical_formula_structural   Cs6Si2PtO8
+_chemical_formula_sum   'Cs6 Si2 Pt1 O8'
+_cell_volume   394.86685622
+_cell_formula_units_Z   1
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Cs  Cs0  1  0.203173  0.702095  0.012911  1
+  Cs  Cs1  1  0.715778  0.202511  0.474896  1
+  Cs  Cs2  1  0.796827  0.297905  0.987089  1
+  Cs  Cs3  1  0.662397  0.828111  0.169208  1
+  Cs  Cs4  1  0.337603  0.171889  0.830792  1
+  Cs  Cs5  1  0.284222  0.797489  0.525104  1
+  Si  Si6  1  0.772123  0.745232  0.731908  1
+  Si  Si7  1  0.227877  0.254768  0.268092  1
+  Pt  Pt8  1  0.000000  0.500000  0.500000  1
+  O  O9  1  0.013919  0.459112  0.249067  1
+  O  O10  1  0.752877  0.760621  0.523832  1
+  O  O11  1  0.986081  0.540888  0.750933  1
+  O  O12  1  0.423465  0.289817  0.180433  1
+  O  O13  1  0.809342  0.934792  0.798269  1
+  O  O14  1  0.247123  0.239379  0.476168  1
+  O  O15  1  0.576535  0.710183  0.819567  1
+  O  O16  1  0.190658  0.065208  0.201731  1

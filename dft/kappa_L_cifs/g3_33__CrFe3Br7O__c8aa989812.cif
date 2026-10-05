@@ -1,0 +1,38 @@
+# generated using pymatgen
+data_CrFe3Br7O
+_symmetry_space_group_name_H-M   'P 1'
+_cell_length_a   7.67584801
+_cell_length_b   7.35461277
+_cell_length_c   7.35461275
+_cell_angle_alpha   60.43859297
+_cell_angle_beta   62.85251919
+_cell_angle_gamma   62.85250925
+_symmetry_Int_Tables_number   1
+_chemical_formula_structural   CrFe3Br7O
+_chemical_formula_sum   'Cr1 Fe3 Br7 O1'
+_cell_volume   306.68950731
+_cell_formula_units_Z   1
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Cr  Cr0  1  0.496350  0.516067  0.516067  1
+  Fe  Fe1  1  0.996832  0.505447  0.505447  1
+  Fe  Fe2  1  0.471510  0.528889  0.967562  1
+  Fe  Fe3  1  0.471510  0.967562  0.528889  1
+  Br  Br4  1  0.230819  0.261690  0.261690  1
+  Br  Br5  1  0.688905  0.270373  0.270373  1
+  Br  Br6  1  0.255853  0.263890  0.751056  1
+  Br  Br7  1  0.255853  0.751056  0.263890  1
+  Br  Br8  1  0.745963  0.250623  0.742664  1
+  Br  Br9  1  0.745963  0.742664  0.250623  1
+  Br  Br10  1  0.755930  0.747227  0.747227  1
+  O  O11  1  0.384511  0.694512  0.694512  1
