@@ -176,3 +176,4 @@ typescript
 # regenerable in ~75 min with --resume; the parquet parts are a restart
 # mechanism, not a result.
 data/screen_features/
+data/phonix_features/
