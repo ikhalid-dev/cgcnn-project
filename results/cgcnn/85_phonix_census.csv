@@ -1,0 +1,7 @@
+set,n,klat<=1.0,klat<=0.5,kc>kp (wave-like dominant),median klat,median atoms
+all PhoNIX,6641,1846,986,544,2.333946382839,16.0
+in matbench (any split),1647,209,99,42,4.55090794767,8.0
+  of which train/val,1390,173,80,35,4.399992615485001,8.0
+  of which TEST,257,36,19,7,5.426282065758065,8.0
+  TEST and <=20 atoms,234,31,16,5,5.448924745931144,7.0
+not in matbench,4994,1637,887,502,1.9036047143125003,20.0

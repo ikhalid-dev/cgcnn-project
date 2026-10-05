@@ -1,0 +1,38 @@
+# generated using pymatgen
+data_Fe3SbCl7O
+_symmetry_space_group_name_H-M   'P 1'
+_cell_length_a   7.63941753
+_cell_length_b   7.72223410
+_cell_length_c   7.63941780
+_cell_angle_alpha   58.10819776
+_cell_angle_beta   57.30613405
+_cell_angle_gamma   58.10818790
+_symmetry_Int_Tables_number   1
+_chemical_formula_structural   Fe3SbCl7O
+_chemical_formula_sum   'Fe3 Sb1 Cl7 O1'
+_cell_volume   302.83627213
+_cell_formula_units_Z   1
+loop_
+ _symmetry_equiv_pos_site_id
+ _symmetry_equiv_pos_as_xyz
+  1  'x, y, z'
+loop_
+ _atom_site_type_symbol
+ _atom_site_label
+ _atom_site_symmetry_multiplicity
+ _atom_site_fract_x
+ _atom_site_fract_y
+ _atom_site_fract_z
+ _atom_site_occupancy
+  Fe  Fe0  1  0.489580  0.502483  0.022144  1
+  Fe  Fe1  1  0.022144  0.502483  0.489580  1
+  Fe  Fe2  1  0.500432  0.011949  0.500432  1
+  Sb  Sb3  1  0.035348  0.949850  0.035348  1
+  Cl  Cl4  1  0.271180  0.235331  0.271180  1
+  Cl  Cl5  1  0.744208  0.760828  0.261196  1
+  Cl  Cl6  1  0.261196  0.760828  0.744208  1
+  Cl  Cl7  1  0.730349  0.760291  0.730349  1
+  Cl  Cl8  1  0.750752  0.306752  0.750752  1
+  Cl  Cl9  1  0.259617  0.262621  0.721827  1
+  Cl  Cl10  1  0.721827  0.262621  0.259617  1
+  O  O11  1  0.213366  0.683964  0.213366  1
