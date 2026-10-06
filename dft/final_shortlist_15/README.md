@@ -78,3 +78,9 @@ direct ALIGNN model calls res_03-05 (LiHg2BrO2, Cs3(AgO2)2, LiHg2ClO2) high
 
 None of the models has seen these crystals: treat the numbers as a ranking of where to
 spend DFT, not as values DFT will reproduce.
+
+## Literature
+
+None of the 15 is in any paper except the GNoME database. `papers/` has the related
+open-access papers on their parent families, plus a list of the ones a script could not
+download.

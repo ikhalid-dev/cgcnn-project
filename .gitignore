@@ -178,3 +178,7 @@ typescript
 data/screen_features/
 data/phonix_features/
 data/phonix_cifs/
+
+# Downloaded papers for the DFT shortlist: kept locally only, because this repo is public.
+# The list of what they are (papers/README.md) IS committed.
+dft/final_shortlist_15/papers/*.pdf
