@@ -54,6 +54,10 @@ OUT = ROOT / "results" / "cgcnn" / "95_metrics_inventory.csv"
 MB_TEST = "matbench test split (split_seed 42, 1,648 crystals)"
 MB_ALL = "matbench train / val / test splits (7,691 / 1,648 / 1,648)"
 AF_TEST = "AFLOW test split (835 crystals)"
+# rounds 7 and 8 used the smaller AFLOW set that has a Gruneisen label (37_train_gamma.py,
+# 38_train_gamma_transfer.py), and step 46 has no truth at all (corrected in step 95 part 3)
+AF_GAMMA = "AFLOW gamma set test split (15% of 1,460 crystals; train 1,022)"
+GNOME_CAND = "GNoME candidates (33,118; no truth - model vs model)"
 PHONIX = "PhoNIX phonon-DFT kappa_L (external; 2,520 crystals with all 3 models)"
 PHONIX_MLIP = "PhoNIX sample scored with MLIP gamma (617 rows, weighted)"
 TABLE1 = "PINK Table 1 measured kappa (45 materials)"
@@ -211,9 +215,9 @@ STORED = [
      "K, G, gamma, kappa"),
     ("results/cgcnn/summary_37_r9_full_*.json", "37", "round 9 (CGCNN + gamma head)", "AFLOW",
      AF_TEST, "K, G, gamma, kappa"),
-    ("results/cgcnn/summary_r8_*.json", "36", "round 8 (adapt / frozen transfer)", "AFLOW",
-     AF_TEST, "K, G, gamma, kappa"),
-    ("results/cgcnn/summary_gamma3.json", "35", "gamma3 model", "AFLOW", AF_TEST, "gamma"),
+    ("results/cgcnn/summary_r8_*.json", "36", "round 8 (adapt / frozen transfer)",
+     "matbench, then the AFLOW gamma set", AF_GAMMA, "K, G, gamma, kappa"),
+    ("results/cgcnn/summary_gamma3.json", "35", "gamma3 model", "AFLOW gamma set", AF_GAMMA, "gamma"),
     ("results/cgcnn/baseline_tree/csv/43_baseline_tree_scores.csv", "43", "tree baselines",
      "matbench / AFLOW", MB_TEST + " / " + AF_TEST, "K, G, gamma"),
     ("results/cgcnn/baseline_tree/csv/44_confusion_matrix_aflow_low_kappa_metrics.csv", "44",
@@ -221,7 +225,7 @@ STORED = [
     ("results/cgcnn/baseline_tree/csv/44_confusion_matrix_aflow_low_kappa.csv", "44",
      "tree baseline low-kappa screen", "AFLOW", AF_TEST, "kappa <= threshold"),
     ("results/cgcnn/baseline_tree/csv/46_baseline_vs_r9_*.csv", "46", "tree vs round 9",
-     "AFLOW", AF_TEST, "kappa screen"),
+     "AFLOW (both models)", GNOME_CAND, "kappa screen"),
     ("results/cgcnn/decile_stability/csv/47_missed_decile_run_summary.csv", "47",
      "every matbench run", "matbench", MB_TEST, "recall@10% (lowest-kappa decile)"),
     ("results/cgcnn/agl_target/csv/48_agl_vs_inhouse_scores.csv", "48", "every matbench run",
