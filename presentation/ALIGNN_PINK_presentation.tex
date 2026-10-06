@@ -27,6 +27,13 @@
   \end{frame}
   \endgroup}
 
+% Rows of a table written by a script (figures/*_table.tex). LaTeX's \input is
+% not expandable, so inside a tabular it breaks the \bottomrule that follows;
+% the TeX primitive \@@input is, so the rows drop in as if typed here.
+\makeatletter
+\newcommand{\TableRows}[1]{\@@input #1 }
+\makeatother
+
 \begin{document}
 
 % =============================================================================
@@ -131,22 +138,22 @@ e^{-\gamma}$, an \emph{exponential} dependence on the Gr\"uneisen parameter.}
 
 \begin{columns}[T]
 \column{0.48\linewidth}
-\AccentCard{5.6cm}{SlideBlue}{%
+\AccentCard{6.4cm}{SlideBlue}{%
   \sffamily\footnotesize
   \textbf{A second architecture}\\[2pt]
-  ALIGNN, trained on the identical split, so the two can be compared without
-  caveats. It beats the CGCNN ensemble on both moduli.}
+  ALIGNN, on the identical split, so the two compare without caveats. It
+  beats the CGCNN ensemble on both moduli.\par}
 \vspace{4pt}
-\AccentCard{5.6cm}{SlideGreen}{%
+\AccentCard{6.4cm}{SlideGreen}{%
   \sffamily\footnotesize
   \textbf{The full screen, twice}\\[2pt]
   All 33{,}118 GNoME candidates scored by both architectures --- the paper's
-  own headline experiment, run independently.}
+  headline experiment, rerun.\par}
 \vspace{4pt}
-\AccentCard{5.6cm}{SlideAmber}{%
+\AccentCard{6.4cm}{SlideAmber}{%
   \sffamily\footnotesize
   \textbf{Validation against measurement}\\[2pt]
-  45 materials with experimentally measured $\kappa_L$, not model-vs-model.}
+  45 materials with experimentally measured $\kappa_L$, not model-vs-model.\par}
 
 \column{0.48\linewidth}
 \AccentCard{5.6cm}{Muted}{%
@@ -154,13 +161,12 @@ e^{-\gamma}$, an \emph{exponential} dependence on the Gr\"uneisen parameter.}
   \textbf{And --- the part that took longest ---}\\[2pt]
   every headline claim re-checked against the artefacts that produced it.
   Four evaluation failure modes were found, each of which inflates reported
-  performance. Three numbers already written down turned out to be wrong.}
+  performance. Three numbers already written down turned out to be wrong.\par}
 
 \vspace{6pt}
 {\sffamily\footnotesize
-Parts 6 and 7 of this deck are those checks. They are the least glamorous
-material here and probably the most useful to anyone else building the same
-kind of screen.}
+Parts 6--7 are those checks. Part 8 recomputes every stored metric from scratch
+(0 mismatches); Part 9 is the 15-crystal list now going to DFT.\par}
 \end{columns}
 
 \Takeaway{Two architectures agreeing is evidence. Two architectures agreeing
@@ -393,6 +399,7 @@ Two separate models, one per target --- as in the CGCNN arm.}
 \SlideHeader{08 \textperiodcentered\ CIF TO GRAPH}{CGCNN and ALIGNN, side by side}
 
 \begin{center}
+{\footnotesize
 \begin{tabular}{@{}lll@{}}
 \toprule
 & \textbf{CGCNN} & \textbf{ALIGNN} \\
@@ -400,28 +407,128 @@ Two separate models, one per target --- as in the CGCNN arm.}
 graphs built        & atom graph only            & atom graph \textbf{+ line graph} \\
 geometry seen       & bond lengths (two-body)    & lengths \textbf{+ angles} (three-body) \\
 node features       & 92-dim element table       & same 92-dim table \\
-neighbour rule      & cutoff + max-neighbour cap & same (5.0 \AA, 12) \\
+neighbour rule      & 12 nearest, within 8 \AA  & 12 nearest, 5 \AA\ cutoff \\
 message passing     & on $\mathcal{G}$           & alternating $\mathcal{L}$ then $\mathcal{G}$ \\
 cost per structure  & lower                      & higher (up to $\binom{12}{2}$ angles/atom) \\
 \midrule
-models trained        & 3 per target (ensembled)   & \textbf{1 per target} \\
-uncertainty estimate  & ensemble spread            & \textbf{none} \\
-bulk $K$ MAE $\log_{10}$   & \KOneMae\ one / \KEnsMae\ ens. & \textbf{0.0539} \\
-shear $G$ MAE $\log_{10}$  & \GOneMae\ one / \GEnsMae\ ens. & \textbf{0.0725} \\
+models trained        & 3 seeds per target         & 1 + \textbf{3 seeds} per target \\
+uncertainty estimate  & ensemble spread            & ensemble spread \\
+bulk $K$ MAE $\log_{10}$   & \KOneMae\ one / \KEnsMae\ ens. & \textbf{0.0539} one / \textbf{0.0534} ens. \\
+shear $G$ MAE $\log_{10}$  & \GOneMae\ one / \GEnsMae\ ens. & \textbf{0.0725} one / \textbf{0.0708} ens. \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{center}
 
-\vspace{4pt}
+\vspace{2pt}
 {\sffamily\footnotesize
-Same 10{,}987 crystals, same \texttt{split\_seed = 42}, same 1{,}648 held-out
-test set, both trained the full 150 epochs with no early stop. The comparison is
-architecture and nothing else.}
+Same 10{,}987 crystals and 1{,}648-crystal test set (\texttt{split\_seed = 42}).
+ALIGNN ``one'' = its first run (seed 123); ``ens.'' = three \emph{further} seeds
+(42, 1, 2). All re-checked in Part 8.\par}
 
-\Takeaway{A \emph{single} ALIGNN beats a three-model CGCNN ensemble --- 23\%
-better on bulk single-vs-single. It is also the only model improvement here that
-survived the re-scoring in Part 7. No ALIGNN ensemble has been trained, so it
-carries no uncertainty interval and its own best number is untested.}
+\Takeaway{A \emph{single} ALIGNN beats the three-model CGCNN ensemble. Ensembling
+buys CGCNN $\approx$8\% over its average member, ALIGNN only $\approx$3\%: its
+seeds already agree.}
+\end{frame}
+
+% =============================================================================
+% 08b/08c: the implementation, read back from the saved checkpoint and configs
+% (results/cgcnn/model_K_VRH_full.pth, results/alignn/*/config.json) - not from
+% memory. Weight counts = trainable parameters only (BatchNorm running stats
+% excluded): 5,952 + 3 x 22,144 + 8,320 + 129 = 80,833.
+\begin{frame}
+\SlideHeader{08b \textperiodcentered\ IMPLEMENTATION}{One crystal through CGCNN}
+
+\begin{center}
+{\sffamily\scriptsize
+\begin{tabular}{@{}llrr@{}}
+\toprule
+\textbf{stage} & \textbf{what happens} & \textbf{shape out} & \textbf{weights} \\
+\midrule
+input   & each atom: a fixed 92-number element fingerprint (group, radius, \ldots)
+        & $N \times 92$ & --- \\
+        & each bond: its length spread over 41 Gaussians, 0--8 \AA\ in 0.2 \AA\ steps
+        & $N \times 12 \times 41$ & --- \\
+embed   & one linear layer, 92 $\rightarrow$ 64 & $N \times 64$ & 5{,}952 \\
+conv $\times$3 & per neighbour: [self 64 $\Vert$ neighbour 64 $\Vert$ bond 41] = 169 $\rightarrow$ 128,
+          & & \\
+        & \quad halves: a \emph{gate} (sigmoid, 0--1) $\times$ a \emph{message} (softplus);
+          & & \\
+        & \quad sum the 12 gated messages, add to the atom's own vector
+          & $N \times 64$ & 3 $\times$ 22{,}144 \\
+pool    & average over the $N$ atoms of the cell --- size-independent
+        & $1 \times 64$ & --- \\
+widen   & softplus, linear 64 $\rightarrow$ 128, softplus = \textbf{the hidden features}
+        & $1 \times 128$ & 8{,}320 \\
+output  & a weighted sum of those 128 numbers + a bias = $\log_{10} K$ (scaled)
+        & 1 & 129 \\
+\midrule
+\textbf{total} & & & \textbf{80{,}833} \\
+\bottomrule
+\end{tabular}}
+\end{center}
+
+\vspace{2pt}
+{\sffamily\scriptsize
+$N$ = atoms in the cell. The gate is the CGCNN idea: the network learns, per
+neighbour, \emph{how much} to listen (gate) separately from \emph{what} it hears
+(message). Three rounds of this let information travel three bonds.\par}
+
+\Takeaway{ALIGNN keeps the same skeleton --- embed, message-pass, average, one
+number out --- but runs it on two graphs (atoms and bonds-with-angles), 4 + 4
+layers, 256 wide: $\approx$4.0 million weights, about 50$\times$ CGCNN.}
+\end{frame}
+
+% =============================================================================
+\begin{frame}
+\SlideHeader{08c \textperiodcentered\ IMPLEMENTATION}{Training settings, from the saved runs}
+
+\begin{columns}[T]
+\column{0.60\linewidth}
+{\sffamily\scriptsize
+\begin{tabular}{@{}lll@{}}
+\toprule
+& \textbf{CGCNN} & \textbf{ALIGNN} \\
+\midrule
+read from        & checkpoint \texttt{.pth}      & \texttt{config.json} per run \\
+target           & $\log_{10} K$ or $\log_{10} G$ & same, one model each \\
+split            & 7{,}691 / 1{,}648 / 1{,}648   & same crystal ids \\
+neighbours       & 12 nearest within 8 \AA       & 12 nearest, 5 \AA\ cutoff \\
+bond input       & 41 Gaussians                  & 80 (lengths) + 40 (angles) \\
+width            & atoms 64, head 128            & embed 64, hidden 256 \\
+layers           & 3 graph convolutions          & 4 ALIGNN + 4 GCN \\
+weights          & 80{,}833                      & $\approx$4.0 M \\
+loss             & mean squared error            & mean squared error \\
+optimiser        & Adam, lr 0.01                 & AdamW, lr 0.001 \\
+weight decay     & $10^{-5}$                     & $10^{-5}$ \\
+schedule         & cosine                        & one-cycle \\
+batch / epochs   & 128 / 200                     & 64 / 150 \\
+seeds            & 42, 1, 2                      & 123; then 42, 1, 2 \\
+\bottomrule
+\end{tabular}}
+
+\column{0.36\linewidth}
+\AccentCard{4.6cm}{SlideBlue}{%
+  \sffamily\scriptsize
+  \textbf{Why $\log_{10}$, not GPa}\\[2pt]
+  Moduli span more than two orders of magnitude. In log space a 10\% miss costs
+  the same on soft and stiff crystals --- and the screen lives among the soft
+  ones.\par}
+
+\vspace{4pt}
+\AccentCard{4.6cm}{SlideGreen}{%
+  \sffamily\scriptsize
+  \textbf{Why two models, not one}\\[2pt]
+  $K$ and $G$ each get their own network. The probe on 12c shows why: the $K$
+  network carries $G$ only as far as $K$ itself does.\par}
+
+\vspace{4pt}
+\AccentCard{4.6cm}{SlideAmber}{%
+  \sffamily\scriptsize
+  \textbf{Not identical recipes}\\[2pt]
+  Split, targets, loss and decay match; optimiser, rate, schedule, batch and
+  epochs are each model's own default. The gap is architecture \emph{plus}
+  recipe.\par}
+\end{columns}
 \end{frame}
 
 \PartSlide{THREE}{Training and accuracy}{The dataset, the fit, and where it fails}
@@ -509,6 +616,87 @@ stiffest --- a factor of $2.4$.}
 
 \Takeaway{Both architectures are worst in exactly the regime the screen targets.
 Part 7 asks whether that is the model or the labels.}
+\end{frame}
+
+% =============================================================================
+% 12b/12c: numbers printed by make_hidden_features.py (infer_env); per-crystal
+% values in figures/hidden_features_test.csv.
+\begin{frame}
+\SlideHeader{12b \textperiodcentered\ INSIDE THE MODEL}{The hidden features of CGCNN}
+
+\begin{columns}[T]
+\column{0.52\linewidth}
+{\sffamily\footnotesize
+The last layer of CGCNN (slide 08b) is only a weighted sum:
+\[
+\log_{10} K \;=\; w_1 h_1 + w_2 h_2 + \dots + w_{128} h_{128} + b
+\]
+The 128 numbers $h$ are the \textbf{hidden features} --- everything the network
+knows about a crystal when it predicts.
+
+\vspace{4pt}
+\textbf{How they were read:} a ``hook'' copies $h$ as each of the 1{,}648
+\emph{test} crystals passes through the trained $K$ model (seed 42). Nothing is
+retrained.
+
+\vspace{4pt}
+\textbf{How they are drawn:} PCA rotates the 128-dimensional cloud so axis 1
+follows its largest spread, axis 2 the next; the map plots those two.\par}
+
+\column{0.44\linewidth}
+\AccentCard{5.3cm}{SlideGreen}{%
+  \sffamily\scriptsize
+  \textbf{Checked first}\\[2pt]
+  This run's predictions equal the saved ones to $2.4\times10^{-7}$ in
+  $\log_{10}$ --- the right model, crystals and graphs were loaded.\par}
+
+\vspace{5pt}
+\Card{5.3cm}{CardBg}{CardRule}{%
+  \sffamily\scriptsize
+  \textbf{128 numbers, effectively two}\\[3pt]
+  \begin{tabular}{@{}lr@{}}
+  share of the spread on PC1 & 76.6\% \\
+  on PC2                     & 22.4\% \\
+  on PC3                     & 0.85\% \\
+  \midrule
+  correlation of PC1 with true $\log_{10} K$ & $+0.91$ \\
+  \end{tabular}}
+\end{columns}
+
+\Takeaway{Before answering, the network squeezes a crystal to about two numbers.
+The first is, in effect, ``how stiff''; slide 12c shows what the second separates.}
+\end{frame}
+
+% =============================================================================
+\begin{frame}
+\SlideHeader{12c \textperiodcentered\ INSIDE THE MODEL}{The hidden-feature map of 1{,}648 crystals}
+
+\begin{center}
+\includegraphics[width=0.90\linewidth]{figures/hidden_features.png}
+\end{center}
+
+\vspace{-8pt}
+\begin{columns}[T]
+\column{0.31\linewidth}
+{\sffamily\scriptsize
+\textbf{A.} Soft (dark) to stiff (yellow) runs along PC1. The map is a
+\textbf{V}: two arms meeting at a tip.\par}
+\column{0.33\linewidth}
+{\sffamily\scriptsize
+\textbf{B.} Left arm 611 crystals (median $K$ 41 GPa), right arm 1{,}037
+(129 GPa). The \textbf{72 off the arms} have 3$\times$ the error (median 0.099 vs
+0.034 $\log_{10}$); 40 are oxides. \textcolor{Muted}{Off-arm cut 1.0: set by eye,
+not tuned.}\par}
+\column{0.31\linewidth}
+{\sffamily\scriptsize
+\textbf{C.} A straight-line probe reads $G$ from the 128 features at
+$R^2 = 0.785$ --- but predicted $K$ alone gives 0.758. Only +0.026 is new; a
+real $G$ model reaches 0.889.\par}
+\end{columns}
+
+\Takeaway{Where a crystal lands on this map flags where the model is unsure.
+And the $K$ network knows $G$ only through $K$ --- the reason $G$ gets its own
+network.}
 \end{frame}
 
 % =============================================================================
@@ -1206,118 +1394,364 @@ A published table had labelled the first two columns ``separate'' and
 \Takeaway{The mechanism worked; it is paid for in per-modulus accuracy.}
 \end{frame}
 
-\PartSlide{EIGHT}{What happens next}{The one experiment that closes the gap}
+\PartSlide{EIGHT}{The audit}{Every number in this deck, recomputed from its source}
 
 % =============================================================================
+% Part 8: step 95 (scripts/cgcnn/95_*.py). Figures and the two \input tables are
+% written by make_audit_figures.py from results/cgcnn/95_final_all_metrics.csv.
 \begin{frame}
-\SlideHeader{29 \textperiodcentered\ NEXT}{The missing piece --- and the experiment for it}
+\SlideHeader{29 \textperiodcentered\ AUDIT}{One file holds every metric of every model}
 
 {\sffamily\footnotesize
-Every result in this project is model-vs-model or model-vs-database. \textbf{No
-candidate has ever been checked against a calculation we ran ourselves.} That is
-the single thing blocking any discovery claim.}
+Part 7 found numbers that were wrong, so every metric the project ever stored was
+\textbf{recomputed from scratch}. The formulas were re-written, not imported ---
+an old bug cannot hide by being re-used.\par}
 
 \vspace{5pt}
-\begin{columns}[T]
-\column{0.31\linewidth}
-\AccentCard{3.6cm}{SlideGreen}{%
-  \sffamily\scriptsize
-  \textbf{Arm A --- consensus low}\\[3pt]
-  All four models agree. Ranked by the \emph{most pessimistic} of them, not the
-  lowest prediction.\\[3pt]
-  8 of 69 eligible}
-\column{0.31\linewidth}
-\AccentCard{3.6cm}{SlideAmber}{%
-  \sffamily\scriptsize
-  \textbf{Arm B --- adjudication}\\[3pt]
-  Three models said low, round 9 said high. \textbf{Settled without DFT} ---
-  next slide but one.\\[3pt]
-  6 queued, \textbf{0 now needed}}
-\column{0.31\linewidth}
-\AccentCard{3.6cm}{Muted}{%
-  \sffamily\scriptsize
-  \textbf{Arm C --- negative control}\\[3pt]
-  All four call it stiff. Without this, a confirmed Arm A means little.\\[3pt]
-  4 of 297 eligible}
-\end{columns}
-
-\vspace{6pt}
-{\sffamily\footnotesize
-\textbf{Compute the elastic tensor, not $\kappa$.} Two independent diagnostics
-localise every model disagreement here to the moduli, and a finite-strain
-elastic tensor on a 6--10 atom cell is a handful of static calculations.
-Quasi-harmonic Debye $\kappa$ then follows from the same tensor almost free.
+\begin{center}
+\begin{tikzpicture}[node distance=1.6mm,
+  pill/.style={rounded corners=4pt, fill=CardBg, draw=CardRule, line width=0.6pt,
+               text width=2.45cm, minimum height=1.45cm, align=center, inner sep=3pt,
+               font=\sffamily\scriptsize\color{SlideInk}},
+  arr/.style={font=\color{SlideBlue}\normalsize, inner sep=0pt}]
+  \node[pill] (p1) {\textbf{1. Inventory}\\ 66 prediction files,\\ 146 stored metric files};
+  \node[arr, right=of p1] (a1) {$\rightarrow$};
+  \node[pill, right=of a1] (p2) {\textbf{2a. Accuracy}\\ MAE, MSE, $R^2$, $\rho$ from the saved predictions};
+  \node[arr, right=of p2] (a2) {$\rightarrow$};
+  \node[pill, right=of a2] (p3) {\textbf{2b. Screening}\\ precision, recall, hits, bootstraps from the inputs};
+  \node[arr, right=of p3] (a3) {$\rightarrow$};
+  \node[pill, right=of a3, draw=SlideBlue] (p4) {\textbf{3. One table}\\ 9{,}740 rows, plus 179 cross-file checks};
+\end{tikzpicture}
+\end{center}
 
 \vspace{3pt}
-\textbf{Start with Cs$_4$MnBeTe$_4$} --- 10 atoms, $I222$: the lowest of the
-eight once a real Gr\"uneisen parameter replaces the shortcut, 0.465 W/m/K.}
+\begin{columns}[T]
+\column{0.54\linewidth}
+{\sffamily\scriptsize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{column} & \textbf{what it holds} \\
+\midrule
+\texttt{recomputed} & the number rebuilt now \\
+\texttt{stored}     & the number in the old file (\texttt{stored\_in}) \\
+\texttt{abs\_diff}  & $|$recomputed $-$ stored$|$ \\
+\texttt{rel\_diff}  & abs\_diff $\div$ $|$stored$|$ --- the gap as a fraction \\
+\texttt{status}     & the verdict, by the rule on the right \\
+\texttt{primary}    & True on the first row of each metric: \\
+                    & \quad filter on it to see every number once \\
+\bottomrule
+\end{tabular}}
+\column{0.42\linewidth}
+\Card{5.2cm}{CardBg}{CardRule}{%
+  \sffamily\scriptsize
+  \textbf{The status rule}\\[2pt]
+  \textcolor{SlideBlue}{\textbf{match}}: gap $\leq$ half a unit in the stored
+  number's last digit (or 1 part in a million)\\[1pt]
+  \textcolor{SlideAmber}{\textbf{close}}: gap $\leq$ 0.1\%\\[1pt]
+  \textcolor{SlideRed}{\textbf{MISMATCH}}: anything larger\\[1pt]
+  \textbf{new}: never saved before (e.g.\ $R^2$ for a run that kept only MAE)\\[1pt]
+  \textbf{stored only}: carried over from its file, not rebuilt\par}
+\end{columns}
 \end{frame}
 
 % =============================================================================
-
 \begin{frame}
-\SlideHeader{29b \textperiodcentered\ NEXT}{The 18 we queued, and why six are gone}
+\SlideHeader{30 \textperiodcentered\ AUDIT}{The verdict: zero mismatches}
 
 \begin{center}
-\includegraphics[width=0.84\linewidth]{figures/dft_validation_set.png}
+\includegraphics[width=0.94\linewidth]{figures/audit_status.png}
 \end{center}
 
-\vspace{-3pt}
-{\sffamily\scriptsize
-Four models per material, cells $\leq$ 10 atoms. Green = consensus low,
-amber = adjudication, grey = negative control.
-\textcolor{SlideAmber}{\textbf{The amber arm no longer needs DFT:}} round 9's
-predicted $K$ exceeds \emph{every} real measured $K$ for those chemistries,
-ALIGNN's sits inside it. Six runs removed by a database query --- the next slide
-is what we are asking for.}
+\vspace{-2pt}
+\begin{columns}[T]
+\column{0.31\linewidth}
+\AccentCard{3.75cm}{SlideBlue}{%
+  \sffamily\scriptsize
+  \textbf{4{,}337 rebuilt and identical}\\[2pt]
+  Every accuracy and screening number that had been reported, recomputed from
+  its inputs and matched.\par}
+\column{0.31\linewidth}
+\AccentCard{3.75cm}{SlideAmber}{%
+  \sffamily\scriptsize
+  \textbf{11 close, all below 0.1\%}\\[2pt]
+  Models trained on a GPU and re-run on a CPU: the 4th--5th decimal moves. Same
+  number, different arithmetic.\par}
+\column{0.31\linewidth}
+\AccentCard{3.75cm}{SlideGreen}{%
+  \sffamily\scriptsize
+  \textbf{473 checks, all pass}\\[2pt]
+  294 rebuild checks + 179 cross-file ones, e.g.\ each Kaggle summary table
+  equals its own JSON files.\par}
+\end{columns}
+
+\Takeaway{9{,}048 distinct values, 0 MISMATCH. The 3{,}219 ``new'' values ($R^2$,
+MSE, Spearman for runs that only kept MAE) mean every model now has the full set
+of metrics, not just the one that was quoted.}
 \end{frame}
 
+% =============================================================================
 \begin{frame}
-\SlideHeader{29c \textperiodcentered\ THE ASK}{The ask: 8 calculations, plus 4 controls}
+\SlideHeader{31 \textperiodcentered\ AUDIT}{The moduli models, from that one file}
 
 \begin{center}
 {\sffamily\scriptsize
-\begin{tabular}{llcrrrrr}
+\begin{tabular}{@{}lrrrrr@{}}
 \toprule
-\textbf{formula} & \textbf{GNoME id} & \textbf{space gp.} &
-\textbf{$K$} & \textbf{$G$} & $\kappa$ \textbf{shortcut} &
-$\kappa$ \textbf{real} $\gamma$ & \textbf{spread}\\
- & & & \multicolumn{2}{c}{\scriptsize GPa, ALIGNN} & \multicolumn{2}{c}{\scriptsize W/m/K} & {\scriptsize 4 models}\\
+& \multicolumn{2}{c}{\textbf{bulk $K$}} & \multicolumn{2}{c}{\textbf{shear $G$}} & \textbf{$\kappa_L$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(l){6-6}
+\textbf{model} & MAE & $R^2$ & MAE & $R^2$ & MAE \\
 \midrule
-CsRbSe$_{3}^{*}$ & \texttt{5249fac9ad} & Cmc2$_1$ & 10.7 & 4.8 & 0.235 & \textbf{0.259} & 2.3$\times$ \\
-Cs$_{4}$MnBeTe$_{4}$ & \texttt{5a06b134b6} & I222 & 15.5 & 7.5 & 0.501 & \textbf{0.465} & 1.5$\times$ \\
-Cs$_{4}$CdHgSe$_{4}$ & \texttt{1ef9dbf9a2} & I222 & 16.5 & 6.4 & 0.287 & \textbf{0.500} & 1.8$\times$ \\
-Cs$_{4}$MgMnTe$_{4}$ & \texttt{997187ed8b} & I222 & 13.1 & 7.0 & 0.513 & \textbf{0.557} & 1.6$\times$ \\
-Cs$_{4}$BeZnTe$_{4}$ & \texttt{0fd53e916f} & I222 & 16.1 & 7.6 & 0.487 & \textbf{0.646} & 1.3$\times$ \\
-Cs$_{4}$MnZnTe$_{4}$ & \texttt{a679a9434e} & I222 & 13.4 & 7.5 & 0.584 & \textbf{0.783} & 2.1$\times$ \\
-Rb$_{4}$MnBeTe$_{4}$ & \texttt{df6bc2655d} & I222 & 17.2 & 5.6 & 0.214 & \textbf{0.888} & 2.9$\times$ \\
-Cs$_{4}$Sb$_{4}$PdPt$^{\dagger}$ & \texttt{f0ceb2e700} & C2/m & 16.2 & 7.9 & 0.475 & \textbf{---} & 1.5$\times$ \\
+\TableRows{figures/audit_moduli_table.tex}
 \bottomrule
 \end{tabular}}
 \end{center}
 
-\vspace{1pt}
+\vspace{3pt}
 {\sffamily\scriptsize
-\textcolor{SlideGreen}{\textbf{Eight candidates, not eighteen}} --- step 64 removed
-the six adjudication materials with a database query, no DFT. All eight are 10-atom cells. \textbf{$\kappa$ is ALIGNN's}, never an average across a
-refuted model. \textbf{Spread} $=\kappa_{\max}/\kappa_{\min}$ over four models:
-these eight span 1.3--2.9$\times$, the six dropped ones 89--162$\times$.
+All on the same 1{,}648 matbench test crystals (\texttt{split\_seed = 42}); MAE
+and $R^2$ in $\log_{10}$. The $\kappa_L$ column scores the Slack chain on
+\emph{predicted} moduli against the same chain on the \emph{DFT} moduli (the
+in-house reference of slide 23), not against a phonon calculation. The trees
+never had a $\kappa$ run; the joint model's per-modulus MAE is stored under its
+$\kappa$ target and read from there.\par}
 
-\vspace{3pt}
-\textcolor{SlideGreen}{\textbf{Re-checked with a real $\gamma$}} from MLIP
-phonons, 5 GPU-minutes: every candidate stays below 1 W/m/K and every control
-above 20, so \textbf{the arms survive} a better $\gamma$ even though the order
-inside them does not.
-$^{*}$one imaginary mode, $^{\dagger}$symmetry analysis failed --- both need a
-structure check before DFT, found before any was spent.
+\Takeaway{ALIGNN's 3-ensemble is best in every column. Each graph network beats
+both composition-only trees on matbench --- a ranking that Part 7 showed
+reverses on AFLOW for an underfit network.}
+\end{frame}
 
-\vspace{3pt}
-\textbf{Cost:} a finite-strain elastic tensor on a 6--10 atom cell, not a phonon
-workflow. \textbf{Decision:} eight soft \emph{and} four stiff controls validates
-the screen on ground truth for the first time; everything soft means the
-pipeline calls everything soft. \textcolor{SlideGreen}{\textbf{Either outcome is
-a result.}}}
+% =============================================================================
+\begin{frame}
+\SlideHeader{32 \textperiodcentered\ AUDIT}{Against measurement and phonon DFT}
 
+\begin{center}
+{\sffamily\scriptsize
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{test set} & \textbf{model} & \textbf{measured as} & \textbf{value} \\
+\midrule
+\TableRows{figures/audit_truth_table.tex}
+\bottomrule
+\end{tabular}}
+\end{center}
+
+\vspace{2pt}
+\begin{columns}[T]
+\column{0.31\linewidth}
+\AccentCard{3.75cm}{SlideBlue}{%
+  \sffamily\scriptsize
+  \textbf{Measured $\kappa_L$ (45)}\\[2pt]
+  With the paper's own $\gamma$ we match the paper: 0.226 vs 0.227. With $\gamma$
+  from Poisson's ratio the error doubles --- $\gamma$, not the network, is the
+  weak link.\par}
+\column{0.31\linewidth}
+\AccentCard{3.75cm}{SlideGreen}{%
+  \sffamily\scriptsize
+  \textbf{Phonon DFT (2{,}520)}\\[2pt]
+  3 in 4 crystals the chain calls $\leq 1$ really are. Swapping in a phonon
+  $\gamma$ from an MLIP adds +0.013 --- its interval spans zero, so no
+  measurable gain.\par}
+\column{0.31\linewidth}
+\AccentCard{3.75cm}{SlideAmber}{%
+  \sffamily\scriptsize
+  \textbf{Direct ALIGNN}\\[2pt]
+  Trained straight on phonon-DFT $\kappa_L$, no Slack formula. Each crystal
+  predicted once, while held out: typical miss $\times$1.56 ($10^{0.194}$),
+  rank $\rho = 0.89$.\par}
+\end{columns}
+\end{frame}
+
+% =============================================================================
+\begin{frame}
+\SlideHeader{33 \textperiodcentered\ AUDIT}{Three traps the rebuild walked into}
+
+\begin{columns}[T]
+\column{0.31\linewidth}
+\AccentCard{3.75cm}{SlideAmber}{%
+  \sffamily\scriptsize
+  \textbf{1. A tie at the 10\% cut}\\[3pt]
+  \texttt{mb-09580} and \texttt{mb-00161} have identical labels ($K$ 17, $G$ 9
+  GPa) and share 164th place. The original step kept one and counted
+  \textbf{108} hits; the rebuild kept the other and counted \textbf{109}.\\[3pt]
+  Both are right. The check now accepts the whole range over every tie
+  choice.\par}
+\column{0.31\linewidth}
+\AccentCard{3.75cm}{SlideRed}{%
+  \sffamily\scriptsize
+  \textbf{2. numpy changed how it sorts ties}\\[3pt]
+  Matbench moduli are whole GPa, so many crystals tie. numpy 2's fast (AVX2)
+  sort orders ties differently from numpy 1.26: \textbf{41 MISMATCH + 23
+  close}, with no bug anywhere.\\[3pt]
+  Forcing the old sort path (\texttt{NPY\_DISABLE\_CPU\_FEATURES=AVX2}):
+  \textbf{0}.\par}
+\column{0.31\linewidth}
+\AccentCard{3.75cm}{SlideBlue}{%
+  \sffamily\scriptsize
+  \textbf{3. A label, not a number}\\[3pt]
+  Two $\gamma$ models (gamma3, round 8) were listed as tested on the 835-crystal
+  split. They were tested on the AFLOW $\gamma$ set: \textbf{1{,}460} crystals,
+  1{,}022 for training.\\[3pt]
+  The numbers were right; the description of them was not.\par}
+\end{columns}
+
+\Takeaway{None of the three changes a conclusion --- but two would have shown up
+as MISMATCH and sent someone hunting a bug that does not exist. An audit has to
+\emph{explain} its differences, not only count them.}
+\end{frame}
+
+\PartSlide{NINE}{The DFT list}{15 crystals handed over for a phonon-DFT $\kappa_L$}
+
+% =============================================================================
+% Part 9: dft/final_shortlist_15/ (README.md, index.csv, controls/, reserves/).
+% Funnel counts: results/cgcnn/83_trusted_dft_queue.csv (221, of which 53 have
+% <= 20 atoms) and results/cgcnn/91_final_shortlist.csv (53 -> 49 -> 23 -> 15 + 8).
+\begin{frame}
+\SlideHeader{34 \textperiodcentered\ DFT LIST}{From 554{,}054 materials to 15 crystals}
+
+\begin{columns}[T]
+\column{0.58\linewidth}
+\begin{tikzpicture}[x=1cm, y=0.62cm,
+  lab/.style={font=\sffamily\scriptsize\color{SlideInk}, anchor=west},
+  num/.style={font=\sffamily\bfseries\scriptsize\color{white}}]
+  % one bar per stage; width shrinks as the list does (not to scale). Labels
+  % sit in one column just right of the widest bar, so they read as a list.
+  \foreach \y/\w/\n/\t in {
+      0/7.6/554{,}054/{GNoME materials},
+      1/6.6/$\approx$33{,}000/{pass PINK's filters; $K$, $G$ predicted},
+      2/5.6/221/{MLIP phonon $\gamma$: stable and $\kappa \leq 1$},
+      3/4.6/53/{$\leq 20$ atoms per cell (DFT cost)},
+      4/3.6/49/{4 dropped: charge does not balance},
+      5/2.6/23/{tier 1: $\leq 1$ even with $\gamma$ cut 32\%}}
+  {
+    \fill[SlideBlue!70, rounded corners=2pt] (0,-\y) rectangle (\w*0.42,-\y-0.8);
+    \node[num, anchor=west] at (0.08,-\y-0.4) {\n};
+    \node[lab] at (3.35,-\y-0.4) {\t};
+  }
+  \fill[SlideGreen, rounded corners=2pt] (0,-6) rectangle (1.6*0.42,-6.8);
+  \node[num, anchor=west] at (0.08,-6.4) {15};
+  \node[lab] at (3.35,-6.4) {\textbf{the list}: first 15 by $\kappa_{\text{stress}}$ + 8 reserves};
+\end{tikzpicture}
+\column{0.38\linewidth}
+\AccentCard{4.9cm}{SlideBlue}{%
+  \sffamily\scriptsize
+  \textbf{Ranked by safety, not by lowest value}\\[2pt]
+  The goal is a crystal whose DFT $\kappa_L$ lands below 1 W/m/K, not one that
+  hits a predicted number. So the ranking uses $\kappa_{\text{stress}}$:
+  the \emph{highest} of three moduli models, with $\gamma$ cut by 32\%.\par}
+
+\vspace{4pt}
+\AccentCard{4.9cm}{SlideAmber}{%
+  \sffamily\scriptsize
+  \textbf{Chemistry before physics}\\[2pt]
+  4 crystals need oxygen holes to balance charge --- a known way for PBE to fake
+  stability. Dropped. 3 others need rare oxidation states: moved to the
+  reserves.\par}
+\end{columns}
+
+\Takeaway{Every stage is a file in the repo (steps 83--91); the list is
+\texttt{dft/final\_shortlist\_15/} with CIFs, an index of every prediction, the
+4 controls and the 8 reserves.}
+\end{frame}
+
+% =============================================================================
+\begin{frame}
+\SlideHeader{35 \textperiodcentered\ DFT LIST}{The 15, as handed to the supervisor}
+
+\begin{center}
+{\sffamily\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{0.92}
+\begin{tabular}{@{}rlrllllrrr@{}}
+\toprule
+& & & & & & \multicolumn{4}{c}{\textbf{predicted $\kappa_L$, W/m/K, 300 K}} \\
+\cmidrule(l){7-10}
+\textbf{\#} & \textbf{formula} & \textbf{atoms} & \textbf{space group} & \textbf{supercell} & \textbf{spin-polarise}
+  & \textbf{max3} & \textbf{stress} & \textbf{Poisson} & \textbf{direct} \\
+\midrule
+\TableRows{figures/shortlist_table.tex}
+\bottomrule
+\end{tabular}}
+\end{center}
+
+\vspace{-4pt}
+{\sffamily\tiny
+\textbf{max3}: Slack, MLIP $\gamma$, highest of 3 moduli models.
+\textbf{stress}: max3 with $\gamma$ cut 32\% (the ranking value).
+\textbf{Poisson}: Slack with $\gamma$ from each model's Poisson ratio, highest of 3.
+\textbf{direct}: ALIGNN trained on 6{,}641 phonon-DFT $\kappa_L$.
+Supercell: smallest with every vector $\geq$ 10 \AA. 8 of 15 are one isolated-octahedron
+iodide family; a 2026 DFT study of 18 Cs$_2B$X$_6$ found every $\kappa_L < 1$
+(Cao, arXiv:2602.06501). None of the 15 appears in any paper except the GNoME database.\par}
+\end{frame}
+
+% =============================================================================
+\begin{frame}
+\SlideHeader{36 \textperiodcentered\ DFT LIST}{Three routes, and four controls}
+
+\begin{columns}[T]
+\column{0.60\linewidth}
+\begin{center}
+\includegraphics[width=\linewidth]{figures/shortlist_kappa.png}
+\end{center}
+\column{0.36\linewidth}
+{\sffamily\scriptsize
+\textcolor{SlideBlue}{\textbf{Blue}}: Slack with the MLIP phonon $\gamma$
+(max3), the bar running to the stress value.\\[2pt]
+\textcolor{SlideAmber}{\textbf{Amber}}: Slack with $\gamma$ from Poisson's ratio
+--- shares the moduli, not the $\gamma$.\\[2pt]
+\textcolor{SlideGreen}{\textbf{Green}}: direct ALIGNN --- shares neither.\par}
+
+\vspace{5pt}
+\Card{4.8cm}{CardBg}{CardRule}{%
+  \sffamily\scriptsize
+  Highest value of \emph{any} route on the 15: \textbf{0.85}\\
+  Lowest on the 4 controls: \textbf{25.3}\\[3pt]
+  Poisson route's stricter 0.54 cut: \textbf{14 of 15} (Cs$_4$ZnNiO$_4$ 0.57)\\
+  Direct route: \textbf{15 of 15} $\leq$ 0.50\par}
+\end{columns}
+
+\Takeaway{Agreement is weaker evidence than it looks: the direct model also calls
+44 of the 53 earlier candidates low. The controls are what make the run
+informative.}
+\end{frame}
+
+% =============================================================================
+\begin{frame}
+\SlideHeader{37 \textperiodcentered\ DFT LIST}{What the DFT run will settle}
+
+\begin{columns}[T]
+\column{0.50\linewidth}
+\AccentCard{6.0cm}{SlideGreen}{%
+  \sffamily\scriptsize
+  \textbf{Reading the result}\\[3pt]
+  \textbf{Controls first.} The 4 Be/B crystals (predicted 25--103) must come out
+  far above the 15, or the method is not separating low from high at all.\\[3pt]
+  \textbf{Then the 15.} If the phonon-DFT calibration (slide 32) carried over
+  --- precision 0.75, about 0.85 at a cut as strict as this list's ---
+  \textbf{11--13 of 15} would land $\leq 1$, not 15 of 15. These are GNoME
+  crystals no model has seen: an expectation, not a promise.\\[3pt]
+  \textbf{Then the routes.} Each DFT value is scored against stress, Poisson and
+  direct --- all three are already in \texttt{index.csv}.\par}
+
+\column{0.46\linewidth}
+\AccentCard{5.5cm}{SlideAmber}{%
+  \sffamily\scriptsize
+  \textbf{Setup notes sent with the list}\\[3pt]
+  Six slanted cells (\#5, 7, 9, 10, 11, 13): standardise before relaxing.\\[2pt]
+  Spin-polarise Cr, Mn, Ni, Os(V), Ru(VI); check \#4, \#8, \#15.\\[2pt]
+  Heavy I, Te, Pt, Os, Au, Hf, Ta: spin--orbit per group practice.\\[2pt]
+  MLIP soft modes to confirm: at most $-0.077$ THz.\\[2pt]
+  Short of time: \#2/\#3 and \#9/\#10 are Hf/Zr twins --- run one of each.\par}
+
+\vspace{4pt}
+\Card{5.5cm}{CardBg}{CardRule}{%
+  \sffamily\scriptsize
+  \textbf{Reserves}: use Cs$_2$CuAgO$_2$ and Fe$_3$SbCl$_7$O first. The direct
+  model doubts reserves 3--5 (2.2--2.6 W/m/K).\par}
+\end{columns}
+
+\Takeaway{So far every number is model vs model or model vs database. This run
+is the first test of the screen's picks against the real quantity.}
 \end{frame}
 
 % =============================================================================
@@ -1340,7 +1774,7 @@ Producing them needs a full DFT plus finite-displacement phonon workflow with
 computed --- days of DFT per material, and a different toolchain from anything
 here.\\[8pt]
 {\color{white}No stand-in is drawn for them.} They are the same missing
-ground-truth gap the 12-crystal DFT set exists to start closing.}
+ground-truth gap the 15-crystal $\kappa_L$ DFT list (Part 9) starts to close.}
 \end{minipage}
 \end{center}
 \end{frame}
@@ -1349,11 +1783,11 @@ ground-truth gap the 12-crystal DFT set exists to start closing.}
 \begingroup
 \setbeamercolor{background canvas}{bg=Navy}
 \begin{frame}[plain]
-\vspace{0.7cm}
+\vspace{0.3cm}
 \begin{center}
-{\color{LightBlue}\bfseries\sffamily\large IN ONE SLIDE}\\[8pt]
+{\color{LightBlue}\bfseries\sffamily\large IN ONE SLIDE}\\[6pt]
 {\color{white}\bfseries\headingfont\fontsize{24}{30}\selectfont
-  What this work actually established}\\[14pt]
+  What this work established}\\[10pt]
 \begin{minipage}{0.82\linewidth}
 {\color{Subtle}\sffamily\footnotesize
 \textbf{\color{white}The pipeline finds a physical signal.} Two architectures
@@ -1365,7 +1799,11 @@ re-scoring.\\[6pt]
 $\kappa_L$: 0.226 against 0.227.\\[6pt]
 \textbf{\color{white}Most reported gains here are measurement artefacts:} a
 circular metric, an overconfident interval, an underfit network flattered by
-comparison, a label-noise constant from the wrong population.}
+comparison, a label-noise constant from the wrong population.\\[6pt]
+\textbf{\color{white}Every number is now reproducible:} 9{,}048 metric values
+rebuilt from their inputs, 0 mismatches.\\[6pt]
+\textbf{\color{white}And the test is in motion:} 15 crystals, 4 controls, 8
+reserves handed over for phonon-DFT $\kappa_L$.\par}
 \end{minipage}
 \end{center}
 \end{frame}
