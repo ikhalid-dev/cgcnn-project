@@ -66,6 +66,9 @@ KAG = os.path.join(ROOT, "kaggle", "output_aflow_recipe")
 COH = os.path.expanduser("~/Desktop/a new project")      # the coherent-heat project
 OUT_CSV = os.path.join(RES, "95_recomputed_accuracy.csv")
 OUT_PNG = os.path.join(RES, "95_recomputed_accuracy.png")
+# the headings finish() prints and draws; part 2b imports this file and swaps them
+TITLE = "STEP 95 PART 2a - accuracy metrics recomputed from the prediction files"
+FIG_TITLE = "Step 95 part 2a - accuracy metrics, recomputed from the saved predictions"
 
 MB = "matbench split_seed 42 (train 7,691 / val 1,648 / test 1,648)"
 AF = "AFLOW split (train 3,894 / val 834 / test 835)"
@@ -619,15 +622,18 @@ def finish():
     # float allowance: the prediction files hold float32 numbers (~7 digits), so a
     # sum over thousands of them can move in the 7th significant digit
     allowed = np.maximum(rounding, 1e-6 * out.stored.abs()) + 1e-12
+    # a value that is undefined on BOTH sides (e.g. precision when no crystal was
+    # selected, 0/0) agrees: stored NaN + recomputed NaN, with a stored file named
+    both_undefined = out.recomputed.isna() & out.stored.isna() & out.stored_in.fillna("").ne("")
     out["status"] = np.select(
-        [~has, out.abs_diff <= allowed, out.rel_diff <= 1e-3],
-        ["new", "match", "close"], default="MISMATCH")
+        [both_undefined, ~has, out.abs_diff <= allowed, out.rel_diff <= 1e-3],
+        ["match", "new", "match", "close"], default="MISMATCH")
     full_precision = dec >= 10            # stored with all its digits, i.e. never rounded
     out = out.drop(columns="stored_decimals")
     out.to_csv(OUT_CSV, index=False)
 
     print("=" * 100)
-    print("STEP 95 PART 2a - accuracy metrics recomputed from the prediction files")
+    print(TITLE)
     print("=" * 100)
     print(f"values written: {len(out)}   (to {os.path.relpath(OUT_CSV, ROOT)})\n")
     print(pd.crosstab(out.family, out.status, margins=True, margins_name="total").to_string())
@@ -654,7 +660,7 @@ def finish():
     lo, hi = pos.stored.abs().min() / 2, pos.stored.abs().max() * 2
     ax[0].plot([lo, hi], [lo, hi], color="grey", lw=0.8)
     ax[0].set(xscale="log", yscale="log", xlabel="stored value (|.|)", ylabel="recomputed value (|.|)",
-              title="Every stored accuracy number vs its recomputation")
+              title="Every stored number vs its recomputation")
     ax[0].legend()
     rd = cmp.rel_diff.dropna().clip(lower=1e-17)          # the stored-0 ensemble checks have no ratio
     ax[1].hist(np.log10(rd), bins=60, color="#3b6ea8")
@@ -662,7 +668,7 @@ def finish():
     ax[1].set(xlabel="log10 relative difference (exact matches piled at -17)", ylabel="values",
               title="How far apart stored and recomputed are")
     ax[1].legend()
-    fig.suptitle("Step 95 part 2a - accuracy metrics, recomputed from the saved predictions")
+    fig.suptitle(FIG_TITLE)
     fig.tight_layout()
     fig.savefig(OUT_PNG, dpi=130)
     print(f"figure: {os.path.relpath(OUT_PNG, ROOT)}")
