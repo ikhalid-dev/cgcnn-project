@@ -1,0 +1,63 @@
+page,frame_title,source_file,tex_lines,figure_file,figure_script
+1,ALIGNN and the PINK Pipeline,presentation/ALIGNN_PINK_presentation.tex,44-69,,
+2,Where the project stands,presentation/ALIGNN_PINK_presentation.tex,72-72,,
+3,"What PINK does, in one slide",presentation/ALIGNN_PINK_presentation.tex,75-116,,
+4,The paper's own Figure 1,presentation/ALIGNN_PINK_presentation.tex,120-134,figures/paper_fig1_workflow.png,cropped from PINK.pdf (image xref 219) by a one-off command; no script
+5,What this project added,presentation/ALIGNN_PINK_presentation.tex,136-175,,
+6,ALIGNN: from CIF to two graphs,presentation/ALIGNN_PINK_presentation.tex,177-177,,
+7,Why a second architecture at all,presentation/ALIGNN_PINK_presentation.tex,180-212,,
+8,"Step 1 - the CIF, and finding neighbours",presentation/ALIGNN_PINK_presentation.tex,215-253,,
+9,Step 2 - one crystal becomes two graphs,presentation/ALIGNN_PINK_presentation.tex,256-274,figures/alignn_line_graph.png,
+10,The same thing on a real file: NaCl,presentation/ALIGNN_PINK_presentation.tex,278-313,figures/nacl_alignn_graphs.png,"presentation/make_pink_figures.py fig_nacl_alignn_graphs() - function exists, was called by hand"
+11,Why the line graph is the right construction,presentation/ALIGNN_PINK_presentation.tex,315-353,,
+12,Step 3 - the ALIGNN layer alternates between them,presentation/ALIGNN_PINK_presentation.tex,356-395,,
+13,"CGCNN and ALIGNN, side by side",presentation/ALIGNN_PINK_presentation.tex,398-431,,numbers: metrics.tex <- presentation/make_figures.py
+14,One crystal through CGCNN,presentation/ALIGNN_PINK_presentation.tex,438-479,,
+15,"Training settings, from the saved runs",presentation/ALIGNN_PINK_presentation.tex,482-532,,
+16,Training and accuracy,presentation/ALIGNN_PINK_presentation.tex,534-534,,
+17,The training set - PINK's Figure 4,presentation/ALIGNN_PINK_presentation.tex,537-549,figures/pink_fig4_dataset_stats.png,presentation/make_pink_figures.py fig4_dataset_stats() - silently skips 1 CIF -> n=1212
+18,"Predicted vs DFT - PINK's Figure 5, CGCNN arm",presentation/ALIGNN_PINK_presentation.tex,552-570,../results/cgcnn/parity_K_VRH_ens.png | ../results/cgcnn/parity_G_VRH_ens.png,scripts/cgcnn/05_ensemble.py (plot code from 03_evaluate.py) - CGCNN 3-model ENSEMBLE
+19,Predicted vs DFT - the ALIGNN arm,presentation/ALIGNN_PINK_presentation.tex,573-592,../results/alignn/parity_K_VRH_alignn.png | ../results/alignn/parity_G_VRH_alignn.png,"scripts/alignn/17_alignn_diagnostics.py - ALIGNN SINGLE run, seed 123 (not like-for-like with p18)"
+20,Where the models fail - residuals,presentation/ALIGNN_PINK_presentation.tex,595-619,../results/cgcnn/residuals_G_VRH_ens.png | ../results/alignn/residuals_G_VRH_alignn.png,05_ensemble.py (CGCNN ens) + alignn/17_alignn_diagnostics.py (ALIGNN seed 123)
+21,The hidden features of CGCNN,presentation/ALIGNN_PINK_presentation.tex,624-668,,
+22,"The hidden-feature map of 1,648 crystals",presentation/ALIGNN_PINK_presentation.tex,671-700,figures/hidden_features.png,"presentation/make_hidden_features.py (infer_env, by hand)"
+23,What ensembling buys,presentation/ALIGNN_PINK_presentation.tex,703-729,figures/ensemble.png,presentation/make_figures.py | numbers: metrics.tex <- presentation/make_figures.py
+24,The physics,presentation/ALIGNN_PINK_presentation.tex,731-731,,
+25,Equations 1--3 - from moduli to sound,presentation/ALIGNN_PINK_presentation.tex,735-765,,
+26,Equations 4--6 - Debye temperature and Grüneisen,presentation/ALIGNN_PINK_presentation.tex,767-794,,
+27,Equations 7--8 - two routes to $\kappa_L$,presentation/ALIGNN_PINK_presentation.tex,796-825,,
+28,The Slack chain - no free parameters,presentation/ALIGNN_PINK_presentation.tex,827-865,,
+29,The uncertainty interval was badly overconfident,presentation/ALIGNN_PINK_presentation.tex,868-897,../results/cgcnn/calibration_check.png,scripts/cgcnn/25_calibration_check.py - script now writes 25_calibration_check.png (never re-run); deck shows Aug-24 copy
+30,Validation against measurement,presentation/ALIGNN_PINK_presentation.tex,899-899,,
+31,"Measured $\kappa_L$ - PINK's Figure 6B, our version",presentation/ALIGNN_PINK_presentation.tex,902-929,../results/cgcnn/63_experimental_vs_predicted.png,scripts/cgcnn/63_table1_experimental_vs_predicted.py
+32,The comparison was never like-for-like,presentation/ALIGNN_PINK_presentation.tex,932-965,../results/cgcnn/table1_gamma_diagnostic.png,scripts/cgcnn/10_validate_table1.py - now writes 10_table1_gamma_diagnostic.png (never re-run; its 09_ inputs are missing)
+33,The comparison sheet,presentation/ALIGNN_PINK_presentation.tex,968-1002,,
+34,"Two architectures, independently, on the same 1,213 crystals",presentation/ALIGNN_PINK_presentation.tex,1005-1030,../results/cgcnn/kappa_validation.png,scripts/cgcnn/08_compare_kappa.py - WRONG FIGURE: our CGCNN vs PINK's pretrained CGCNN
+35,The screen,presentation/ALIGNN_PINK_presentation.tex,1032-1032,,
+36,The screening funnel - PINK's Figure 7,presentation/ALIGNN_PINK_presentation.tex,1035-1071,,
+37,What the candidates look like - PINK's Figure 8,presentation/ALIGNN_PINK_presentation.tex,1074-1093,../results/cgcnn/gnome_kappa_distributions.png | ../results/cgcnn/gnome_screen_spacegroups.png,14_compare_gnome_screen.py + 17_spacegroups_general.py - scripts now write 14_/17_ names (never re-run); Aug-stage data
+38,"ALIGNN over the whole screen, for the first time",presentation/ALIGNN_PINK_presentation.tex,1096-1123,../results/alignn/57_alignn_vs_r9_gnome.png,scripts/cgcnn/57_alignn_gnome_screen.py - ALIGNN vs round 9
+39,What we found when we checked,presentation/ALIGNN_PINK_presentation.tex,1125-1125,,
+40,"The same candidates, four different answers",presentation/ALIGNN_PINK_presentation.tex,1129-1143,figures/kappa_dist_all_models.png,NO SCRIPT: inline command 2026-09-08 (recovered: presentation/refine/recovered_all_models_cmd.sh)
+41,Classifying the candidates: elements,presentation/ALIGNN_PINK_presentation.tex,1145-1159,figures/elements_all_models.png,NO SCRIPT: same inline command
+42,Classifying the candidates: structural families,presentation/ALIGNN_PINK_presentation.tex,1161-1173,figures/families_all_models.png,NO SCRIPT: same inline command
+43,Every model this project has trained,presentation/ALIGNN_PINK_presentation.tex,1175-1189,figures/model_comparison.png,presentation/make_pink_figures.py fig_model_comparison()
+44,The screening metric was circular,presentation/ALIGNN_PINK_presentation.tex,1191-1220,../results/cgcnn/agl_target/png/48_agl_vs_inhouse_target.png,scripts/cgcnn/48_agl_kappa_target.py
+45,"The misses are a fixed core, not variance",presentation/ALIGNN_PINK_presentation.tex,1223-1251,../results/cgcnn/decile_stability/png/47_missed_decile_stability.png,scripts/cgcnn/47_missed_decile_stability.py
+46,A composition-only tree beats the network,presentation/ALIGNN_PINK_presentation.tex,1254-1290,../results/cgcnn/underfitting/png/53_underfitting_verdict.png,scripts/cgcnn/53_underfitting_verdict.py
+47,The label noise everyone quotes was the wrong number,presentation/ALIGNN_PINK_presentation.tex,1293-1320,../results/cgcnn/59_cross_source_label_noise.png,scripts/cgcnn/59_cross_source_label_noise.py
+48,Where a cross-model disagreement actually lives,presentation/ALIGNN_PINK_presentation.tex,1323-1358,../results/alignn/58_rho_decomposition.png,scripts/cgcnn/58_rho_agreement_decomposition.py
+49,The joint model worked better than the record said,presentation/ALIGNN_PINK_presentation.tex,1361-1395,../results/cgcnn/60_residual_corr_table.png,scripts/cgcnn/60_resolve_residual_corr.py
+50,The audit,presentation/ALIGNN_PINK_presentation.tex,1397-1397,,
+51,One file holds every metric of every model,presentation/ALIGNN_PINK_presentation.tex,1402-1455,,
+52,The verdict: zero mismatches,presentation/ALIGNN_PINK_presentation.tex,1458-1490,figures/audit_status.png,presentation/make_audit_figures.py
+53,"The moduli models, from that one file",presentation/ALIGNN_PINK_presentation.tex,1493-1521,figures/audit_moduli_table.tex,presentation/make_audit_figures.py
+54,Against measurement and phonon DFT,presentation/ALIGNN_PINK_presentation.tex,1524-1562,figures/audit_truth_table.tex,presentation/make_audit_figures.py
+55,Three traps the rebuild walked into,presentation/ALIGNN_PINK_presentation.tex,1565-1600,,
+56,The DFT list,presentation/ALIGNN_PINK_presentation.tex,1602-1602,,
+57,"From 554,054 materials to 15 crystals",presentation/ALIGNN_PINK_presentation.tex,1608-1654,,
+58,"The 15, as handed to the supervisor",presentation/ALIGNN_PINK_presentation.tex,1657-1685,figures/shortlist_table.tex,presentation/make_audit_figures.py
+59,"Three routes, and four controls",presentation/ALIGNN_PINK_presentation.tex,1688-1716,figures/shortlist_kappa.png,presentation/make_audit_figures.py
+60,What the DFT run will settle,presentation/ALIGNN_PINK_presentation.tex,1719-1755,,
+61,What we cannot reproduce,presentation/ALIGNN_PINK_presentation.tex,1760-1780,,
+62,What this work established,presentation/ALIGNN_PINK_presentation.tex,1785-1809,,

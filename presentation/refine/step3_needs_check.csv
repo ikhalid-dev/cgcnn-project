@@ -1,0 +1,8 @@
+slide,item,status,to close it
+2,'about a sixth of a second' per crystal,copied from the old deck; no timing file found,"time the chain on the 1,213 PINK crystals, or drop the number"
+8,NaCl graph counts 8 / 96 / 528,read off the generated figure; not written to a CSV,have the figure script write the counts
+20,"card numbers 0.225, ~0.64, 0.747, x1.56, 0.892",typed; each matches figures/audit_phonix_table.tex on the same slide,replace with macros
+30,"setup notes (slanted cells #5,7,9,10,11,13; spin-polarise list; SOC list)",copied verbatim from the old deck / supervisor README,re-read against dft/final_shortlist_15/README
+27,funnel bar 'pre-selected',deliberately unnumbered: halides came from step 71's kappa_max4 pool (includes round 9 + tree),user decision: keep as is or name round 9
+-,"377,221 (paper's GNoME count)",quoted from the paper; not in the new deck,none unless re-added
+-,"TOneRG / TOneRVs, STwoR 0.932, '68 minutes'",old-deck values with no source; not in the new deck,none unless re-added

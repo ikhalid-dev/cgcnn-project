@@ -1,0 +1,27 @@
+old_page,why_removed
+2,part divider
+6,part divider
+14,CGCNN layer-by-layer (facts -> new 10)
+15,training settings (facts -> new 10)
+16,part divider
+21,CGCNN hidden features
+22,PCA map
+24,part divider
+30,part divider
+33,comparison sheet (rows -> new 18)
+35,part divider
+38,ALIGNN vs round 9 (rebuilt as new 23)
+39,part divider
+40,four-model histogram (rebuilt as new 23)
+42,families (not in outline)
+43,every model / AFLOW bars
+44,circular metric on AFLOW-AGL
+45,fixed core of misses
+46,tree beats network on AFLOW
+47,matbench/AFLOW label noise
+48,cross-model disagreement
+49,joint model
+50,part divider
+55,three traps
+56,part divider
+61,what we cannot reproduce (one line -> summary)

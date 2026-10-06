@@ -1,0 +1,33 @@
+claim,slides,value_on_slide,value_in_source,source_file,verdict
+ALIGNN single K/G,"p13, p19, p47",0.0539 / 0.0725 (seed 123),0.053912 / 0.072503; config random_seed 123,95_final_all_metrics.csv (run alignn_*_kv / _gv); results/alignn/alignn_bulk_modulus_kv/config.json,CORRECT but inconsistent with p53
+ALIGNN single K/G,p53,0.0549 / 0.0726 (seed 42),0.054856 / 0.072628,95_final_all_metrics.csv (run *_s42),CORRECT but inconsistent with p13/p19
+ALIGNN ensemble members,p13,"three further seeds (42,1,2)","log-mean of s42,s1,s2 reproduces 0.053361 / 0.070755 exactly","results/alignn/*_s{42,1,2}/prediction_results_test_set.csv",CORRECT
+CGCNN ensembling gain,p23,"removed 9-10% (K 0.0696->0.0630, G 0.0836->0.0781)","vs seed 42: K 9.4%, G 6.5%; vs mean member: K 8.4%, G 8.3%",95_final_all_metrics.csv,"WRONG for G (6.5%, not 9-10%)"
+CGCNN ensembling gain,p13,~8% over average member,"K 8.4%, G 8.3%","95 (seeds 1,2 are 'stored only')",CORRECT
+ALIGNN ensembling gain,p13,~3% over average member,"K 3.1%, G 2.4%",95_final_all_metrics.csv,OK for K; G is 2.4% (say ~2-3%)
+p13 table baselines,p13,CGCNN 'one' = seed 42; ALIGNN 'one' = seed 123,seed 123 is not an ensemble member; seed-42 ALIGNN = 0.0549,95,UNLIKE-FOR-LIKE
+Screen totals,"p5, p36, p38","33,118 'pass the paper's own filters'","33,323 pass filters; 33,118 = after dropping 205 unverifiable IDs (Sep 3)",13_gnome_screen_all.csv (id_unverifiable),"NUMBER RIGHT, LABEL WRONG"
+Screen totals,p37 fig,"33,059","33,323 minus 264 rows with no space-group match (Aug)",gnome_screen_spacegroups.csv,"CORRECT, stale stage"
+Screen totals,"p38,p40","33,053","33,118 minus 65 ALIGNN regression-floor rows",57_gnome_screen_alignn.csv (alignn_prediction_reliable),CORRECT
+CGCNN low-kappa,p37 fig left,"16,299","Aug screen, 33,323 rows",gnome_screen_candidates.csv,"CORRECT, stale stage"
+CGCNN low-kappa,p37 fig right,"16,172","16,299 minus 127 with no space-group match",gnome_screen_spacegroups.csv,"CORRECT, stale stage"
+CGCNN low-kappa,(no slide),-,"16,216 after ID audit; 16,195 verifiable",13_gnome_screen_candidates.csv; 39_*,-
+CGCNN low-kappa,p40,"16,130","16,130 on the 33,053",39_* merged with 57_*,CORRECT
+"AFLOW K, CGCNN test","p43, p46",0.1154,0.115355 = mean of 3 matbench-recipe singles (s1/s2/s42 0.1153/0.1145/0.1163),underfitting/csv/53_underfitting_summary.csv,"CORRECT; it's the recipe arm, not round 9"
+"AFLOW K, round 9 train","p43, p46",0.103,"0.1032 = seed 1 only; seeds 0.103/0.139/0.109, mean 0.117 (= the chart)",summary_37_r9_full_s*.json; 53 summary,CHERRY-PICKED SEED; claim still holds
+p46 chart bars,p46,"r9 ~0.117/0.134, recipe ~0.088/0.115",r9 0.1171/0.1342; recipe 0.0879/0.1154,53_underfitting_summary.csv,CHART CORRECT; text mixes r9 train with recipe test
+p46 'tree' column,p46,"matbench 0.0868, AFLOW 0.0592, 'a decision tree'",0.0868 = random forest; 0.0592 = XGBoost; decision tree = 0.1157 / 0.0838,95_final_all_metrics.csv (43 matbench / 43 aflow),MIXED MODELS + WRONG NAME
+PINK set size,p17,n = 1212,"1,213 CIFs; mp-770620 skipped (SymmetryUndeterminedError)",complete-data/; make_pink_figures.py fig4,"CORRECT, needs caption"
+PINK set size,p34,"1,213","1,213 rows",pink_kappa_predictions.csv; alignn_kappa_predictions.csv,CORRECT
+Audit size,p51,"9,740 rows","9,740 = 9,266 metric + 295 check + 179 cross-file",95_final_all_metrics.csv,CORRECT
+Audit size,"p52, p62","9,048 distinct values","9,048 primary metric rows; 6,373 distinct numbers; 17 empty",95_final_all_metrics.csv,WRONG WORD ('distinct')
+Audit size,p62,"9,048 values rebuilt from inputs, 0 mismatches","rebuilt: 4,337 match + 11 close + 3,219 new = 7,567; 1,481 'stored only' NOT rebuilt",95_final_all_metrics.csv (status),OVERSTATED
+Audit checks,p52,473 = 294 + 179,294 primary checks + 179 cross-file,95_final_all_metrics.csv,CORRECT
+Overlap with PINK,p36,"70.8% of 11,869","8,405/11,869 = 70.8% (Aug list, reproduced); today's CGCNN 70.1%, ALIGNN 65.3%, r9 26.9%, tree 67.3%",JMI Nature-filtered-low-kappa.csv; p1_overlap_recompute.csv,REPRODUCED; current value 70.1%
+GNoME size,"p36, p57","554,054","554,054 rows, all unique",gnome_data/stable_materials_summary.csv,CORRECT
+Cao paper,p58,"Cao, arXiv:2602.06501; 18 Cs2BX6, every kappa<1","arXiv:2602.06501v1, 6 Feb 2026, Cao/Wang/Xia/He; 6 B x 3 X = 18; 'All studied compounds ... below 1.0 W/m/K at room temperature'",dft/final_shortlist_15/papers/02_Cao2026_*.pdf,CORRECT (cite as Cao et al.)
+'None of the 15 in any paper',p58,none appears in any paper,MP/ICSD lookup (step 90) + web search for exact formulas 2026-10-06; 6 have MP entries copied from GNoME,90_dft_list_literature.csv; papers/README.md,PROCESS DOCUMENTED; wording stronger than a search can show
+V in Eq. 4 (Theta_D),p26,V = volume per atom,code uses PRIMITIVE-CELL volume -> gives the ACOUSTIC Debye temperature Theta_a (PINK's own name),07_predict_kappa.py:96; pink_predict.py:111; 13_screen_gnome.py:182,SLIDE != CODE
+V in Eq. 8 (kappa_cal),p26-27,V = volume per atom; N atoms per cell,code uses primitive-cell volume with N atoms per primitive cell,07_predict_kappa.py:113; pink_predict.py:127,SLIDE != CODE
+M in Eq. 7 (Slack),p27,M = mean atomic mass,"code uses TOTAL cell mass; code's kappa_Slack = N x textbook Slack on all 1,213 crystals",07_predict_kappa.py:181; pink_reference_kappa.csv,SLIDE != CODE (kappa_Slack not reported; kappa_cal unaffected)
+p34 figure,p34,"ALIGNN vs CGCNN, r 0.940, rho 0.947","image shows OUR CGCNN vs PINK pretrained, r 0.932, rho 0.926, MAE 0.169",kappa_validation.png (08_compare_kappa.py),WRONG FIGURE (Phase 2)

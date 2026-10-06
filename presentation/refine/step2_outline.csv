@@ -1,0 +1,32 @@
+new_page,part,title,from_old_pages,change
+1,Overview,Title,1,keep
+2,Overview,What PINK does,3,keep; 'no free parameters' softened
+3,Overview,The paper's Figure 1,4,keep
+4,Overview,What this project added,5,"rewrite: ALIGNN, full screen with two architectures, validation vs measurement + phonon DFT, audit, DFT list"
+5,Overview,The models in this deck,NEW,"one line each: CGCNN x1/x3, ALIGNN x1/x3, descriptor XGBoost, composition-only trees, direct ALIGNN; gamma: Poisson vs MLIP"
+6,ALIGNN,Why a second architecture,7,shorten
+7,ALIGNN,One crystal becomes two graphs,8+9+11,merge
+8,ALIGNN,NaCl worked example,10,keep
+9,ALIGNN,The ALIGNN layer,12,keep
+10,ALIGNN,CGCNN vs ALIGNN side by side,13 (+3-4 facts from 14-15),"seed-42 single, numbers fixed"
+11,Accuracy,Training data,17,"add log10 K/G panel; fix 'panel B'; label PINK set vs matbench; explain 1,212"
+12,Accuracy,"Predicted vs DFT, both models",18+19,"new figure: both ensembles, same axes"
+13,Accuracy,Where the models fail: residuals,20,both ensembles
+14,Accuracy,What ensembling buys,23,"percentages fixed, baseline stated"
+15,Physics,Moduli -> sound -> Debye T -> gamma,25+26,merge; V = primitive-cell volume (matches code)
+16,Physics,The kappa_L formula used + naming,27+28,merge; name Eq. 8 once; Eq. 7 layout fixed
+17,Physics,The uncertainty interval and its recalibration,29,keep (fits one slide; define the interval in one sentence)
+18,Validation,Measured kappa_L on equal footing,31+32 (+2-3 rows of 33),merge; gamma source worded without AFLOW
+19,Validation,"ALIGNN vs CGCNN on the 1,213 PINK crystals",34,"correct figure (r 0.940, rho 0.947); 'consistent with' wording"
+20,Validation,Against phonon DFT,54,phonon-DFT rows only; MLIP-gain row dropped
+21,The screen,The screening funnel,36,one count chain; overlap recomputed (70.1%); flag removed
+22,The screen,What the candidates look like,37,"figures re-run on the current 33,053"
+23,The screen,ALIGNN vs CGCNN ensemble over the full screen,38/40 rebuilt,"new figure, two models only"
+24,The screen,Which elements make low-kappa candidates,41,two models; small table of ~10 elements
+25,Audit,One file holds every metric -> zero mismatches,51+52,"merge; 9,740 rows explained, 'rebuilt' wording fixed"
+26,Audit,The final model table,53,joint row + AFLOW footnote removed
+27,DFT list,"From 554,054 to 15 crystals",57,add the missing selection stage (see question 2)
+28,DFT list,The 15,58,keep; 'none in any paper' wording per Step 3
+29,DFT list,Three routes and four controls,59,keep
+30,DFT list,What the DFT run will settle,60,keep; slide cross-refs renumbered
+31,Summary,Summary,62,rewrite: 4-5 bullets backed by kept slides
