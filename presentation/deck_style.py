@@ -31,7 +31,7 @@ MODEL_COLOURS = {
     "ALIGNN":          "#1E8E5A",   # green  (theme.tex SlideGreen)
     "ALIGNN single":   "#7CC4A0",   # light green
     "tree":            "#D97B12",   # amber  (theme.tex SlideAmber) - descriptor/composition trees
-    "direct ALIGNN":   "#7A3FA0",   # purple - structure -> kappa directly, no Slack chain
+    "direct ALIGNN":   "#7A3FA0",   # purple - structure -> kappa directly, no physics chain
     "measured":        "#1F2937",   # near-black - experiment
     "PINK paper":      "#8A96A8",   # grey - the published paper's own numbers
 }

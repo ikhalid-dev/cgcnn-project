@@ -41,6 +41,12 @@ ROOT = os.path.dirname(HERE)
 FIGS = os.path.join(HERE, "figures")
 METRICS = os.path.join(ROOT, "results", "cgcnn", "95_final_all_metrics.csv")
 SHORT = os.path.join(ROOT, "dft", "final_shortlist_15")
+# Step 82's per-crystal file: every moduli model's K, G and kappa on the SAME
+# 1,648 test crystals. The descriptor XGBoost's row on slide 26 comes from here.
+PRED82 = os.path.join(ROOT, "results", "cgcnn", "82_test_predictions.csv")
+# The sibling repo where the MLIP phonon runs live (slide 27's funnel counts).
+# expanduser() turns "~" into the home folder, e.g. /Users/mac.
+DATAGEN = os.path.expanduser("~/Desktop/data_generation/results")
 
 # =============================================================================
 #  CONFIG - colours. Model colours come from deck_style.py, so a model has the
@@ -59,6 +65,11 @@ SUBTLE = "#AAB6C8"                 # pale grey-blue, for "nothing to see" segmen
 SIZE_STATUS    = (10.0, 2.7)      # audit_status.png, slide 25
 SIZE_SHORTLIST = (8.0, 5.6)       # shortlist_kappa.png, slide 29
 
+# Slide 28's table of the 15. True = a "supercell" column in the table;
+# False = no column, and one generated sentence (\AudSupercellNote) in the
+# footnote instead, which frees width for a larger font.
+SHORTLIST_SUPERCELL_COLUMN = False
+
 # What the step 95 re-check found, one colour per outcome
 STATUS_COLOURS = {
     "match":       "#1E8E5A",      # green  - recomputed value = stored value
@@ -69,7 +80,7 @@ STATUS_COLOURS = {
 }
 
 # The DFT-list figure shows three prediction CHAINS, not single models.
-# Each chain is "Slack formula + some gamma, highest of 3 models", except the
+# Each chain is "the physics chain + some gamma, highest of 3 models", except the
 # direct one, which is a single model and so takes its deck_style colour.
 CHAIN_COLOURS = {
     "MLIP gamma":    "#0F1B33",                          # navy (theme.tex Navy)
@@ -201,6 +212,55 @@ def f3(x):
     return "---" if x is None else f"{x:.3f}"
 
 
+def scores_from_step82(tag):
+    """log10 MAE and R^2 of K and G, and the kappa MAE, for one model of step 82.
+
+    `tag` is the model's name inside 82_test_predictions.csv: its columns are
+    K_<tag>, G_<tag> (predicted GPa) and <tag>_full_chain (predicted kappa, the
+    model's own Poisson gamma). The truth is K_VRH, G_VRH and kappa_DFT (the same
+    chain on the DFT moduli) - the same comparison step 95 makes for the networks.
+    Returns a dict, e.g. {"kmae": 0.0591, "kr2": 0.918, ...}.
+    """
+    d = pd.read_csv(PRED82)
+
+    def mae_r2(true, pred):
+        t, p = np.log10(true), np.log10(pred)        # work in log10, like every table here
+        mae = float(np.mean(np.abs(t - p)))
+        # R^2 = 1 - (squared error left over) / (squared spread of the truth)
+        r2 = float(1 - np.sum((t - p) ** 2) / np.sum((t - t.mean()) ** 2))
+        return mae, r2
+
+    kmae, kr2 = mae_r2(d.K_VRH, d[f"K_{tag}"])
+    gmae, gr2 = mae_r2(d.G_VRH, d[f"G_{tag}"])
+    kappa = float(np.mean(np.abs(np.log10(d[f"{tag}_full_chain"]) - np.log10(d.kappa_DFT))))
+    return dict(n=len(d), kmae=kmae, kr2=kr2, gmae=gmae, gr2=gr2, kappa=kappa)
+
+
+def descriptor_xgboost_scores():
+    """The 3rd moduli model (XGBoost on 297 matminer descriptors) on slide 26.
+
+    Step 95 never stored its log10 MAE / R^2, so they are computed here from
+    step 82's file. SELF-CHECK first: the same function, run on ALIGNN and the
+    CGCNN ensemble, must give back the numbers step 95 stores for them. If it
+    does, the XGBoost numbers are computed exactly like the rest of the table.
+    """
+    checks = [("ALIGNN", dict(family="ALIGNN moduli", model="ALIGNN 3-ensemble"),
+               dict(family="ALIGNN separate -> kappa", model="ALIGNN 3-ensemble, K and G")),
+              ("CGCNN-ens", dict(family="CGCNN moduli", model="CGCNN 3-ensemble"),
+               dict(family="CGCNN separate -> kappa", model="CGCNN separate, 3-ensemble each"))]
+    for tag, mod, kap in checks:
+        mine = scores_from_step82(tag)
+        stored = dict(kmae=one("MAE_log10", target="K_VRH", **mod), kr2=one("R2_log10", target="K_VRH", **mod),
+                      gmae=one("MAE_log10", target="G_VRH", **mod), gr2=one("R2_log10", target="G_VRH", **mod),
+                      kappa=one("kappa_mae_total", target="K+G -> kappa", **kap))
+        for key in stored:                       # looping over a dict gives its keys
+            if abs(mine[key] - stored[key]) > 1e-4:
+                raise SystemExit(f"step 82 vs step 95 disagree for {tag} {key}: "
+                                 f"{mine[key]:.5f} vs {stored[key]:.5f}")
+    print("  self-check: step 82's file reproduces step 95's ALIGNN and CGCNN rows (to 1e-4)")
+    return scores_from_step82("newbase")
+
+
 def table_moduli(path):
     """Every model family on the SAME 1,648 matbench test crystals."""
     # Each entry: (label on the slide, dict of filters for K, for G, for kappa).
@@ -222,6 +282,7 @@ def table_moduli(path):
          dict(family="ALIGNN moduli", model="ALIGNN 3-ensemble"),
          dict(family="ALIGNN separate -> kappa", model="ALIGNN 3-ensemble, K and G")),
     ]
+    desc = descriptor_xgboost_scores()
     lines = []
     for label, mod, kap in rows:             # each tuple is unpacked into 3 names
         kmae = one("MAE_log10", target="K_VRH", **mod)
@@ -232,6 +293,12 @@ def table_moduli(path):
         lines.append(f"{label} & {f4(kmae)} & {f3(kr2)} & {f4(gmae)} & {f3(gr2)} & {f4(kappa)} \\\\")
         print(f"  {label:34s} K {kmae:.4f} R2 {kr2:.3f}  G {gmae:.4f} R2 {gr2:.3f}  kappa "
               f"{'---' if kappa is None else f'{kappa:.4f}'}")
+        if label == "XGBoost (composition only)":
+            # the descriptor model goes right after the two composition-only trees
+            lines.append(f"XGBoost (297 descriptors)$^{{*}}$ & {f4(desc['kmae'])} & {f3(desc['kr2'])} & "
+                         f"{f4(desc['gmae'])} & {f3(desc['gr2'])} & {f4(desc['kappa'])} \\\\")
+            print(f"  {'XGBoost (297 descriptors)':34s} K {desc['kmae']:.4f} R2 {desc['kr2']:.3f}  "
+                  f"G {desc['gmae']:.4f} R2 {desc['gr2']:.3f}  kappa {desc['kappa']:.4f}  (n {desc['n']})")
     with open(path, "w") as fh:                 # "w" = write (replace the file)
         fh.write("% written by make_audit_figures.py from 95_final_all_metrics.csv - do not edit\n")
         fh.write("\n".join(lines) + "\n")
@@ -242,7 +309,7 @@ def table_phonix(path):
     """Scores against phonon-DFT kappa_L (PhoNIX) - crystals no model trained on.
 
     Two blocks:
-      1. the screen's own chain (Slack + Poisson gamma, highest of 3 models),
+      1. the screen's own chain (physics chain + Poisson gamma, highest of 3 models),
          scored on the 2,520 PhoNIX crystals that are NOT in matbench and have
          <= 20 atoms (step 87). Precision = of the crystals called low, the
          share DFT also finds low. Read it against the base rate.
@@ -262,21 +329,40 @@ def table_phonix(path):
     n87 = int(PRIMARY[(PRIMARY.metric == "precision") & (PRIMARY.model == "kappa_max3")
                       & (PRIMARY.family == p87["family"]) & (PRIMARY.run == p87["run"])].n.iloc[0])
     dk_mae, dk_r2, dk_rho = (one(x, **dk) for x in ("MAE_log10", "R2_log10", "spearman_rho"))
+    # how many crystals the 5-fold run predicted = the n column of that same row
+    n_dk = int(PRIMARY[(PRIMARY.metric == "MAE_log10") & (PRIMARY.family == dk["family"])
+                       & (PRIMARY.model == dk["model"]) & (PRIMARY.split == dk["split"])].n.iloc[0])
+
+    # Step 89: a sample of those crystals also got MLIP phonon gamma. Two rules
+    # of EQUAL strictness - the MLIP rule the final 15 pass, and the Poisson cut
+    # that keeps as many crystals - so neither row is flattered by a looser cut.
+    g89 = dict(family="89 MLIP vs Poisson", model="max of three", target="DFT klat <= 1")
+    mlip_run = "as safe as the final 15, stress <= 0.85 [added]"
+    pois_run = "Poisson, cutoff 0.46 = as strict as 'as safe as the final 15' [added]"
+    mlip = [one(x, run=mlip_run, **g89) for x in ("precision", "precision_lo95", "precision_hi95")]
+    pois = [one(x, run=pois_run, **g89) for x in ("precision", "precision_lo95", "precision_hi95")]
+    n89 = int(PRIMARY[(PRIMARY.metric == "precision") & (PRIMARY.family == g89["family"])
+                      & (PRIMARY.run == mlip_run) & (PRIMARY.target == g89["target"])].n.iloc[0])
 
     # Each line: test set & model & what was measured & the number.
     # TinyTeX here has no multirow package, so a block's label is simply
     # split over its rows (line 1 of the label on row 1, line 2 on row 2).
     k = "$\\kappa_L$"
     lines = [
-        f"PhoNIX, not in matbench & Slack + Poisson $\\gamma$, highest of 3 & precision at {k}$\\le1$ & "
+        f"PhoNIX, not in matbench & Poisson $\\gamma$, highest of 3 & precision at {k}$\\le1$ & "
         f"{f3(prec)} [{f3(lo)}, {f3(hi)}] \\\\",
         f"{n87:,} crystals, $\\le$20 atoms & each model alone & precision at {k}$\\le1$ & "
         f"{min(singles):.3f}--{max(singles):.3f} \\\\",
         f" & highest of 3 & recall (true lows found) & {f3(recall)} \\\\",
         f" & a blind pick & base rate (truly $\\le1$) & {f3(base)} \\\\",
         "\\midrule",
+        f"{n89} of them, sampled, & MLIP $\\gamma$, as safe as the 15 & precision at {k}$\\le1$ & "
+        f"{f3(mlip[0])} [{f3(mlip[1])}, {f3(mlip[2])}] \\\\",
+        f"with MLIP $\\gamma$ (step 89) & Poisson $\\gamma$, equally strict & precision at {k}$\\le1$ & "
+        f"{f3(pois[0])} [{f3(pois[1])}, {f3(pois[2])}] \\\\",
+        "\\midrule",
         f"PhoNIX, 5-fold & direct ALIGNN, structure$\\to${k} & MAE log$_{{10}}$ & {f3(dk_mae)} \\\\",
-        f"5,316 held out once & & $R^2$ / Spearman $\\rho$ & {f3(dk_r2)} / {f3(dk_rho)} \\\\",
+        f"{n_dk:,} of the 6,641, held out once & & $R^2$ / Spearman $\\rho$ & {f3(dk_r2)} / {f3(dk_rho)} \\\\",
     ]
     with open(path, "w") as fh:
         fh.write("% written by make_audit_figures.py from 95_final_all_metrics.csv - do not edit\n")
@@ -284,6 +370,7 @@ def table_phonix(path):
     print(f"wrote {path}")
     print(f"  PhoNIX n {n87}: precision {prec:.3f} [{lo:.3f}, {hi:.3f}], singles {singles}, "
           f"recall {recall:.3f}, base {base:.3f}; direct MAE {dk_mae:.3f} R2 {dk_r2:.3f} rho {dk_rho:.3f}")
+    print(f"  step 89 (n {n89}): MLIP as safe as the 15 {mlip}, Poisson equally strict {pois}")
 
 
 # =============================================================================
@@ -334,9 +421,11 @@ def table_shortlist(d, extra, path):
         cell = e["cell"].replace("x", "$\\times$")
         spin = e["spin"].replace("I2+", "I$_2^+$")     # the [I2]+ cation
         # ":.2f" = 2 decimals, which is all a x1.6-error model deserves
+        # the supercell cell (with its "&") only when the CONFIG switch asks for it
+        cell_col = f"{cell} & " if SHORTLIST_SUPERCELL_COLUMN else ""
         lines.append(
             f"{int(r['rank'])} & {latex_formula(r.formula)} & {int(r.n_atoms)} & "
-            f"{latex_sg(e['sg'])} & {cell} & {spin} & "
+            f"{latex_sg(e['sg'])} & {cell_col}{spin} & "
             f"{r.kappa_max3:.2f} & {r.kappa_stress:.2f} & {r.kappa_poisson_max3:.2f} & "
             f"{r.kappa_direct:.2f} \\\\")
     with open(path, "w") as fh:
@@ -402,9 +491,9 @@ def figure_shortlist(d, ctrl, path):
         ax.plot(row["direct"], yi, "s", color=direct, ms=6.5)
 
     # Legend entries drawn once, off-screen, so each symbol appears exactly once
-    ax.plot([], [], "o", color=mlip, ms=7, label="Slack + MLIP phonon $\\gamma$ (max of 3 models)")
+    ax.plot([], [], "o", color=mlip, ms=7, label="physics chain + MLIP phonon $\\gamma$ (max of 3 models)")
     ax.plot([], [], "|", color=mlip, ms=11, mew=2, label=f"... with $\\gamma$ cut by {cut_pct}% (stress test)")
-    ax.plot([], [], "D", color=poisson, ms=6, label="Slack + Poisson $\\gamma$ (max of 3 models)")
+    ax.plot([], [], "D", color=poisson, ms=6, label="physics chain + Poisson $\\gamma$ (max of 3 models)")
     ax.plot([], [], "s", color=direct, ms=6.5, label="direct ALIGNN, trained on 6,641 phonon-DFT $\\kappa_L$")
 
     ax.set_xscale("log")
@@ -433,6 +522,68 @@ def figure_shortlist(d, ctrl, path):
     print(f"  Poisson chain <= 0.54 cut: {n_poisson}/15")
 
 
+def gamma_benchmark_size(stress):
+    """How many benchmark crystals step 86's stress factor was measured on.
+
+    Same file and same filter as 86_low_range_list.gamma_corrections(); the
+    10th percentile is recomputed and must equal the factor it returned, so
+    the count below is certainly the count behind that factor.
+    """
+    from importlib import import_module
+    s86 = import_module("86_low_range_list")     # already loaded once; Python reuses it
+    b = pd.read_csv(s86.BENCH)
+    b = b[b.stable & b.clean].dropna(subset=["gamma_paper", "gamma_mlip"])
+    if abs((b.gamma_paper / b.gamma_mlip).quantile(0.10) - stress) > 1e-12:
+        raise SystemExit("benchmark filter here differs from step 86's")
+    return len(b)
+
+
+def mlip_stage_counts():
+    """Crystals that got an MLIP phonon run, per route (slide 27's funnel).
+
+    Halide route: 01_gamma_phonon_halide_s0*.csv + the pilot file (the recut
+    files re-run a subset of these, so they add no new crystals).
+    Oxide route: 01_gamma_phonon_gnome_*.csv, minus gnome_selected.csv, which
+    is a list of inputs rather than results.
+    Returns (halides, oxides, in both) as three counts of unique crystal ids.
+    """
+    import glob                               # glob = list the files matching a * pattern
+
+    def ids(files):
+        # pd.concat stacks several tables into one; set() keeps each id once
+        return set(pd.concat([pd.read_csv(f, dtype={"mp_id": str}) for f in files]).mp_id)
+
+    hal_files = (sorted(glob.glob(os.path.join(DATAGEN, "01_gamma_phonon_halide_s0*.csv")))
+                 + [os.path.join(DATAGEN, "01_gamma_phonon_pilot_mb3.csv")])
+    ox_files = sorted(f for f in glob.glob(os.path.join(DATAGEN, "01_gamma_phonon_gnome_*.csv"))
+                      if not f.endswith("selected.csv"))
+    hal, ox = ids(hal_files), ids(ox_files)
+    # Guard: every halide run must come from step 71's top-300 list ("<=" = subset)
+    top = pd.read_csv(os.path.join(ROOT, "results", "cgcnn", "71_top300_matbench3.csv"),
+                      dtype={"material_id": str})
+    if not hal <= set(top.material_id):
+        raise SystemExit("a halide MLIP run is not in step 71's top 300")
+    print(f"  MLIP stage: {len(hal)} halide-route + {len(ox)} oxide-route crystals "
+          f"({len(hal & ox)} in both; {len(hal_files)} + {len(ox_files)} files)")
+    return len(hal), len(ox), len(hal & ox)      # "&" between sets = the ids in both
+
+
+def supercell_note(extra):
+    """The supercells as one short phrase, for slide 28's footnote, e.g.
+    '2x2x1; #6, 8, 13: 2x2x2; #14: 3x2x2.' (the slide types the rule
+    'smallest, every vector >= 10 A' in front of it)"""
+    by_cell = {}                                  # supercell -> list of ranks
+    for rank in sorted(extra):
+        cell = extra[rank]["cell"].split()[0]     # "2x2x1 (72)" -> "2x2x1"
+        by_cell.setdefault(cell, []).append(rank) # setdefault = start an empty list once
+    # "lambda c: ..." = a tiny one-line function of c; here 2x2x1 -> 2$\times$2$\times$1
+    tex = lambda c: c.replace("x", "$\\times$")
+    common = max(by_cell, key=lambda c: len(by_cell[c]))   # the most frequent supercell
+    rest = "; ".join(f"\\#{', '.join(str(r) for r in ranks)}: {tex(c)}"
+                     for c, ranks in by_cell.items() if c != common)
+    return f"{tex(common)}; {rest}."
+
+
 # =============================================================================
 #  4. NUMBERS QUOTED IN THE SLIDE TEXT - written as LaTeX macros
 # =============================================================================
@@ -444,7 +595,7 @@ CROSSWORK_05 = os.path.join(os.path.dirname(ROOT), "transport_program", "crosswo
                             "05_dft_list_direct_klat.csv")
 
 
-def write_audit_numbers(d, ctrl, tex_path, csv_path):
+def write_audit_numbers(d, ctrl, extra, tex_path, csv_path):
     rows = []                                   # (name, text for the slide, source, how)
 
     def add(name, text, source, how):
@@ -499,6 +650,31 @@ def write_audit_numbers(d, ctrl, tex_path, csv_path):
         "gamma_corrections(): 10th percentile of reference/MLIP gamma")
     add("AudStressPct", f"{round(100 * (1 - stress))}", "scripts/cgcnn/86_low_range_list.py",
         "100 x (1 - factor)")
+    add("AudGammaBenchN", f"{gamma_benchmark_size(stress)}",
+        "~/Desktop/data_generation/results/02_gamma_comparison.csv",
+        "stable & clean rows with gamma_paper and gamma_mlip (step 86's filter)")
+
+    # --- slide 27: how many crystals reached the MLIP phonon stage ---------------
+    n_hal, n_ox, n_both = mlip_stage_counts()
+    dg = "~/Desktop/data_generation/results/"
+    add("AudMlipHalideN", f"{n_hal}", dg + "01_gamma_phonon_halide_s0*.csv + 01_gamma_phonon_pilot_mb3.csv",
+        "unique mp_id (all in results/cgcnn/71_top300_matbench3.csv)")
+    add("AudMlipOxideN", f"{n_ox}", dg + "01_gamma_phonon_gnome_{lowk_s0*,sel_0*}.csv",
+        "unique mp_id")
+    add("AudMlipBothN", f"{n_both}", dg + "both sets above", "ids in both")
+
+    # --- slide 26: the descriptor XGBoost row (also in audit_moduli_table.tex) ---
+    desc = scores_from_step82("newbase")
+    for key, name in (("kmae", "AudDescKMae"), ("kr2", "AudDescKRtwo"), ("gmae", "AudDescGMae"),
+                      ("gr2", "AudDescGRtwo"), ("kappa", "AudDescKappaMae")):
+        # errors to 4 decimals and R^2 to 3, as in the table itself
+        add(name, f"{desc[key]:.4f}" if key in ("kmae", "gmae", "kappa") else f"{desc[key]:.3f}",
+            "results/cgcnn/82_test_predictions.csv",
+            f"{key} of K_newbase/G_newbase/newbase_full_chain vs K_VRH/G_VRH/kappa_DFT, log10")
+
+    # --- slide 28: the supercell sentence (used when the column is switched off) --
+    add("AudSupercellNote", supercell_note(extra), "dft/final_shortlist_15/README.md",
+        "supercell column of the README table, grouped")
     worst = d[["kappa_max3", "kappa_stress", "kappa_poisson_max3", "kappa_direct"]].max().max()
     add("AudWorstOfFifteen", f"{worst:.2f}", s15, "highest kappa of any route on the 15")
     ctrl_vals = ctrl[["kappa_pred_slack_300K", "kappa_poisson_max3", "kappa_direct"]]
@@ -552,5 +728,5 @@ if __name__ == "__main__":
     d, ctrl, extra = read_shortlist()
     table_shortlist(d, extra, os.path.join(FIGS, "shortlist_table.tex"))
     figure_shortlist(d, ctrl, os.path.join(FIGS, "shortlist_kappa.png"))
-    write_audit_numbers(d, ctrl, os.path.join(FIGS, "audit_numbers.tex"),
+    write_audit_numbers(d, ctrl, extra, os.path.join(FIGS, "audit_numbers.tex"),
                         os.path.join(FIGS, "audit_numbers.csv"))

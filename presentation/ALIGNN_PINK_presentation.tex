@@ -60,7 +60,7 @@
   \node[arr, right=of n2] (a2) {$\rightarrow$};
   \node[pill, right=of a2] (n3) {$K$, $G$};
   \node[arr, right=of n3] (a3) {$\rightarrow$};
-  \node[pill, right=of a3] (n4) {Slack model};
+  \node[pill, right=of a3] (n4) {physics chain};
   \node[arr, right=of n4] (a4) {$\rightarrow$};
   \node[pill, right=of a4] (n5) {$\kappa_L$};
 \end{tikzpicture}
@@ -84,7 +84,7 @@ Boltzmann transport equation.
 \vspace{4pt}
 A graph network predicts two elastic moduli; a closed-form model turns them into
 $\kappa_L$. That physics stage has \textbf{no parameters fitted to this data}
-(slide 16).}
+(slide 17).}
 
 \vspace{5pt}
 \Card{6.3cm}{CardBg}{CardRule}{%
@@ -105,12 +105,12 @@ $\kappa_L$. That physics stage has \textbf{no parameters fitted to this data}
   \node[arr, below=of b1] (a1) {$\downarrow$};
   \node[box, below=of a1] (b2) {\textbf{Stage 2 --- physics}\\ $K$, $G$
                    $\rightarrow$ Poisson ratio $\rightarrow$ sound velocity,
-                   Debye temperature, Gr\"uneisen $\gamma$ $\rightarrow$ $\kappa_L$};
+                   Gr\"uneisen $\gamma$ $\rightarrow$ $\kappa_L$};
 \end{tikzpicture}
 \end{columns}
 
-\Takeaway{The network never sees a thermal conductivity. It learns elasticity;
-the physics does the rest.}
+\Takeaway{The moduli networks never see a thermal conductivity. They learn
+elasticity; the physics does the rest.}
 \end{frame}
 
 % =============================================================================
@@ -183,19 +183,19 @@ proof of one. The measured and phonon-DFT checks are what test it.}
 \midrule
 \textcolor{SlideBlue}{\textbf{CGCNN}} $\times$1 / $\times$3
   & graph network on bond lengths. $\times$1 = seed 42; $\times$3 = seeds 42, 1, 2,
-    averaged in $\log_{10}$ & 10--14 \\
+    averaged in $\log_{10}$ & 10--15 \\
 \textcolor{SlideGreen}{\textbf{ALIGNN}} $\times$1 / $\times$3
   & graph network that also sees bond angles; same seeds and averaging & 6--14 \\
 \textcolor{SlideAmber}{\textbf{descriptor XGBoost}}
-  & boosted trees on 297 matminer descriptors; the 3rd moduli model & 27--29 \\
+  & boosted trees on 297 matminer descriptors; the 3rd moduli model & 26--29 \\
 \textcolor{SlideAmber}{\textbf{composition-only trees}}
   & random forest and XGBoost on the formula alone: the baselines & 26 \\
 \textcolor{DirectPurple}{\textbf{direct ALIGNN}}
-  & structure $\rightarrow$ $\kappa_L$ in one step, trained on phonon-DFT
-    $\kappa_L$; no Slack chain & 20, 28--29 \\
+  & structure $\rightarrow$ $\kappa_L$ in one step, trained on the phonon-DFT
+    $\kappa_L$ of all 6{,}641 PhoNIX crystals; no physics chain & 20, 28--29 \\
 \midrule
 \textbf{Poisson $\gamma$}
-  & Gr\"uneisen $\gamma$ from the predicted $K/G$ (Eq.~6): the paper's route & 15--20 \\
+  & Gr\"uneisen $\gamma$ from the predicted $K/G$ (Eq.~5): the paper's route & 16--20 \\
 \textbf{MLIP $\gamma$}
   & $\gamma$ from phonons computed with a machine-learned potential & 27--30 \\
 \bottomrule
@@ -395,7 +395,7 @@ differ too: credit architecture \emph{plus} recipe.}
 \end{frame}
 
 % =============================================================================
-%  11-14  ACCURACY
+%  11-15  ACCURACY
 % =============================================================================
 \begin{frame}
 \SlideHeader{11 \textperiodcentered\ ACCURACY}{The training data}
@@ -422,8 +422,9 @@ shown.
 \textbf{D}: \DMatbenchOxygenPct\% of crystals contain oxygen.\par}
 \end{columns}
 
-\Takeaway{matbench: \DMatbenchN\ DFT elastic tensors (Materials Project).
-Oxides dominate; soft crystals are rare.}
+\Takeaway{matbench: \DMatbenchN\ DFT elastic tensors (Materials Project). Oxygen is
+the most common element, but \DMatbenchNoOxygenPct\% of crystals contain none;
+soft crystals are rare.}
 \end{frame}
 
 % =============================================================================
@@ -449,13 +450,11 @@ the dashed line is a perfect prediction.}
 
 \vspace{6pt}
 {\sffamily\scriptsize
-Every test prediction is positive (lowest: ALIGNN $K$, \DParityAlKMin\ GPa). The negative
-$K$ in the earlier version of this figure was a validation-set prediction of a
-model no longer used.\par}
+Every test prediction is positive (lowest: ALIGNN $K$, \DParityAlKMin\ GPa).\par}
 \end{columns}
 
 \Takeaway{Both fit well across the range. The scatter widens at the soft end
---- where the screen looks.}
+(slide 13).}
 \end{frame}
 
 % =============================================================================
@@ -468,10 +467,12 @@ model no longer used.\par}
 
 \vspace{-4pt}
 {\sffamily\scriptsize
-Test crystals in five equal bins (\DQuintN\ each) by $\kappa_L$ from the DFT
+Both bars are 3-model ensembles. Test crystals in five equal bins (\DQuintN\ each) by $\kappa_L$ from the DFT
 moduli; Q1 = the lowest fifth, the only bin a low-$\kappa$ screen reads. Shear error in Q1 is \DQRatioGCg$\times$ that in Q5 for CGCNN
 (\DQOneGCg\ vs \DQFiveGCg) and \DQRatioGAl$\times$ for ALIGNN (\DQOneGAl\ vs
-\DQFiveGAl).\par}
+\DQFiveGAl).
+ALIGNN was trained on GPa with an MSE loss, which weights stiff crystals;
+CGCNN trains on $\log_{10}$. This may explain the soft-end tie.\par}
 
 \Takeaway{ALIGNN is better in every bin but one: shear modulus in Q1, where
 the two tie --- exactly where the screen looks.}
@@ -512,10 +513,44 @@ still beats the CGCNN ensemble.}
 \end{frame}
 
 % =============================================================================
-%  15-17  PHYSICS
+\begin{frame}
+\SlideHeader{15 \textperiodcentered\ ACCURACY}{The 90\% interval was overconfident}
+
+\begin{columns}[T]
+\column{0.48\linewidth}
+\begin{center}
+\includegraphics[height=4.8cm]{figures/deck_calibration.png}
+\end{center}
+\column{0.48\linewidth}
+{\sffamily\footnotesize
+The p05--p95 band for $K$ and $G$ from the three CGCNN members' spread:
+ensemble mean $\pm\,1.645\times$ the members' standard deviation, in
+$\log_{10}$. Checked against the test split's DFT labels.\par}
+
+\vspace{3pt}
+\AccentCard{6.2cm}{SlideAmber}{%
+  \sffamily\footnotesize
+  \textbf{Claims 90\%. Covers \DCalRawK\% ($K$), \DCalRawG\% ($G$).}\\[3pt]
+  Identically trained members share blind spots, so they disagree less than
+  they err.\par}
+
+\vspace{5pt}
+\AccentCard{6.2cm}{SlideBlue}{%
+  \sffamily\footnotesize
+  \textbf{Widened, it is honest}\\[3pt]
+  Widening by \DCalWidenK$\times$ ($K$) and \DCalWidenG$\times$ ($G$), fitted
+  on the validation split, gives \DCalFixK\% and \DCalFixG\% on the test
+  split.\par}
+\end{columns}
+
+\Takeaway{The members' spread cannot see the error that all three share.}
+\end{frame}
+
+% =============================================================================
+%  16-17  PHYSICS
 % =============================================================================
 \begin{frame}
-\SlideHeader{15 \textperiodcentered\ PHYSICS}{From $K$, $G$ to sound speed, $\Theta_D$ and $\gamma$}
+\SlideHeader{16 \textperiodcentered\ PHYSICS}{From $K$, $G$ to sound speed and $\gamma$}
 
 \begin{columns}[T]
 \column{0.49\linewidth}
@@ -528,7 +563,6 @@ v_s &= \left[\frac{1}{3}\left(\frac{1}{v_l^{3}} + \frac{2}{v_t^{3}}\right)\right
 \column{0.49\linewidth}
 {\small
 \begin{align}
-\Theta_D &= \frac{h}{k_B}\left(\frac{3}{4\pi V}\right)^{1/3} v_s \\[1pt]
 \nu &= \frac{(v_l/v_t)^2 - 2}{2\,(v_l/v_t)^2 - 2} \\[1pt]
 \gamma &= \frac{3\,(1 + \nu)}{2\,(2 - 3\nu)}
 \end{align}}
@@ -539,32 +573,28 @@ v_s &= \left[\frac{1}{3}\left(\frac{1}{v_l^{3}} + \frac{2}{v_t^{3}}\right)\right
 $K$, $G$ bulk and shear modulus \emph{(predicted, GPa)} \textperiodcentered\
 $\rho$ density \emph{(CIF)} \textperiodcentered\ $v_l$, $v_t$, $v_s$
 longitudinal, transverse, average sound speed \textperiodcentered\ $\nu$
-Poisson's ratio \textperiodcentered\ $\gamma$ Gr\"uneisen parameter
-\textperiodcentered\ $V$ volume of the CIF's \emph{primitive} cell, as in the
-paper's released code (the textbook Debye formula uses volume per atom).
+Poisson's ratio \textperiodcentered\ $\gamma$ Gr\"uneisen parameter.
 
 \vspace{3pt}
-\textbf{Eq.~6 matters most}: $\gamma$ is \emph{derived} from the same $K$, $G$
+\textbf{Eq.~5 matters most}: $\gamma$ is \emph{derived} from the same $K$, $G$
 --- the ``Poisson $\gamma$''.\par}
 \end{frame}
 
 % =============================================================================
 \begin{frame}
-\SlideHeader{16 \textperiodcentered\ PHYSICS}{The $\kappa_L$ formula, and ``the Slack chain''}
+\SlideHeader{17 \textperiodcentered\ PHYSICS}{The $\kappa_L$ formula, and ``the physics chain''}
 
 \vspace{-4pt}
 {\small
 \begin{align}
-\kappa_L^{\text{Slack}} &=
-  \frac{A(\gamma)\,\bar{M}\,V^{1/3}\,\Theta_D^{3}}{\gamma^{2}\,T\,N}
-  &&\text{Slack's model, } A(\gamma) = \frac{2.43\times10^{-8}}{1 - 0.514/\gamma + 0.228/\gamma^{2}} \\[2pt]
 \kappa_L^{\text{cal}} &= \frac{G\,v_s\,V^{1/3}}{N\,T}\;e^{-\gamma}
   &&\text{the boxed equation of the paper's Figure 1}
 \end{align}}
 
 {\sffamily\scriptsize
-$\bar{M}$ mean atomic mass (amu; the released code puts in the total cell
-mass), $N$ atoms per primitive cell, $T = 300$ K. No number here uses Eq.~7. \textbf{This project reports $\kappa_L^{\text{cal}}$}: changing $\gamma$
+This is the paper's simplified formula, not Slack's original model.
+$V$ volume and $N$ atoms of the primitive cell, $T = 300$ K.
+\textbf{This project reports $\kappa_L^{\text{cal}}$}: changing $\gamma$
 rescales it by $e^{\gamma_{\text{old}} - \gamma_{\text{new}}}$, which is how the
 MLIP $\gamma$ is swapped in later.\par}
 
@@ -580,49 +610,16 @@ MLIP $\gamma$ is swapped in later.\par}
   \node[arr, right=of b1] (a1) {$\rightarrow$};
   \node[box, right=of a1] (b2) {sound speeds\\ Eqs.~1--3};
   \node[arr, right=of b2] (a2) {$\rightarrow$};
-  \node[box, right=of a2] (b3) {$\Theta_D$, $\nu$\\ Eqs.~4--5};
+  \node[box, right=of a2] (b3) {$\nu$\\ Eq.~4};
   \node[arr, right=of b3] (a3) {$\rightarrow$};
-  \node[box, right=of a3, fill=AmberBg, draw=AmberRule] (b4) {$\gamma$\\ Eq.~6};
+  \node[box, right=of a3, fill=AmberBg, draw=AmberRule] (b4) {$\gamma$\\ Eq.~5};
   \node[arr, right=of b4] (a4) {$\rightarrow$};
-  \node[box, right=of a4, fill=GreenBg, draw=GreenRule] (b5) {$\kappa_L^{\text{cal}}$\\ Eq.~8};
+  \node[box, right=of a4, fill=GreenBg, draw=GreenRule] (b5) {$\kappa_L^{\text{cal}}$\\ Eq.~6};
 \end{tikzpicture}}
 \end{center}
 
-\Takeaway{In this deck, \textbf{``the Slack chain''} means this path. Only $K$
+\Takeaway{In this deck, \textbf{``the physics chain''} means this path. Only $K$
 and $G$ are learned; no parameter of the chain is fitted to this data.}
-\end{frame}
-
-% =============================================================================
-\begin{frame}
-\SlideHeader{17 \textperiodcentered\ PHYSICS}{The 90\% interval was overconfident}
-
-\begin{columns}[T]
-\column{0.48\linewidth}
-\begin{center}
-\includegraphics[height=4.8cm]{figures/deck_calibration.png}
-\end{center}
-\column{0.48\linewidth}
-{\sffamily\footnotesize
-The p05--p95 band for $K$ and $G$ from the three CGCNN members' spread,
-checked against the test split's DFT labels.}
-
-\vspace{3pt}
-\AccentCard{5.6cm}{SlideAmber}{%
-  \sffamily\footnotesize
-  \textbf{Claims 90\%. Covers \DCalRawK\% ($K$), \DCalRawG\% ($G$).}\\[3pt]
-  Identically trained members share blind spots, so they disagree less than
-  they err.\par}
-
-\vspace{5pt}
-\AccentCard{5.6cm}{SlideBlue}{%
-  \sffamily\footnotesize
-  \textbf{Widened, it is honest}\\[3pt]
-  Widening by \DCalWidenK$\times$ ($K$) and \DCalWidenG$\times$ ($G$), fitted
-  on the validation split, gives \DCalFixK\% and \DCalFixG\% on the test
-  split.\par}
-\end{columns}
-
-\Takeaway{The members' spread cannot see the error that all three share.}
 \end{frame}
 
 % =============================================================================
@@ -640,15 +637,16 @@ checked against the test split's DFT labels.}
 {\sffamily\scriptsize
 PINK's Table 1: \DMeasN\ materials with \textbf{measured} $\kappa_L$ (the 46th,
 GaP, is deprecated in Materials Project); \DMeasInTrain\ of them are in our
-moduli training set. \textbf{Paper's $\gamma$} = the paper's tabulated values,
-from databases and experiment, not Eq.~6.\par}
+moduli training set, so this is not a held-out test of the moduli; it tests
+the $\gamma$ route. \textbf{Paper's $\gamma$} = the paper's tabulated values,
+from databases and experiment, not Eq.~5.\par}
 
 \vspace{3pt}
 {\sffamily\scriptsize
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}lrr@{}}
 \toprule
-mean $|\Delta\log_{10}|$ & own $\gamma$ (Eq.~6) & paper's $\gamma$ \\
+mean $|\Delta\log_{10}|$ & own $\gamma$ (Eq.~5) & paper's $\gamma$ \\
 \midrule
 \textcolor{SlideBlue}{CGCNN} ensemble & \DMeasCgDerived & \textbf{\DMeasCgPaper} \\
 \textcolor{SlideGreen}{ALIGNN} ensemble & \DMeasAlDerived & \DMeasAlPaper \\
@@ -671,7 +669,7 @@ $\kappa_L$, W/m/K & measured & own $\gamma$ & paper's $\gamma$ & PINK \\
 \end{columns}
 
 \Takeaway{With the paper's $\gamma$ we match the paper (\DMeasCgPaper\ vs
-\DMeasPink); with Eq.~6's $\gamma$ the error doubles. $\gamma$, not the moduli,
+\DMeasPink); with Eq.~5's $\gamma$ the error doubles. $\gamma$, not the moduli,
 is the weak link.}
 \end{frame}
 
@@ -686,7 +684,7 @@ is the weak link.}
 \end{center}
 \column{0.48\linewidth}
 {\sffamily\footnotesize
-Both ensembles' moduli through the same Slack chain, on the \DPinkN\
+Both ensembles' moduli through the same physics chain, on the \DPinkN\
 crystals the paper predicts for.}
 
 \vspace{6pt}
@@ -712,34 +710,34 @@ $\gamma$ route, so this agreement cannot test $\gamma$.}
 \begin{frame}
 \SlideHeader{20 \textperiodcentered\ VALIDATION}{Against phonon DFT}
 
-\begin{center}
-{\sffamily\scriptsize
+{\centering\sffamily\scriptsize
+\renewcommand{\arraystretch}{0.82}
 \begin{tabular}{@{}llll@{}}
 \toprule
 \textbf{test set} & \textbf{model} & \textbf{measured as} & \textbf{value} \\
 \midrule
 \TableRows{figures/audit_phonix_table.tex}
 \bottomrule
-\end{tabular}}
-\end{center}
+\end{tabular}\par}
 
-\vspace{2pt}
+\vspace{4pt}
 \begin{columns}[T]
 \column{0.48\linewidth}
-\AccentCard{6.0cm}{SlideBlue}{%
+\AccentCard{6.3cm}{SlideBlue}{%
   \sffamily\scriptsize
-  \textbf{The Slack chain, blind}\\[2pt]
+  \textbf{The physics chain, blind}\\[2pt]
   PhoNIX is a published set of phonon-DFT $\kappa_L$. Of the crystals our chain
   calls $\leq 1$, \textbf{3 in 4} really are, against 0.225 for a blind pick.
   Taking the highest of three moduli models raises precision from
   $\approx$0.64 to 0.747 --- the reason the DFT list uses that rule.\par}
 \column{0.48\linewidth}
-\AccentCard{6.0cm}{DirectPurple}{%
+\AccentCard{6.3cm}{DirectPurple}{%
   \sffamily\scriptsize
   \textbf{Direct ALIGNN}\\[2pt]
-  Trained straight on phonon-DFT $\kappa_L$, no Slack formula. Each crystal is
-  predicted once, while held out: average miss $\times$1.56 ($10^{0.194}$),
-  rank $\rho = 0.892$.\par}
+  Trained straight on phonon-DFT $\kappa_L$, no physics chain. Checked 5-fold:
+  each crystal predicted once, while held out: average miss $\times$1.56
+  ($10^{0.194}$), rank $\rho = 0.892$. Slides 28--29 use it retrained on all
+  6{,}641.\par}
 \end{columns}
 
 \Takeaway{This is the closest thing to ground truth so far: the chain's low
@@ -789,8 +787,8 @@ Today's GNoME holds \DGnomeN\ materials against the paper's 377{,}221, so the
 two lists are not directly comparable.\par}
 \end{columns}
 
-\Takeaway{One count chain for the whole deck: \DGnomeN\ $\rightarrow$ \DFilterN\
-$\rightarrow$ \DScoredN\ $\rightarrow$ \DScreenN.}
+\Takeaway{Most of the paper's candidates reappear: \DOverlapCgPct\% under CGCNN,
+\DOverlapAlPct\% under ALIGNN.}
 \end{frame}
 
 % =============================================================================
@@ -823,7 +821,7 @@ enriched under both.}
 \column{0.42\linewidth}
 {\sffamily\footnotesize
 The same \DScreenN\ candidates, one point per crystal (binned into hexagons).
-Only the moduli differ; the Slack chain is identical.}
+Only the moduli differ; the physics chain is identical.}
 
 \vspace{6pt}
 \Card{5.0cm}{CardBg}{CardRule}{%
@@ -872,7 +870,7 @@ Top five and bottom five of the \DElemCount\ elements present in at least
 \Card{5.6cm}{CardBg}{CardRule}{%
   \sffamily\footnotesize
   Heavy, soft halides and the large alkali metals sit high; O, N and the
-  refractory metals sit low. That is what Eqs.~1--3 predict: a low $G$ gives a
+  refractory metals sit low. This is consistent with Eqs.~1--3: a low $G$ gives a
   low sound speed.}
 \end{columns}
 
@@ -919,7 +917,7 @@ repeats of a value stored in two files.
 \textbf{stored only}: inputs gone, not rebuilt.\par}
 
 \Takeaway{\AudMetricRows\ values, \AudMismatch\ MISMATCH; all \AudChecks\ checks
-pass. Formulas were re-written, not imported, so an old bug could not hide.}
+pass. Formulas were re-written, not imported, so an old coding bug was unlikely to survive.}
 \end{frame}
 
 % =============================================================================
@@ -942,13 +940,15 @@ pass. Formulas were re-written, not imported, so an old bug could not hide.}
 \vspace{3pt}
 {\sffamily\scriptsize
 All on the same 1{,}648 matbench test crystals (\texttt{split\_seed = 42});
-MAE and $R^2$ in $\log_{10}$. The $\kappa_L$ column scores the Slack chain on
+MAE and $R^2$ in $\log_{10}$. The $\kappa_L$ column scores the physics chain on
 \emph{predicted} moduli against the same chain on the \emph{DFT} moduli --- not
 against a phonon calculation (that is slide 20). The composition-only trees
-never had a $\kappa_L$ run.\par}
+never had a $\kappa_L$ run. $^{*}$Out-of-fold predictions from matbench's own
+5-fold split: each test crystal is held out, but the training crystals differ
+from the networks' (step 82).\par}
 
-\Takeaway{ALIGNN's 3-ensemble is best in every column, and both graph networks
-beat both composition-only trees.}
+\Takeaway{ALIGNN's 3-ensemble is best in every column but $G$'s $R^2$, where the
+descriptor XGBoost edges it; that XGBoost beats the CGCNN ensemble throughout.}
 \end{frame}
 
 % =============================================================================
@@ -973,8 +973,8 @@ beat both composition-only trees.}
   }
   % the pre-selection stage has no single count: two routes, explained right
   \fill[SlideBlue!30, rounded corners=2pt] (0,-2) rectangle (2.45,-2.8);
-  \node[font=\sffamily\bfseries\scriptsize\color{SlideInk}, anchor=west] at (0.08,-2.4) {pre-selected};
-  \node[lab] at (3.35,-2.4) {for MLIP phonons (right)};
+  \node[font=\sffamily\bfseries\scriptsize\color{SlideInk}, anchor=west] at (0.08,-2.4) {\AudMlipHalideN\ + \AudMlipOxideN};
+  \node[lab] at (3.35,-2.4) {MLIP phonons: halides + oxides (right)};
   \foreach \y/\w/\n/\t in {
       3/2.1/221/{MLIP $\gamma$: stable and $\kappa_L \leq 1$},
       4/1.75/53/{$\leq 20$ atoms per cell (DFT cost)},
@@ -1004,7 +1004,8 @@ beat both composition-only trees.}
   The goal is a DFT $\kappa_L$ below 1, so the ranking uses
   $\kappa_{\text{stress}}$: the \emph{highest} of three moduli models
   (CGCNN, ALIGNN, descriptor XGBoost), with the MLIP $\gamma$ cut by
-  \AudStressPct\%.\par}
+  \AudStressPct\%: the MLIP's $\gamma$ overshoot in the worst 1 in 10 of
+  \AudGammaBenchN\ benchmark crystals.\par}
 \end{columns}
 
 \Takeaway{Every stage is a file in the repo (steps 83--91). Three crystals that
@@ -1016,14 +1017,14 @@ need rare oxidation states were moved to the reserves.}
 \SlideHeader{28 \textperiodcentered\ DFT LIST}{The 15, as handed to the supervisor}
 
 \begin{center}
-{\sffamily\scriptsize
+{\sffamily\fontsize{8.5}{10}\selectfont
 \setlength{\tabcolsep}{3.2pt}
-\renewcommand{\arraystretch}{0.92}
-\begin{tabular}{@{}rlrllllrrr@{}}
+\renewcommand{\arraystretch}{0.88}
+\begin{tabular}{@{}rlrlllrrr@{}}
 \toprule
-& & & & & & \multicolumn{4}{c}{\textbf{predicted $\kappa_L$, W/m/K, 300 K}} \\
-\cmidrule(l){7-10}
-\textbf{\#} & \textbf{formula} & \textbf{atoms} & \textbf{space group} & \textbf{supercell} & \textbf{spin-polarise}
+& & & & & \multicolumn{4}{c}{\textbf{predicted $\kappa_L$, W/m/K, 300 K}} \\
+\cmidrule(l){6-9}
+\textbf{\#} & \textbf{formula} & \textbf{atoms} & \textbf{space group} & \textbf{spin-polarise}
   & \textbf{max3} & \textbf{stress} & \textbf{Poisson} & \textbf{direct} \\
 \midrule
 \TableRows{figures/shortlist_table.tex}
@@ -1031,13 +1032,13 @@ need rare oxidation states were moved to the reserves.}
 \end{tabular}}
 \end{center}
 
-\vspace{-4pt}
+\vspace{-2pt}
 {\sffamily\tiny
-\textbf{max3}: Slack chain with MLIP $\gamma$, highest of 3 moduli models.
+\textbf{max3}: physics chain with MLIP $\gamma$, highest of 3 moduli models.
 \textbf{stress}: max3 with $\gamma$ cut \AudStressPct\% (the ranking value).
-\textbf{Poisson}: Slack chain with Poisson $\gamma$, highest of 3.
+\textbf{Poisson}: physics chain with Poisson $\gamma$, highest of 3.
 \textbf{direct}: direct ALIGNN.
-Supercell: smallest with every vector $\geq$ 10 \AA.
+Supercell (smallest, every vector $\geq$ 10 \AA): \AudSupercellNote\ 
 8 of 15 are one $A_2B$I$_6$-type iodide family; a 2026 DFT study of 18
 Cs$_2B$X$_6$ found every $\kappa_L < 1$ (Cao, arXiv:2602.06501).
 None of the 15 has a lab-measured (ICSD) structure in Materials Project, and a
@@ -1056,9 +1057,9 @@ reported parent family or anion (step 90).\par}
 \end{center}
 \column{0.36\linewidth}
 {\sffamily\scriptsize
-\textcolor{Navy}{\textbf{Navy circle}}: Slack chain with MLIP $\gamma$ (max3);
+\textcolor{Navy}{\textbf{Navy circle}}: physics chain with MLIP $\gamma$ (max3);
 the bar runs to the stress value.\\[2pt]
-\textcolor{Muted}{\textbf{Slate diamond}}: Slack chain with Poisson $\gamma$ ---
+\textcolor{Muted}{\textbf{Slate diamond}}: physics chain with Poisson $\gamma$ ---
 shares the moduli, not the $\gamma$.\\[2pt]
 \textcolor{DirectPurple}{\textbf{Purple square}}: direct ALIGNN --- shares
 neither.\par}
@@ -1133,13 +1134,14 @@ tests the screen's picks against the real quantity.}
   What this work shows}\\[10pt]
 \begin{minipage}{0.84\linewidth}
 {\color{Subtle}\sffamily\footnotesize
-\textbf{\color{white}ALIGNN predicts the moduli better.} One ALIGNN beats the
-three-model CGCNN ensemble on $K$ (\DOneMaeAlK\ vs \DEnsMaeCgK) and $G$
-(\DOneMaeAlG\ vs \DEnsMaeCgG) --- but not on the soft-end shear modulus, where
-the screen looks.\\[6pt]
-\textbf{\color{white}$\gamma$ is the weak link.} Against \DMeasN\ measured
-$\kappa_L$, the paper's tabulated $\gamma$ gives \DMeasCgPaper\ (paper:
-\DMeasPink); $\gamma$ from Poisson's ratio gives \DMeasCgDerived.\\[6pt]
+\textbf{\color{white}ALIGNN predicts the moduli better.} Ensemble against
+ensemble, ALIGNN beats CGCNN on $K$ (\DEnsMaeAlK\ vs \DEnsMaeCgK) and $G$
+(\DEnsMaeAlG\ vs \DEnsMaeCgG) --- but not on the soft-end shear modulus
+(slide 13).\\[6pt]
+\textbf{\color{white}That did not carry over to measured $\kappa_L$; $\gamma$ is the
+weak link.} Against \DMeasN\ measured $\kappa_L$ with the paper's $\gamma$:
+ALIGNN \DMeasAlPaper, CGCNN \DMeasCgPaper\ (paper: \DMeasPink). With $\gamma$ from
+Poisson's ratio, CGCNN gives \DMeasCgDerived\ (slide 18).\\[6pt]
 \textbf{\color{white}Low calls hold up against phonon DFT.} About 3 in 4
 crystals the chain calls $\leq 1$ really are (0.747, against 0.225 for a blind
 pick).\\[6pt]
@@ -1147,7 +1149,7 @@ pick).\\[6pt]
 metric values rebuilt from their inputs, \AudMismatch\ mismatches.\\[6pt]
 \textbf{\color{white}Next: the DFT result.} 15 crystals, 4 controls and 8
 reserves are with the supervisor; we expect about \AudExpect\ of 15 to land
-$\leq 1$.\par}
+$\leq 1$. Then retrain ALIGNN on $\log_{10}$ moduli, to test whether the soft-end gap closes.\par}
 \end{minipage}
 \end{center}
 \end{frame}

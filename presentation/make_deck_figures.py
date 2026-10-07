@@ -14,7 +14,7 @@ What it writes, all into presentation/figures/:
     deck_parity.png         + .csv   slide 12  predicted vs DFT, both ensembles
     deck_residuals.png      + .csv   slide 13  error by true-kappa fifth
     deck_ensembling.png     + .csv   slide 14  one seed vs three seeds averaged
-    deck_calibration.png    + .csv   slide 17  the uncertainty interval
+    deck_calibration.png    + .csv   slide 15  the uncertainty interval
     deck_measured.png       + .csv   slide 18  45 measured kappa_L
     deck_pink_agreement.png + .csv   slide 19  ALIGNN vs CGCNN, 1,213 crystals
     deck_candidates.png     + .csv   slide 22  the 33,053 screened crystals
@@ -297,6 +297,13 @@ def fig_training_data():
     # freq["O"] = how many matbench crystals contain oxygen (counted in panel D)
     record("MatbenchOxygenPct", f"{100 * freq['O'] / n_mb:.0f}", MATBENCH_LABELS,
            "percent of crystals containing O")
+    # Slide 11's takeaway says "oxygen is the most common element". top[0] is the
+    # (symbol, count) pair with the highest count, so top[0][0] is its symbol.
+    # Stop the build if that ever stops being true, instead of printing a false line.
+    if top[0][0] != "O":
+        raise SystemExit(f"slide 11 says O is the most common element, but it is {top[0][0]}")
+    record("MatbenchNoOxygenPct", f"{100 * (n_mb - freq['O']) / n_mb:.0f}", MATBENCH_LABELS,
+           "percent of crystals with NO O; O is the most common element (checked)")
     # .value_counts() = how many rows have each value of the "found_by" column
     print(f"slide 11: matbench {n_mb}, PINK CIFs {n_pink}; how each space group was found:",
           sym["found_by"].value_counts().to_dict())
@@ -375,6 +382,10 @@ def fig_residuals():
     """MAE by fifth of the test set, ranked by TRUE kappa_L (Q1 = lowest kappa,
     the fifth a screen reads). Numbers come straight from the step 95 table."""
     runs = {"CGCNN ensemble": "{K,G}_VRH_ens", "ALIGNN": "18_alignn_ensemble"}
+    # BOTH runs above are 3-model ensembles (like with like). The dict keys are
+    # also colour names in deck_style, so the legend text is set separately here.
+    LEGEND = {"CGCNN ensemble": "CGCNN ensemble (3 models)",
+              "ALIGNN": "ALIGNN ensemble (3 models)"}
     rows = []
     for model, run in runs.items():                # .items() gives (key, value) pairs
         for q in range(1, 6):
@@ -393,7 +404,7 @@ def fig_residuals():
         for k, model in enumerate(runs):
             v = table[table["model"] == model][f"mae_log_{t}"].values
             ax.bar(x + (k - 0.5) * BAR_W, v, width=BAR_W, color=ds.MODEL_COLOURS[model],
-                   label=model)
+                   label=LEGEND[model])
             for xi, vi in zip(x, v):
                 ax.text(xi + (k - 0.5) * BAR_W, vi + 0.002, f"{vi:.3f}",
                         ha="center", fontsize=7.5)
@@ -504,7 +515,7 @@ def fig_ensembling(pred):
 
 
 # =============================================================================
-#  Slide 17 - is the p05-p95 interval honest?
+#  Slide 15 - is the p05-p95 interval honest?
 # =============================================================================
 def fig_calibration():
     c = pd.read_csv(CALIBRATION)
@@ -606,7 +617,7 @@ def fig_pink_agreement():
     rho = stats.spearmanr(x, y)[0]
     mae = float(np.mean(np.abs(x - y)))
 
-    # moduli only: the same comparison before the Slack chain
+    # moduli only: the same comparison before the physics chain
     cm = pd.read_csv(CGCNN_PINK_MOD).merge(pd.read_csv(ALIGNN_PINK_MOD), on="material_id",
                                            suffixes=("_cgcnn", "_alignn"))
     mod = {}
@@ -825,7 +836,11 @@ def elements_table(d):
     t.to_csv(out("deck_elements.csv"), index=False)
 
     half = N_ELEMENTS_TABLE // 2
-    pick = pd.concat([t.head(half), t.tail(half)])
+    # WHICH elements are shown is decided by the mean of the two models (t is
+    # sorted by it). Within each half the rows are then ordered by the CGCNN
+    # column, the first number column on the slide, so the column reads in order.
+    by_cgcnn = dict(by="enrich_CGCNN ensemble", ascending=False)   # ascending=False = largest first
+    pick = pd.concat([t.head(half).sort_values(**by_cgcnn), t.tail(half).sort_values(**by_cgcnn)])
     lines = []
     for i, (_, r) in enumerate(pick.iterrows()):
         if i == half:
