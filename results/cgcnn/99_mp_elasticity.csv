@@ -1,0 +1,19 @@
+mp_id,mp_e_above_hull,mp_theoretical,K_mp_now,G_mp_now,mp_elastic_flags,spacegroup_checked_by,mp_database_version
+mp-1025549,0.0,False,19.502,7.414,,MP record + spglib,2026.04.13
+mp-568570,0.011059161000003481,False,,,,MP record + spglib,2026.04.13
+mp-567629,0.004584386999999968,False,,,,MP record + spglib,2026.04.13
+mp-20320,0.038631967171053105,False,14.809,12.459,,MP record + spglib,2026.04.13
+mp-22791,0.0,False,,,,MP record + spglib,2026.04.13
+mp-1836,0.0,False,20.394,9.644,,MP record + spglib,2026.04.13
+mp-9206,0.0,False,,,,MP record + spglib,2026.04.13
+mp-34361,0.0,True,,,,MP record + spglib,2026.04.13
+mp-12360,0.02141262375000208,False,48.782,16.926,,MP record + spglib,2026.04.13
+mp-27636,0.0,False,7.069,3.906,,MP record + spglib,2026.04.13
+mp-624214,0.0008665064285731106,False,,,,MP record + spglib,2026.04.13
+mp-23496,0.001562826875002088,False,,,,MP record + spglib,2026.04.13
+mp-17984,0.0,False,,,,MP record + spglib,2026.04.13
+mp-667286,0.0721316455272083,False,,,,MP record + spglib,2026.04.13
+mp-583070,0.0,False,,,,MP record + spglib,2026.04.13
+mp-1078250,0.005524869812501887,False,,,,MP record + spglib,2026.04.13
+mp-23481,0.0,False,,,,MP record + spglib,2026.04.13
+mp-23431,0.010905154259259753,False,8.359,3.14,"Elastic tensor has negative eigenvalue(s), indicating that the structure is mechanically unstable.; Small modulus. voigt shear modulus is 1.92; smaller than 2.0.; Fitting elastic tensor resulted in unphysical modulus",MP record only (spglib bug),2026.04.13
