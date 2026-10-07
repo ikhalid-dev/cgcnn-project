@@ -41,9 +41,23 @@ three independent predictors of the bulk (K) and shear (G) modulus.
 | `gamma_poisson_<model>`, `kappa_poisson_<model>` | gamma from the model's own Poisson ratio, and the Slack kappa with it |
 | `kappa_poisson_max3` | highest of the three `kappa_poisson_*` |
 | `kappa_direct` | direct ALIGNN, structure -> kappa_L, trained on 6,641 PhoNIX DFT values |
+| `K_GPa_DFT`, `G_GPa_DFT` | **blank: for the DFT moduli** (see below) |
+| `gamma_poisson_DFT`, `kappa_poisson_DFT` | gamma from the DFT Poisson ratio, and the Slack kappa with it |
+| `kappa_mlip_DFT` | Slack kappa from the DFT moduli + `gamma_mlip` (same chain as `kappa_mlip_<model>`) |
 
 `controls/index.csv` and `reserves/index.csv` have the same model columns.
 `kappa_pred_slack_300K` in the controls file is the highest `kappa_mlip_*`.
+
+## DFT moduli -> kappa_L
+
+The DFT run computes the elastic moduli; kappa_L then comes from them through the same
+physics chain as the model columns. Type the Voigt-Reuss-Hill bulk and shear moduli (GPa,
+not rounded) into `K_GPa_DFT` and `G_GPa_DFT`, then run
+`scripts/cgcnn/98_shortlist_dft_moduli.py`. It fills the three `*_DFT` kappa columns and
+prints each model's predicted/DFT ratio. Values already typed in are kept on every re-run.
+The chain uses each CIF's cell, so note it if the relaxed cell differs by more than a few %.
+Please also record the functional: our models were trained on PBE moduli (Materials
+Project), and on related halides two published DFT sets differ by 25-35%.
 
 ## DFT setup notes
 
